@@ -26,7 +26,7 @@ export function SolicitudModal({ solicitud, onClose, onStatusChange }: ModalProp
     // Caso 1: Los datos vienen planos en la solicitud
     if (solicitud.ingreso_mensual_familiar) return solicitud;
 
-    // Caso 2: Los datos vienen en un JSON string (como en la tabla de estudios)
+    // Caso 2: Los datos vienen en un JSON string
     if (solicitud.respuestas_json) {
         try {
             return JSON.parse(solicitud.respuestas_json);
@@ -84,7 +84,7 @@ export function SolicitudModal({ solicitud, onClose, onStatusChange }: ModalProp
         {/* BODY */}
         <div className="p-8 space-y-8 overflow-y-auto custom-scrollbar bg-slate-50/50">
           
-          {/* Fila de Stats Rápidos */}
+          {/* Stats Rápidos */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Promedio</span>
@@ -104,7 +104,7 @@ export function SolicitudModal({ solicitud, onClose, onStatusChange }: ModalProp
             </div>
           </div>
 
-          {/* Sección: Motivo */}
+          {/* Motivo */}
           <div className="space-y-3">
             <h4 className="text-xs font-black text-[#1a2744] uppercase tracking-widest flex items-center gap-2">
               <div className="h-1.5 w-1.5 rounded-full bg-[#d4a843]" /> Justificación del Estudiante
@@ -117,7 +117,7 @@ export function SolicitudModal({ solicitud, onClose, onStatusChange }: ModalProp
             </div>
           </div>
 
-          {/* 👇 NUEVA SECCIÓN: ESTUDIO SOCIOECONÓMICO */}
+          {/* Perfil Socioeconómico */}
           <div className="space-y-3">
             <h4 className="text-xs font-black text-[#1a2744] uppercase tracking-widest flex items-center gap-2">
               <div className="h-1.5 w-1.5 rounded-full bg-[#d4a843]" /> Perfil Socioeconómico
@@ -135,22 +135,22 @@ export function SolicitudModal({ solicitud, onClose, onStatusChange }: ModalProp
                         value={estudioData.num_personas_hogar || "N/A"} 
                         icon={Users} 
                     />
-                     <SocioCard 
+                      <SocioCard 
                         label="Vivienda" 
                         value={estudioData.tipo_vivienda || "N/A"} 
                         icon={Home} 
                     />
-                     <SocioCard 
+                      <SocioCard 
                         label="Internet" 
                         value={estudioData.acceso_internet || "No especificado"} 
                         icon={Wifi} 
                     />
-                     <SocioCard 
+                      <SocioCard 
                         label="Dependencia Econ." 
                         value={estudioData.dependencia_economica || "N/A"} 
                         icon={Activity} 
                     />
-                     <SocioCard 
+                      <SocioCard 
                         label="Trabajan en casa" 
                         value={estudioData.num_personas_trabajan || "0"} 
                         icon={BriefcaseIcon} 
@@ -163,7 +163,7 @@ export function SolicitudModal({ solicitud, onClose, onStatusChange }: ModalProp
             )}
           </div>
 
-          {/* Sección: Recaudos */}
+          {/* Recaudos */}
           <div className="space-y-3">
             <h4 className="text-xs font-black text-[#1a2744] uppercase tracking-widest flex items-center gap-2">
               <div className="h-1.5 w-1.5 rounded-full bg-[#d4a843]" /> Documentación Adjunta
@@ -200,25 +200,38 @@ export function SolicitudModal({ solicitud, onClose, onStatusChange }: ModalProp
         {/* FOOTER */}
         <div className="bg-white p-6 border-t border-slate-100 shrink-0">
           {confirmando ? (
-            <div className="flex items-center justify-between bg-amber-50 border border-amber-200 p-4 rounded-2xl animate-in slide-in-from-bottom-2">
+            <div className={`flex items-center justify-between p-4 rounded-2xl animate-in slide-in-from-bottom-2 border ${
+                confirmando === 'En Revisión' ? 'bg-blue-50 border-blue-200' : 'bg-amber-50 border-amber-200'
+            }`}>
               <div className="flex items-center gap-3">
-                <AlertTriangle className="h-5 w-5 text-amber-600" />
-                <p className="text-sm font-bold text-amber-900">¿Confirmar cambio a <span className="uppercase">{confirmando}</span>?</p>
+                <AlertTriangle className={`h-5 w-5 ${confirmando === 'En Revisión' ? 'text-blue-600' : 'text-amber-600'}`} />
+                <p className={`text-sm font-bold ${confirmando === 'En Revisión' ? 'text-blue-900' : 'text-amber-900'}`}>
+                    ¿Cambiar estatus a <span className="uppercase">{confirmando}</span>?
+                </p>
               </div>
               <div className="flex gap-2">
                 <button onClick={() => setConfirmando(null)} className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-white rounded-lg transition-all">Cancelar</button>
                 <button 
-                  onClick={() => { onStatusChange(solicitud.id, confirmando); onClose(); }} 
+                  onClick={() => { onStatusChange(solicitud.id, confirmando!); onClose(); }} 
                   className="px-6 py-2 bg-[#1a2744] text-[#d4a843] text-xs font-black uppercase rounded-lg shadow-lg"
                 >
-                  Sí, confirmar
+                  Confirmar
                 </button>
               </div>
             </div>
           ) : (
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
               <button onClick={onClose} className="text-slate-400 font-bold text-xs uppercase hover:text-slate-600 transition-colors">Volver al listado</button>
+              
               <div className="flex gap-2 w-full sm:w-auto">
+                {/* 🔵 BOTÓN NUEVO: A REVISIÓN */}
+                <button 
+                    onClick={() => setConfirmando('En Revisión')} 
+                    className="flex-1 sm:flex-none px-4 py-3 bg-blue-50 text-blue-600 rounded-xl font-black text-[10px] uppercase hover:bg-blue-100 transition-all border border-blue-100"
+                >
+                    A Revisión
+                </button>
+
                 <button onClick={() => setConfirmando('Rechazada')} className="flex-1 sm:flex-none px-6 py-3 bg-rose-50 text-rose-600 rounded-xl font-black text-[10px] uppercase hover:bg-rose-100 transition-all border border-rose-100">Rechazar</button>
                 <button onClick={() => setConfirmando('Aprobada')} className="flex-1 sm:flex-none px-8 py-3 bg-[#1a2744] text-[#d4a843] rounded-xl font-black text-[10px] uppercase hover:bg-[#233559] transition-all shadow-xl">Aprobar Beca</button>
               </div>
@@ -230,7 +243,7 @@ export function SolicitudModal({ solicitud, onClose, onStatusChange }: ModalProp
   )
 }
 
-// Mini Componente para las tarjetas socioeconómicas
+// Componentes Auxiliares
 function SocioCard({ label, value, icon: Icon }: any) {
     return (
         <div className="bg-white p-3 rounded-xl border border-slate-100 shadow-sm flex items-start gap-3">
@@ -245,7 +258,6 @@ function SocioCard({ label, value, icon: Icon }: any) {
     )
 }
 
-// Icono faltante
 function BriefcaseIcon(props: any) {
     return (
         <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="6" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>

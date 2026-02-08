@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react"
 import { AdminSidebar } from "@/components/admin/AdminSidebar"
-import { logout } from "@/lib/ActionsLogout"
+import { logout } from "@/lib/ActionsAuth"
 import { Menu, Sun, Moon } from "lucide-react"
 
 export default function AdminLayout({

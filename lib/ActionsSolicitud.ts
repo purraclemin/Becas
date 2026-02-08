@@ -49,7 +49,7 @@ export async function enviarSolicitud(formData: FormData) {
 
     // 4. Sincronizar tabla de estudiantes
     await db.execute(
-      "UPDATE students SET email = ?, estatusBeca = 'Pendiente' WHERE id = ?",
+      "UPDATE solicitudes SET email_institucional = ?, estatus = 'Pendiente' WHERE id = ?",
       [emailInstitucional, userId]
     )
 

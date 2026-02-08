@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { Menu, User, LayoutDashboard, LogOut } from "lucide-react"
-import { logout } from "@/lib/ActionsLogout"
+import { logout } from "@/lib/ActionsAuth"
 
 interface UserActionsProps {
   user: any

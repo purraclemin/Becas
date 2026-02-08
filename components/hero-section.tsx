@@ -5,17 +5,17 @@ import { ChevronLeft, ChevronRight } from "lucide-react"
 
 const slides = [
   {
-    image: "/images/hero-campus.jpg",
+    image: "/images/ourinstitution.jpg",
     title: "Sistema de Gestion de Becas",
     subtitle: "Plataforma digital para estudiantes de pregrado de la Universidad de Margarita",
   },
   {
-    image: "/images/students-studying.jpg",
+    image: "/images/ourinstitution.jpg",
     title: "Convocatoria Abierta 2026",
     subtitle: "Solicita tu beca academica, socioeconomica, deportiva o de excelencia",
   },
   {
-    image: "/images/graduation.jpg",
+    image: "/images/ourinstitution.jpg",
     title: "Tu futuro comienza aqui",
     subtitle: "Mas de 500 becas otorgadas apoyando el talento y esfuerzo de nuestros estudiantes",
   },

@@ -1,51 +1,23 @@
-"use client"
-
-import { useState, useEffect } from "react"
 import Link from "next/link"
 import { getSession } from "@/lib/ActionsSession"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { 
-  User, 
-  GraduationCap, 
-  Mail, 
-  IdCard, 
-  CalendarDays, 
-  BookOpen, 
-  ClipboardCheck, 
-  AlertCircle,
-  Clock,
-  CheckCircle2,
-  XCircle,
-  ArrowLeft
-} from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { 
+  GraduationCap, Mail, IdCard, CalendarDays, BookOpen, 
+  ClipboardCheck, AlertCircle, Clock, CheckCircle2, 
+  XCircle, ArrowLeft 
+} from "lucide-react"
 
-export default function PerfilPage() {
-  const [user, setUser] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
+// NOTA: Ya no usamos "use client", ni useState, ni useEffect.
+// Esta función es 'async' y se ejecuta en el servidor antes de enviar nada al navegador.
+export default async function PerfilPage() {
+  
+  // 1. OBTENCIÓN DE DATOS DIRECTA (Sin tiempos de carga visibles)
+  const user = await getSession()
 
-  useEffect(() => {
-    async function loadData() {
-      const data = await getSession()
-      setUser(data)
-      setLoading(false)
-    }
-    loadData()
-  }, [])
-
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f0f4f8]">
-        <div className="flex flex-col items-center gap-4">
-          <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#d4a843] border-t-[#1e3a5f]"></div>
-          <p className="font-black text-[#1e3a5f] uppercase tracking-widest text-xs">Cargando perfil institucional...</p>
-        </div>
-      </div>
-    )
-  }
-
+  // 2. MANEJO DE ACCESO DENEGADO (Renderizado en servidor)
   if (!user?.isLoggedIn) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#f0f4f8] px-4">
@@ -54,18 +26,21 @@ export default function PerfilPage() {
           <h2 className="text-xl font-black text-[#1e3a5f] uppercase">Acceso Denegado</h2>
           <p className="text-gray-500 text-sm mt-2 mb-6">Inicia sesión para visualizar tu información académica.</p>
           <Link href="/login">
-            <Button className="bg-[#1e3a5f] text-white w-full uppercase font-bold tracking-widest">Iniciar Sesión</Button>
+            <Button className="bg-[#1e3a5f] text-white w-full uppercase font-bold tracking-widest hover:bg-[#162c46]">
+              Iniciar Sesión
+            </Button>
           </Link>
         </Card>
       </div>
     )
   }
 
+  // 3. RENDERIZADO DEL PERFIL (Igual que tu diseño, pero instantáneo)
   return (
     <div className="min-h-screen bg-[#f0f4f8] py-8 md:py-16">
       <div className="container mx-auto px-4 max-w-5xl animate-in fade-in slide-in-from-bottom-4 duration-700">
         
-        {/* Botón de navegación responsive */}
+        {/* Botón de navegación */}
         <div className="mb-8 flex justify-center md:justify-start">
           <Link href="/">
             <Button variant="outline" className="flex items-center gap-2 border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white transition-all shadow-sm bg-white group px-6">
@@ -77,7 +52,7 @@ export default function PerfilPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 lg:gap-10">
           
-          {/* Columna Izquierda: Identidad y Estatus (4/12 en escritorio) */}
+          {/* IDENTIDAD Y ESTATUS */}
           <div className="md:col-span-4 space-y-6">
             <Card className="border-none shadow-2xl overflow-hidden bg-white">
               <div className="h-24 bg-[#1e3a5f] relative">
@@ -98,13 +73,12 @@ export default function PerfilPage() {
               </CardContent>
             </Card>
 
-            {/* TARJETA DE ESTATUS DINÁMICA */}
+            {/* TARJETA DE ESTATUS */}
             <Card className={`border-none shadow-xl overflow-hidden relative transition-all duration-500 ${
               user.estatusBeca === 'Aprobada' ? 'bg-green-50' :
               user.estatusBeca === 'Pendiente' ? 'bg-yellow-50' :
               user.estatusBeca === 'Rechazada' ? 'bg-red-50' : 'bg-gray-50'
             }`}>
-              {/* Indicador lateral de color */}
               <div className={`absolute left-0 top-0 bottom-0 w-2 ${
                  user.estatusBeca === 'Aprobada' ? 'bg-green-500' :
                  user.estatusBeca === 'Pendiente' ? 'bg-yellow-400' :
@@ -152,7 +126,7 @@ export default function PerfilPage() {
             </Card>
           </div>
 
-          {/* Columna Derecha: Info Académica (8/12 en escritorio) */}
+          {/* INFORMACIÓN ACADÉMICA */}
           <div className="md:col-span-8 space-y-6">
             <Card className="border-none shadow-2xl bg-white overflow-hidden">
               <CardHeader className="bg-[#fcfdfe] border-b border-gray-100 p-6 md:p-8">
@@ -174,7 +148,7 @@ export default function PerfilPage() {
               </CardContent>
             </Card>
 
-            {/* Banner de Acción Responsive */}
+            {/* Banner de Acción (Solo si no tiene beca) */}
             {user.estatusBeca === 'ninguna' && (
               <div className="p-6 md:p-10 rounded-2xl border-2 border-dashed border-[#d4a843] bg-[#d4a843]/5 flex flex-col lg:flex-row items-center justify-between gap-6 transition-all hover:bg-[#d4a843]/10">
                 <div className="flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
@@ -204,10 +178,10 @@ export default function PerfilPage() {
   )
 }
 
-// Componente Interno para los ítems de información
+// Subcomponente simple para mantener el código limpio
 function InfoItem({ icon: Icon, label, value, isLowercase, isUppercase }: any) {
   return (
-    <div className="space-y-2 group">
+    <div className="space-y-2 group cursor-default">
       <div className="flex items-center gap-2 text-[10px] text-gray-400 font-black uppercase tracking-widest group-hover:text-[#d4a843] transition-colors">
         <Icon className="h-4 w-4" /> 
         {label}

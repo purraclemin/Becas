@@ -1,8 +1,8 @@
 import Link from "next/link"
 import { Home, LogOut } from "lucide-react"
-import { logout } from "@/lib/ActionsLogout"
+import { logout } from "@/lib/ActionsAuth"
 
-export function SolicititudesHeader({ currentStatus, onStatusChange }: any) {
+export function SolicitudesHeader({ currentStatus, onStatusChange }: any) {
   const tabs = ["Todas", "Pendiente", "En Revisión", "Aprobada", "Rechazada"]
 
   return (

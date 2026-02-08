@@ -3,7 +3,6 @@
 import { useState } from "react"
 import Link from "next/link"
 import { Eye, EyeOff, LogIn, Mail, Lock, ArrowLeft, AlertCircle, Loader2 } from "lucide-react"
-// IMPORTANTE: Asegúrate de importar desde el archivo correcto que creamos anteriormente
 import { login } from "@/lib/ActionsAuth"
 
 export default function LoginPage() {
@@ -12,7 +11,6 @@ export default function LoginPage() {
   const [isPending, setIsPending] = useState(false)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    // Prevenimos la recarga por defecto para manejar la respuesta del servidor
     e.preventDefault()
     setIsPending(true)
     setError(null)
@@ -20,31 +18,34 @@ export default function LoginPage() {
     const formData = new FormData(e.currentTarget)
 
     try {
-      // Llamamos a la Server Action
+      // 1. Llamamos a la Server Action optimizada
       const result = await login(formData)
       
       if (result?.error) {
-        // Si hay error (contraseña mal, usuario no existe), lo mostramos
+        // Mostramos el mensaje genérico de seguridad ("Credenciales inválidas")
         setError(result.error)
-        setIsPending(false)
-      } else if (result?.success) {
-        // SI ES EXITOSO: Redirigimos según el rol que nos devolvió la base de datos
-        // Esto separa a los administradores de los estudiantes
+        setIsPending(false) // Reactivamos el formulario para intentar de nuevo
+      } 
+      else if (result?.success) {
+        // 2. REDIRECCIÓN SEGURA
+        // Usamos window.location.href para forzar la recarga de cookies en el navegador
         if (result.role === 'admin') {
-           window.location.replace("/admin/dashboard")
+           window.location.href = "/admin/dashboard"
         } else {
-           window.location.replace("/Solicitud") 
-           // O "/estudiante/perfil" según tus rutas
+           // Asumimos que el estudiante va a su perfil o solicitud
+           window.location.href = "/Solicitud" 
         }
       }
     } catch (e) {
-      setError("Error de conexión. Intente nuevamente.")
+      console.error(e)
+      setError("Error de conexión con el servidor. Intente nuevamente.")
       setIsPending(false)
     }
   }
 
   return (
     <div className="flex min-h-screen flex-col bg-[#f0f4f8]">
+      
       {/* Barra Superior Institucional */}
       <div className="bg-[#1a2744]">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-2">
@@ -71,7 +72,6 @@ export default function LoginPage() {
             
             {/* Cabecera del Card */}
             <div className="bg-[#1e3a5f] px-8 py-8 text-center relative">
-              {/* Línea dorada decorativa */}
               <div className="absolute top-0 left-0 w-full h-1 bg-[#d4a843]"></div>
               
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full border-2 border-[#d4a843] bg-[#1e3a5f] shadow-lg">
@@ -86,7 +86,7 @@ export default function LoginPage() {
             <div className="px-8 py-8">
               {/* Mensaje de Error */}
               {error && (
-                <div className="mb-6 flex items-center gap-3 rounded-lg bg-red-50 p-4 text-xs font-bold text-red-700 border-l-4 border-red-500 animate-in slide-in-from-top-2">
+                <div className="mb-6 flex items-center gap-3 rounded-lg bg-rose-50 p-4 text-xs font-bold text-rose-700 border-l-4 border-rose-500 animate-in slide-in-from-top-2">
                   <AlertCircle className="h-5 w-5 shrink-0" />
                   <span>{error}</span>
                 </div>
@@ -104,8 +104,9 @@ export default function LoginPage() {
                       id="email"
                       name="email"
                       type="email"
+                      disabled={isPending}
                       placeholder="usuario@unimar.edu.ve"
-                      className="w-full rounded-lg border border-[#e2e8f0] bg-[#fcfdfe] py-3 pl-10 pr-4 text-sm font-medium text-[#1e3a5f] placeholder-[#9ca3af] outline-none transition-all focus:border-[#d4a843] focus:ring-1 focus:ring-[#d4a843]/20"
+                      className="w-full rounded-lg border border-[#e2e8f0] bg-[#fcfdfe] py-3 pl-10 pr-4 text-sm font-medium text-[#1e3a5f] placeholder-[#9ca3af] outline-none transition-all focus:border-[#d4a843] focus:ring-1 focus:ring-[#d4a843]/20 disabled:opacity-50 disabled:bg-slate-100"
                       required
                     />
                   </div>
@@ -122,14 +123,16 @@ export default function LoginPage() {
                       id="password"
                       name="password"
                       type={showPassword ? "text" : "password"}
+                      disabled={isPending}
                       placeholder="Ingrese su contraseña"
-                      className="w-full rounded-lg border border-[#e2e8f0] bg-[#fcfdfe] py-3 pl-10 pr-10 text-sm font-medium text-[#1e3a5f] placeholder-[#9ca3af] outline-none transition-all focus:border-[#d4a843] focus:ring-1 focus:ring-[#d4a843]/20"
+                      className="w-full rounded-lg border border-[#e2e8f0] bg-[#fcfdfe] py-3 pl-10 pr-10 text-sm font-medium text-[#1e3a5f] placeholder-[#9ca3af] outline-none transition-all focus:border-[#d4a843] focus:ring-1 focus:ring-[#d4a843]/20 disabled:opacity-50 disabled:bg-slate-100"
                       required
                     />
                     <button
                       type="button"
+                      disabled={isPending}
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9ca3af] hover:text-[#1e3a5f] transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9ca3af] hover:text-[#1e3a5f] transition-colors disabled:opacity-50"
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
@@ -178,7 +181,7 @@ export default function LoginPage() {
           </div>
 
           <p className="mt-8 text-center text-[10px] font-bold text-[#9ca3af] uppercase tracking-widest">
-             Si tienes problemas, contacta a <a href="mailto:soporte@unimar.edu.ve" className="text-[#1e3a5f] underline decoration-[#d4a843]">soporte@unimar.edu.ve</a>
+              Si tienes problemas, contacta a <a href="mailto:soporte@unimar.edu.ve" className="text-[#1e3a5f] underline decoration-[#d4a843]">soporte@unimar.edu.ve</a>
           </p>
         </div>
       </div>

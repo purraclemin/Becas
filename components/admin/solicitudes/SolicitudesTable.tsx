@@ -16,7 +16,6 @@ export function SolicitudesTable({ data, loading, onView, onStatusChange }: any)
   const handleSort = (key: string) => {
     let direction: 'asc' | 'desc' = 'asc'
     
-    // Si ya estamos ordenando por esta columna y es ascendente, cambiamos a descendente
     if (sortConfig.key === key && sortConfig.direction === 'asc') {
       direction = 'desc'
     }
@@ -25,16 +24,13 @@ export function SolicitudesTable({ data, loading, onView, onStatusChange }: any)
   }
 
   // --- PROCESAR DATOS ORDENADOS ---
-  // Creamos una copia de 'data' para no mutar el prop original
   const sortedData = React.useMemo(() => {
     if (!sortConfig.key) return data
 
     return [...data].sort((a: any, b: any) => {
-      // Determinamos los valores a comparar según la columna
       let aValue = a[sortConfig.key!]
       let bValue = b[sortConfig.key!]
 
-      // Casos especiales (Objetos anidados o campos combinados)
       if (sortConfig.key === 'estudiante') {
         aValue = `${a.nombre} ${a.apellido}`.toLowerCase()
         bValue = `${b.nombre} ${b.apellido}`.toLowerCase()
@@ -49,7 +45,6 @@ export function SolicitudesTable({ data, loading, onView, onStatusChange }: any)
         bValue = bValue.toLowerCase()
       }
 
-      // Lógica de comparación
       if (aValue < bValue) {
         return sortConfig.direction === 'asc' ? -1 : 1
       }
@@ -70,14 +65,12 @@ export function SolicitudesTable({ data, loading, onView, onStatusChange }: any)
       : <ArrowDown className="h-3 w-3 text-white" />
   }
 
-  // Vista de Carga
   if (loading) return (
     <div className="w-full bg-white rounded-xl shadow-sm border border-slate-200 p-12 text-center animate-pulse">
       <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Sincronizando registros...</p>
     </div>
   )
 
-  // Vista Vacía
   if (data.length === 0) return (
     <div className="w-full bg-white rounded-xl shadow-sm border border-slate-200 p-12 text-center flex flex-col items-center">
       <MoreHorizontal className="h-6 w-6 text-slate-300 mb-2" />
@@ -86,74 +79,49 @@ export function SolicitudesTable({ data, loading, onView, onStatusChange }: any)
     </div>
   )
 
+  // Clase base para uniformidad en los encabezados
+  const thClass = "px-6 py-4 text-[10px] font-black uppercase tracking-widest cursor-pointer hover:bg-[#23355b] transition-colors group"
+
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full">
+        <table className="w-full border-collapse">
           <thead className="bg-[#1a2744] text-white">
-            <tr className="text-[10px] font-black uppercase tracking-widest">
-              
-              {/* COLUMNA ID */}
-              <th 
-                className="px-6 py-4 text-left w-20 cursor-pointer hover:bg-[#23355b] transition-colors group"
-                onClick={() => handleSort('id')}
-              >
-                <div className="flex items-center gap-1">
-                  ID {getSortIcon('id')}
-                </div>
+            <tr>
+              {/* ID */}
+              <th className={`${thClass} text-left w-20`} onClick={() => handleSort('id')}>
+                <div className="flex items-center gap-1">ID {getSortIcon('id')}</div>
               </th>
 
-              {/* COLUMNA ESTUDIANTE */}
-              <th 
-                className="px-6 py-4 text-left cursor-pointer hover:bg-[#23355b] transition-colors group"
-                onClick={() => handleSort('estudiante')}
-              >
-                <div className="flex items-center gap-1">
-                  Estudiante {getSortIcon('estudiante')}
-                </div>
+              {/* Estudiante */}
+              <th className={`${thClass} text-left`} onClick={() => handleSort('estudiante')}>
+                <div className="flex items-center gap-1">Estudiante {getSortIcon('estudiante')}</div>
               </th>
 
-              {/* COLUMNA CARRERA */}
-              <th 
-                className="px-6 py-4 text-left hidden md:table-cell cursor-pointer hover:bg-[#23355b] transition-colors group"
-                onClick={() => handleSort('carrera')}
-              >
-                <div className="flex items-center gap-1">
-                  Carrera / Becas {getSortIcon('carrera')}
-                </div>
+              {/* Carrera */}
+              <th className={`${thClass} text-left hidden md:table-cell`} onClick={() => handleSort('carrera')}>
+                <div className="flex items-center gap-1">Carrera / Becas {getSortIcon('carrera')}</div>
               </th>
 
-              {/* COLUMNA VULNERABILIDAD */}
-              <th 
-                className="px-6 py-4 text-center hidden lg:table-cell cursor-pointer hover:bg-[#23355b] transition-colors group"
-                onClick={() => handleSort('vulnerabilidad')}
-              >
-                <div className="flex items-center justify-center gap-1">
-                  Vulnerabilidad {getSortIcon('vulnerabilidad')}
-                </div>
+              {/* Vulnerabilidad */}
+              <th className={`${thClass} text-center hidden lg:table-cell`} onClick={() => handleSort('vulnerabilidad')}>
+                <div className="flex items-center justify-center gap-1">Vulnerabilidad {getSortIcon('vulnerabilidad')}</div>
               </th>
 
-              {/* COLUMNA PROMEDIO */}
-              <th 
-                className="px-6 py-4 text-center hidden lg:table-cell cursor-pointer hover:bg-[#23355b] transition-colors group"
-                onClick={() => handleSort('promedio')}
-              >
-                <div className="flex items-center justify-center gap-1">
-                  Promedio {getSortIcon('promedio')}
-                </div>
+              {/* Promedio */}
+              <th className={`${thClass} text-center hidden lg:table-cell`} onClick={() => handleSort('promedio')}>
+                <div className="flex items-center justify-center gap-1">Promedio {getSortIcon('promedio')}</div>
               </th>
 
-              {/* COLUMNA ESTATUS */}
-              <th 
-                className="px-6 py-4 text-left hidden sm:table-cell cursor-pointer hover:bg-[#23355b] transition-colors group"
-                onClick={() => handleSort('estatus')}
-              >
-                <div className="flex items-center gap-1">
-                  Estatus {getSortIcon('estatus')}
-                </div>
+              {/* Estatus (AHORA CENTRADO) */}
+              <th className={`${thClass} text-center hidden sm:table-cell`} onClick={() => handleSort('estatus')}>
+                <div className="flex items-center justify-center gap-1">Estatus {getSortIcon('estatus')}</div>
               </th>
 
-              <th className="px-6 py-4 text-right">Acciones</th>
+              {/* Acciones (FONDO CONTINUO) */}
+              <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-right bg-[#1a2744] text-white">
+                Acciones
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">

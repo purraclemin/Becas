@@ -1,4 +1,3 @@
-// lib/actionsregistro.ts
 'use server'
 
 import { db } from './db'
@@ -6,14 +5,14 @@ import { cookies } from 'next/headers'
 import bcrypt from 'bcryptjs'
 
 /**
- * FUNCIÓN 1: Validación en tiempo real (Paso 1)
- * Verifica disponibilidad de Cédula y Email por separado para identificar el duplicado
+ * FUNCIÓN 1: Validación en tiempo real
+ * Se usa para que el formulario se ponga rojo antes de enviar.
  */
 export async function checkExistence(cedula: string, email: string) {
   try {
-    // 1. Verificar Correo Institucional
+    // 1. Verificar Email en la tabla USERS (la fuente de verdad para el login)
     const [emailRows]: any = await db.execute(
-      'SELECT id FROM students WHERE email = ? LIMIT 1',
+      'SELECT id FROM users WHERE email = ? LIMIT 1',
       [email]
     );
 
@@ -21,11 +20,11 @@ export async function checkExistence(cedula: string, email: string) {
       return { 
         exists: true, 
         field: 'email',
-        error: "Este correo electrónico ya se encuentra registrado." 
+        error: "Este correo electrónico ya está registrado." 
       };
     }
 
-    // 2. Verificar Cédula de Identidad
+    // 2. Verificar Cédula en la tabla STUDENTS
     const [cedulaRows]: any = await db.execute(
       'SELECT id FROM students WHERE cedula = ? LIMIT 1',
       [cedula]
@@ -35,7 +34,7 @@ export async function checkExistence(cedula: string, email: string) {
       return { 
         exists: true, 
         field: 'cedula',
-        error: "Esta cédula de identidad ya se encuentra registrada." 
+        error: "Esta cédula ya está registrada en el sistema." 
       };
     }
 
@@ -47,8 +46,7 @@ export async function checkExistence(cedula: string, email: string) {
 }
 
 /**
- * FUNCIÓN 2: Registro Final (Paso 3)
- * Encripta contraseña con bcryptjs y guarda los datos en tablas users y students
+ * FUNCIÓN 2: Registro Transaccional (Todo o Nada)
  */
 export async function register(formData: FormData) {
   const nombre = formData.get('nombre') as string
@@ -66,19 +64,19 @@ export async function register(formData: FormData) {
     connection = await db.getConnection();
     await connection.beginTransaction();
 
-    // 1. SEGURIDAD: Encriptamos la contraseña antes de guardarla
-    // El '10' es el nivel de salt (balance óptimo entre seguridad y rendimiento)
+    // 1. HASH: Encriptar contraseña
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 2. Insertar en tabla de credenciales (users)
+    // 2. INSERTAR USUARIO (Genera el ID Automático)
     const [userResult]: any = await connection.execute(
       'INSERT INTO users (email, password, role) VALUES (?, ?, ?)',
       [email, hashedPassword, 'estudiante']
     );
 
-    const userId = userResult.insertId;
+    const userId = userResult.insertId; // Ej: 45
 
-    // 3. Insertar en tabla de perfiles (students) vinculando por el ID generado
+    // 3. INSERTAR ESTUDIANTE (Usando el MISMO ID)
+    // Aquí es donde ocurre la magia de la relación 1 a 1 estricta
     await connection.execute(
       'INSERT INTO students (id, nombre, apellido, cedula, telefono, carrera, semestre, email) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
       [userId, nombre, apellido, cedula, telefono, carrera, semestre, email]
@@ -86,19 +84,19 @@ export async function register(formData: FormData) {
 
     await connection.commit();
 
-    // 4. CONFIGURACIÓN DE SESIÓN: Logueo automático tras registro exitoso
+    // 4. AUTO-LOGIN (Crear sesión inmediatamente)
     const cookieStore = await cookies();
-    const sessionToken = `session_user_${userId}`;
     
-    // Cookie de sesión principal
+    // Usamos 'active_session_' para mantener consistencia con ActionsAuth.ts
+    const sessionToken = `active_session_${userId}`;
+    
     cookieStore.set('session_token', sessionToken, { 
       httpOnly: true, 
       secure: process.env.NODE_ENV === 'production',
       path: '/',
-      maxAge: 60 * 60 * 24 // Expira en 24 horas
+      maxAge: 60 * 60 * 24 // 24 horas
     });
 
-    // Cookie de rol para control de accesos
     cookieStore.set('user_role', 'estudiante', { 
       httpOnly: true, 
       secure: process.env.NODE_ENV === 'production',
@@ -109,18 +107,16 @@ export async function register(formData: FormData) {
     return { success: true };
 
   } catch (e: any) {
-    // Revertimos cambios si alguna de las inserciones falla
     if (connection) await connection.rollback();
     
-    // Manejo de error por duplicidad en el momento del envío final
+    // Error específico de duplicados (por si alguien envió el formulario dos veces muy rápido)
     if (e.code === 'ER_DUP_ENTRY') {
-      return { error: 'Error: Los datos ya existen en el sistema.' };
+      return { error: 'Error: El usuario o la cédula ya existen.' };
     }
     
-    console.error("Error crítico en el proceso de registro:", e);
-    return { error: 'No se pudo completar el registro. Intente más tarde.' };
+    console.error("❌ Error crítico en registro:", e);
+    return { error: 'Error del servidor. Intente más tarde.' };
   } finally {
-    // Liberamos la conexión al pool de base de datos
     if (connection) connection.release();
   }
 }

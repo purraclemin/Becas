@@ -1,10 +1,12 @@
-// lib/ActionsSession.ts
 'use server'
 
 import { cookies } from 'next/headers'
 import { db } from './db' 
+import { unstable_noStore as noStore } from 'next/cache'
 
 export async function getSession() {
+  noStore(); // Asegura que los cambios de estatus se vean al refrescar
+  
   const cookieStore = await cookies()
   const sessionToken = cookieStore.get('session_token')?.value
   const role = cookieStore.get('user_role')?.value
@@ -12,28 +14,37 @@ export async function getSession() {
   if (!sessionToken) return { isLoggedIn: false }
 
   try {
-    const parts = sessionToken.split('_')
-    const userId = parts[parts.length - 1] 
+    // Extraemos el ID del token (formato: active_session_ID)
+    const userId = sessionToken.split('_').pop(); 
+
+    if (!userId) return { isLoggedIn: false };
 
     if (role === 'estudiante') {
-      
-      // 1. Buscamos el ESTATUS en la tabla solicitudes (usando user_id)
-      const [solicitudes]: any = await db.execute(
-        'SELECT estatus FROM solicitudes WHERE user_id = ? ORDER BY fecha_registro DESC LIMIT 1', 
-        [userId]
-      )
-      const estatusReal = solicitudes.length > 0 ? solicitudes[0].estatus : null
+      /**
+       * OPTIMIZACIÓN: Una sola consulta para traer todo.
+       * Usamos LEFT JOIN con una subconsulta para obtener solo la solicitud más reciente.
+       */
+      const query = `
+        SELECT 
+          st.nombre, st.apellido, st.carrera, st.semestre, st.cedula, st.email,
+          sol.estatus as estatus_reciente
+        FROM students st
+        LEFT JOIN (
+          SELECT user_id, estatus 
+          FROM solicitudes 
+          WHERE user_id = ? 
+          ORDER BY fecha_registro DESC 
+          LIMIT 1
+        ) sol ON st.id = sol.user_id
+        WHERE st.id = ?
+      `;
 
-      // 2. Buscamos al ESTUDIANTE en su tabla (usando id = userId)
-      // Agregamos 'cedula' y 'email' que son vitales para la página de Solicitud
-      const [students]: any = await db.execute(
-        'SELECT nombre, apellido, carrera, semestre, cedula, email FROM students WHERE id = ?', 
-        [userId]
-      )
+      const [rows]: any = await db.execute(query, [userId, userId]);
       
-      if (students.length > 0) {
-        const s = students[0]
-        
+      if (rows.length > 0) {
+        const s = rows[0];
+        const estatusReal = s.estatus_reciente;
+
         return { 
           isLoggedIn: true, 
           id: userId,
@@ -41,24 +52,25 @@ export async function getSession() {
           nombre: `${s.nombre} ${s.apellido}`,
           carrera: s.carrera,
           
-          // Enviamos el semestre con DOS nombres para que nadie se queje
-          trimestre: s.semestre, // Para el Navbar
-          semestre: s.semestre,  // Para otras páginas
+          // Compatibilidad con diferentes componentes
+          trimestre: s.semestre,
+          semestre: s.semestre,
           
-          cedula: s.cedula,      // ¡Vital para la solicitud!
-          email: s.email,        // ¡Vital para la solicitud!
+          cedula: s.cedula,
+          email: s.email,
 
-          // Enviamos el estatus con DOS nombres también
-          estatus: estatusReal,      // Para el Navbar nuevo (UserActions.tsx)
-          estatusBeca: estatusReal || 'ninguna' // Para la página de Solicitud antigua
+          // Compatibilidad de estatus
+          estatus: estatusReal,
+          estatusBeca: estatusReal || 'ninguna'
         }
       }
     }
 
+    // Si es Admin o no se encontró perfil de estudiante, devolvemos sesión básica
     return { isLoggedIn: true, role, id: userId }
     
   } catch (error) {
-    console.error("❌ Error en getSession:", error)
+    console.error("❌ Error crítico en getSession:", error)
     return { isLoggedIn: false }
   }
 }
