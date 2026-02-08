@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { ArrowLeft, UserPlus, AlertCircle, Loader2 } from "lucide-react"
-import { register, checkExistence } from "@/lib/actionsRegistro"
+import { register, checkExistence } from "@/lib/actions-registro"
 import { StepIndicator } from "@/components/registro/StepIndicator"
 import { StepContent } from "@/components/registro/StepContent"
 
