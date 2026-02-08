@@ -1,215 +1,186 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
-import { logout } from "@/lib/Actionslogout"
 import Link from "next/link"
+import { useRouter } from "next/navigation" 
 import { 
-  BarChart3, 
-  Users, 
-  ClipboardCheck, 
-  Settings, 
-  LogOut, 
-  Bell, 
-  UserCircle,
-  ArrowUpRight,
-  Clock
+  FileText, CheckCircle2, Clock, XCircle, Sparkles, 
+  Home, LogOut 
 } from "lucide-react"
+
+// Acciones y Lógica
+import { obtenerEstadisticasBecas } from "@/lib/ActionsDashboard"
 import { obtenerSolicitudesRecientes } from "@/lib/ActionsRecientes"
+import { obtenerRankingPrioridad } from "@/lib/ActionsRanking"
+import { logout } from "@/lib/ActionsLogout"
+
+// Componentes del Dashboard
+import { StatCard } from "@/components/admin/dashboard/StatCard"
+import { RankingPrioridad } from "@/components/admin/dashboard/RankingPrioridad"
+import { CarreraBarChart, BecaPieChart } from "@/components/admin/dashboard/DashboardCharts"
+import { HealthStatus } from "@/components/admin/dashboard/OperationalStats"
 
 export default function AdminDashboard() {
-  const [recientes, setRecientes] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState<any>(null)
+  const [ranking, setRanking] = useState<any[]>([])
+  const router = useRouter() 
 
-  // Carga automática de datos reales al entrar al dashboard
   useEffect(() => {
-    const cargarDatos = async () => {
+    const cargarTodo = async () => {
       try {
-        const data = await obtenerSolicitudesRecientes()
-        setRecientes(data)
+        const [_, dataStats, dataRanking] = await Promise.all([
+          obtenerSolicitudesRecientes(),
+          obtenerEstadisticasBecas(),
+          obtenerRankingPrioridad()
+        ])
+        setStats(dataStats)
+        setRanking(dataRanking)
       } catch (error) {
-        console.error("Error cargando el dashboard:", error)
-      } finally {
-        setLoading(false)
+        console.error("Error al cargar datos:", error)
       }
     }
-    cargarDatos()
+    cargarTodo()
   }, [])
 
+  const total = stats?.porEstatus?.reduce((acc: any, curr: any) => acc + curr.total, 0) || 0
+  const pendientes = stats?.porEstatus?.find((e: any) => e.estatus === 'Pendiente' || e.estatus === 'En Revisión')?.total || 0
+  
+  // --- 🟢 NUEVAS FUNCIONES DE NAVEGACIÓN PRECISA ---
+  
+  // Para la gráfica de Barras (Carreras)
+  const irAFiltroCarrera = (carrera: string) => {
+    if (!carrera) return;
+    router.push(`/admin/solicitudes?carrera=${encodeURIComponent(carrera)}`)
+  }
+
+  // Para la gráfica de Torta (Becas) y la tabla de abajo
+  const irAFiltroBeca = (beca: string) => {
+    if (!beca) return;
+    router.push(`/admin/solicitudes?tipoBeca=${encodeURIComponent(beca)}`)
+  }
+
+  // Para los botones de Estatus (Superior y Tarjetas)
+  const irAStatus = (estatus: string) => {
+    if (estatus === 'Todas') {
+      router.push('/admin/solicitudes')
+    } else {
+      router.push(`/admin/solicitudes?status=${encodeURIComponent(estatus)}`)
+    }
+  }
+
   return (
-    <div className="flex min-h-screen bg-[#f0f4f8]">
-      {/* Sidebar Lateral - Identidad UNIMAR */}
-      <aside className="w-64 bg-[#1a2744] text-white hidden md:flex flex-col shadow-2xl">
-        <div className="p-6 border-b border-[#1e3a5f]">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1e3a5f] border border-[#d4a843]">
-              <span className="text-lg font-bold text-[#d4a843] font-serif">U</span>
-            </div>
-            <span className="font-serif font-extrabold tracking-tighter text-sm uppercase text-[#ffffff]">Panel Control</span>
+    <div className="w-full min-h-screen bg-[#f8fafc]">
+      
+      {/* --- ENCABEZADO INTEGRADO --- */}
+      <div className="sticky top-0 z-30 bg-[#f8fafc] h-16 flex items-center px-6 md:px-8">
+        <div className="w-full bg-white px-6 py-2 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4">
+          
+          <h1 className="text-lg font-black text-[#1a2744] uppercase tracking-widest">
+            Panel de Control
+          </h1>
+
+          <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-lg overflow-x-auto max-w-full">
+            {['Todas', 'Pendiente', 'En Revisión', 'Aprobada', 'Rechazada'].map((label) => (
+              <button
+                key={label}
+                onClick={() => irAStatus(label)}
+                className={`
+                  px-4 py-1.5 rounded-md text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap
+                  ${label === 'Todas' 
+                    ? "bg-[#1a2744] text-white shadow-md" 
+                    : "text-slate-400 hover:text-[#1a2744] hover:bg-white"
+                  }
+                `}
+              >
+                {label}
+              </button>
+            ))}
           </div>
+
+          <div className="flex items-center gap-5">
+            <Link href="/" title="Ir al Inicio">
+              <Home className="h-5 w-5 text-slate-400 hover:text-[#1a2744] transition-colors cursor-pointer" />
+            </Link>
+
+            <button 
+              onClick={() => logout()} 
+              className="flex items-center gap-2 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-500 rounded-lg transition-all border border-rose-100 group"
+            >
+              <LogOut className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
+              <span className="text-[10px] font-black uppercase tracking-widest">Salir</span>
+            </button>
+          </div>
+
         </div>
+      </div>
+
+      <div className="p-6 md:p-8 space-y-8 pb-10">
         
-        <nav className="flex-1 p-4 space-y-2">
-          <Link href="/admin/dashboard" className="flex items-center gap-3 bg-[#d4a843] text-[#1a2744] px-4 py-3 rounded-lg font-bold text-sm shadow-md transition-all">
-            <Settings className="h-5 w-5" /> Inicio
-          </Link>
-          <Link href="/admin/reportes" className="flex items-center gap-3 text-[#8a9bbd] hover:text-white px-4 py-3 rounded-lg font-semibold text-sm transition-all hover:bg-[#1e3a5f]">
-            <BarChart3 className="h-5 w-5 text-[#d4a843]" /> Reportes
-          </Link>
-          <Link href="/admin/solicitudes" className="flex items-center gap-3 text-[#8a9bbd] hover:text-white px-4 py-3 rounded-lg font-semibold text-sm transition-all hover:bg-[#1e3a5f]">
-            <ClipboardCheck className="h-5 w-5 text-[#d4a843]" /> Validar Becas
-          </Link>
-          <Link href="/admin/estudiantes" className="flex items-center gap-3 text-[#8a9bbd] hover:text-white px-4 py-3 rounded-lg font-semibold text-sm transition-all hover:bg-[#1e3a5f]">
-            <Users className="h-5 w-5 text-[#d4a843]" /> Estudiantes
-          </Link>
-        </nav>
-
-        {/* Botón de Cerrar Sesión Implementado */}
-        <div className="p-4 border-t border-[#1e3a5f]">
-          <button 
-            onClick={async () => {
-              if(confirm("¿Estás seguro de que deseas cerrar sesión en el sistema UNIMAR?")) {
-                await logout();
-              }
-            }}
-            className="flex w-full items-center gap-3 text-red-400 hover:text-red-300 px-4 py-3 text-xs font-black uppercase tracking-widest transition-colors hover:bg-red-950/20 rounded-lg"
-          >
-            <LogOut className="h-5 w-5" /> 
-            Salir del Sistema
-          </button>
+        {/* TARJETAS KPI */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+           <StatCard label="Total Solicitudes" value={total} icon={FileText} color="bg-blue-500" onClick={() => irAStatus('Todas')} />
+           <StatCard label="Pendientes" value={pendientes} icon={Clock} color="bg-[#d4a843]" onClick={() => irAStatus('Pendiente')} />
+           <StatCard label="Aprobadas" value={stats?.porEstatus?.find((e: any) => e.estatus === 'Aprobada')?.total || 0} icon={CheckCircle2} color="bg-emerald-500" onClick={() => irAStatus('Aprobada')} />
+           <StatCard label="Rechazadas" value={stats?.porEstatus?.find((e: any) => e.estatus === 'Rechazada')?.total || 0} icon={XCircle} color="bg-rose-500" onClick={() => irAStatus('Rechazada')} />
         </div>
-      </aside>
 
-      {/* Contenido Principal */}
-      <main className="flex-1 flex flex-col overflow-hidden">
-        {/* Header Superior */}
-        <header className="bg-white h-20 shadow-sm flex items-center justify-between px-10 border-b border-gray-200">
-          <div className="flex flex-col">
-            <h2 className="text-[#1e3a5f] font-black text-xl font-serif uppercase tracking-tight">Bienvenido, Administrador</h2>
-            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Universidad de Margarita &bull; Gestión 2026</p>
-          </div>
+        {/* GRÁFICOS INTERACTIVOS CON NAVEGACIÓN CORREGIDA */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+           {/* Usa irAFiltroCarrera para que envíe ?carrera=... */}
+           <CarreraBarChart data={stats?.porCarrera || []} onNavigate={irAFiltroCarrera} />
+           
+           <div className="h-96">
+             <RankingPrioridad estudiantes={ranking} onNavigate={(q: string) => router.push(`/admin/solicitudes?search=${q}`)} />
+           </div>
+
+           {/* Usa irAFiltroBeca para que envíe ?tipoBeca=... */}
+           <BecaPieChart data={stats?.porTipo || []} onNavigate={irAFiltroBeca} />
+        </div>
+
+        {/* SALUD OPERATIVA Y DISTRIBUCIÓN */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <HealthStatus porEstatus={stats?.porEstatus || []} total={total} />
           
-          <div className="flex items-center gap-8">
-            <div className="relative hidden lg:block">
-              <Bell className="h-6 w-6 text-gray-300" />
-              <span className="absolute -top-1 -right-1 h-3 w-3 bg-[#d4a843] rounded-full border-2 border-white"></span>
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+            <div className="bg-slate-50 px-6 py-4 border-b flex justify-between items-center">
+              <h3 className="font-black text-[#1a2744] text-[10px] uppercase tracking-widest">Distribución Detallada</h3>
+              <Link href="/admin/reportes" className="text-[9px] font-black text-blue-600 hover:underline uppercase">Ver Todo</Link>
             </div>
-            <div className="flex items-center gap-4 border-l pl-8 border-gray-200">
-              <div className="text-right hidden sm:block">
-                <p className="text-xs font-black text-[#1e3a5f] leading-none tracking-tighter text-right">ADMIN_UNIMAR</p>
-                <p className="text-[9px] font-bold text-[#d4a843] uppercase mt-1">Status: En Línea</p>
-              </div>
-              <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center border-2 border-[#d4a843]/20">
-                <UserCircle className="h-8 w-8 text-gray-400" />
-              </div>
-            </div>
-          </div>
-        </header>
-
-        {/* Zona de Trabajo */}
-        <div className="p-10 space-y-10 overflow-y-auto">
-          
-          {/* Accesos Directos */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <Link href="/admin/reportes" className="group bg-white p-8 rounded-2xl shadow-sm border-b-4 border-[#d4a843] hover:shadow-xl hover:-translate-y-1 transition-all">
-              <div className="flex justify-between items-start mb-6">
-                <div className="p-4 bg-[#d4a843]/10 rounded-xl">
-                  <BarChart3 className="h-8 w-8 text-[#d4a843]" />
-                </div>
-                <ArrowUpRight className="h-5 w-5 text-gray-200 group-hover:text-[#d4a843] transition-colors" />
-              </div>
-              <h4 className="text-lg font-black text-[#1e3a5f] font-serif uppercase tracking-tight">Estadísticas</h4>
-              <p className="text-xs text-gray-500 mt-2 leading-relaxed">Análisis de promedios y distribución global de becas aprobadas.</p>
-            </Link>
-
-            <Link href="/admin/solicitudes" className="group bg-white p-8 rounded-2xl shadow-sm border-b-4 border-[#1e3a5f] hover:shadow-xl hover:-translate-y-1 transition-all">
-              <div className="flex justify-between items-start mb-6">
-                <div className="p-4 bg-[#1e3a5f]/10 rounded-xl">
-                  <ClipboardCheck className="h-8 w-8 text-[#1e3a5f]" />
-                </div>
-                <ArrowUpRight className="h-5 w-5 text-gray-200 group-hover:text-[#1e3a5f] transition-colors" />
-              </div>
-              <h4 className="text-lg font-black text-[#1e3a5f] font-serif uppercase tracking-tight">Validaciones</h4>
-              <p className="text-xs text-gray-500 mt-2 leading-relaxed">Procesar nuevas solicitudes enviadas por los estudiantes registrados.</p>
-            </Link>
-
-            <Link href="/admin/estudiantes" className="group bg-white p-8 rounded-2xl shadow-sm border-b-4 border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all">
-              <div className="flex justify-between items-start mb-6">
-                <div className="p-4 bg-gray-50 rounded-xl">
-                  <Users className="h-8 w-8 text-gray-400" />
-                </div>
-                <ArrowUpRight className="h-5 w-5 text-gray-200 group-hover:text-gray-600 transition-colors" />
-              </div>
-              <h4 className="text-lg font-black text-[#1e3a5f] font-serif uppercase tracking-tight">Estudiantes</h4>
-              <p className="text-xs text-gray-500 mt-2 leading-relaxed">Directorio completo de alumnos postulados y sus datos de contacto.</p>
-            </Link>
-          </div>
-
-          {/* Tabla de Datos Reales */}
-          <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
-            <div className="bg-[#f8fafc] px-10 py-6 border-b border-gray-100 flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <Clock className="h-5 w-5 text-[#d4a843]" />
-                <h3 className="text-xs font-black text-[#1e3a5f] uppercase tracking-[0.2em]">Últimas Solicitudes en el Sistema</h3>
-              </div>
-              <Link href="/admin/solicitudes" className="text-[10px] font-bold bg-[#1e3a5f] text-white px-4 py-2 rounded-full hover:bg-[#d4a843] transition-colors">
-                GESTIONAR TODO
-              </Link>
-            </div>
-            
-            <div className="overflow-x-auto">
+            <div className="flex-1 overflow-y-auto max-h-64">
               <table className="w-full text-left">
-                <thead className="bg-gray-50/50 text-[#8a9bbd] uppercase text-[9px] font-black tracking-widest">
-                  <tr>
-                    <th className="px-10 py-5">Postulante</th>
-                    <th className="px-10 py-5">Beca Solicitada</th>
-                    <th className="px-10 py-5 text-center">Índice Académico</th>
-                    <th className="px-10 py-5 text-right">Estado Actual</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {loading ? (
-                    <tr>
-                      <td colSpan={4} className="px-10 py-20 text-center">
-                        <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-[#d4a843] border-t-transparent"></div>
-                        <p className="mt-4 text-xs font-bold text-gray-400 uppercase">Sincronizando con base de datos...</p>
+                <tbody className="divide-y divide-slate-100">
+                  {stats?.porTipo?.map((item: any, idx: number) => (
+                    <tr key={idx} onClick={() => irAFiltroBeca(item.tipo_beca)} className="hover:bg-blue-50 transition-all cursor-pointer group">
+                      <td className="px-6 py-4 text-[10px] font-bold text-slate-600 uppercase group-hover:text-[#1a2744]">{item.tipo_beca}</td>
+                      <td className="px-6 py-4 text-right">
+                        <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-[10px] font-black">{item.total}</span>
                       </td>
                     </tr>
-                  ) : recientes.length > 0 ? (
-                    recientes.map((s) => (
-                      <tr key={s.id} className="hover:bg-gray-50/50 transition-colors">
-                        <td className="px-10 py-5">
-                          <p className="text-sm font-bold text-[#1e3a5f] uppercase">{s.nombre} {s.apellido}</p>
-                          <p className="text-[10px] text-gray-400 font-medium italic leading-none mt-1">Referencia: #{s.id}</p>
-                        </td>
-                        <td className="px-10 py-5">
-                          <span className="text-xs font-semibold text-gray-600 uppercase tracking-tighter">{s.tipo_beca}</span>
-                        </td>
-                        <td className="px-10 py-5 text-center font-black text-[#1e3a5f] text-sm">
-                          {s.promedio_notas}
-                        </td>
-                        <td className="px-10 py-5 text-right">
-                          <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest ${
-                            s.estatus === 'Pendiente' ? 'bg-orange-100 text-orange-700' : 
-                            s.estatus === 'Aprobada' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
-                          }`}>
-                            {s.estatus}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={4} className="px-10 py-20 text-center text-gray-400 text-xs italic">
-                        No hay solicitudes recientes registradas en este periodo.
-                      </td>
-                    </tr>
-                  )}
+                  ))}
                 </tbody>
               </table>
             </div>
           </div>
         </div>
-      </main>
+
+        {/* IA PREDICTORA */}
+        <div className="bg-gradient-to-r from-[#1e3a5f] to-[#1a2744] p-8 rounded-3xl shadow-xl text-center text-white relative overflow-hidden border-b-8 border-[#d4a843]">
+          <div className="absolute -top-10 -right-10 opacity-10"><Sparkles className="h-40 w-40 text-[#d4a843]" /></div>
+          <h3 className="text-xl font-black uppercase tracking-tighter flex items-center justify-center gap-3">
+            <Sparkles className="h-6 w-6 text-[#d4a843]" /> IA Predictora Unimar
+          </h3>
+          <p className="mt-4 text-slate-300 text-sm max-w-2xl mx-auto italic">
+            Prioridad: Hay <span className="text-[#d4a843] font-bold">{pendientes} solicitudes</span> críticas esperando revisión.
+          </p>
+          <button 
+            onClick={() => irAStatus('Pendiente')}
+            className="mt-8 bg-[#d4a843] text-[#1a2744] px-8 py-3 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg hover:scale-105 hover:bg-white transition-all"
+          >
+            Gestionar Ahora
+          </button>
+        </div>
+
+      </div>
     </div>
   )
 }

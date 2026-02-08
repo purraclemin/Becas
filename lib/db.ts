@@ -1,10 +1,19 @@
-// lib/db.ts
 import mysql from 'mysql2/promise';
 
-export const db = mysql.createPool({
+const dbConfig = {
   host: 'localhost',
-  user: 'root',      // En XAMPP siempre es root
-  password: '',      // En XAMPP siempre es vacío
-  database: 'unimar_becas', // Asegúrate de que se llame exactamente así en phpMyAdmin
-  port: 3306,
-});
+  user: 'root',
+  password: '',
+  // Forzamos el nombre exacto aquí para evitar que busque en 'becas_db'
+  database: 'unimar_becas', 
+  waitForConnections: true,
+  connectionLimit: 5,
+  queueLimit: 0,
+};
+
+// Singleton para Next.js
+const globalForDb = global as unknown as { pool: mysql.Pool };
+
+export const db = globalForDb.pool || mysql.createPool(dbConfig);
+
+if (process.env.NODE_ENV !== 'production') globalForDb.pool = db;

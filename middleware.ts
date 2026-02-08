@@ -54,6 +54,6 @@ export const config = {
     '/admin/:path*',
     '/Solicitud/:path*',
     '/login',
-    '/registro'
+    '/registro/:path'
   ],
 }

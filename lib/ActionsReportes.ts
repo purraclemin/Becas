@@ -20,13 +20,24 @@ export async function obtenerEstadisticasBecas() {
       'SELECT AVG(promedio_notas) as promedio FROM solicitudes'
     );
 
+    // 4. NUEVO: Total por Carrera (Facultad)
+    // Usamos el mismo JOIN que te funcionó en Recientes (s.user_id = st.id)
+    const [conteoCarrera]: any = await db.execute(`
+      SELECT st.carrera as name, COUNT(s.id) as value
+      FROM solicitudes s
+      JOIN students st ON s.user_id = st.id
+      GROUP BY st.carrera
+    `);
+
     return {
       porEstatus: conteoEstatus,
       porTipo: conteoTipos,
-      promedio: promedioGral[0]?.promedio || 0
+      promedio: promedioGral[0]?.promedio || 0,
+      porCarrera: conteoCarrera // <-- ¡Aquí va la data para tu gráfico de barras!
     };
   } catch (error) {
     console.error("Error al generar reportes:", error);
-    return null;
+    // Devolvemos estructura vacía segura para que no rompa el dashboard
+    return { porEstatus: [], porTipo: [], promedio: 0, porCarrera: [] };
   }
 }

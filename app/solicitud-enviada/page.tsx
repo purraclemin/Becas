@@ -2,10 +2,16 @@
 
 import Link from "next/link"
 import { CheckCircle, ArrowRight, FileText, Mail, Download, Home } from "lucide-react"
+import { useState, useEffect } from "react" // <--- 1. Agregamos estos hooks
 
 export default function SolicitudEnviadaPage() {
-  // En un sistema real, aquí podrías mostrar un número de trámite aleatorio
-  const numeroTramite = Math.floor(Math.random() * 90000) + 10000;
+  // 2. Usamos un estado para guardar el número
+  const [numeroTramite, setNumeroTramite] = useState<number | string>("...")
+
+  // 3. Generamos el número aleatorio SOLO cuando la página ya cargó en el navegador
+  useEffect(() => {
+    setNumeroTramite(Math.floor(Math.random() * 90000) + 10000)
+  }, [])
 
   return (
     <div className="flex min-h-screen flex-col bg-[#f0f4f8]">
@@ -45,6 +51,7 @@ export default function SolicitudEnviadaPage() {
               <div className="mt-8 rounded-lg border border-dashed border-[#d4a843] bg-[#d4a843]/5 p-6 text-left">
                 <div className="flex items-center justify-between mb-4">
                   <span className="text-[10px] font-black uppercase tracking-widest text-[#1e3a5f]/60">Detalles del Trámite</span>
+                  {/* Aquí se mostrará el número de forma segura */}
                   <span className="rounded bg-[#1e3a5f] px-2 py-1 text-[10px] font-bold text-white"># {numeroTramite}</span>
                 </div>
                 

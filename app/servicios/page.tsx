@@ -1,4 +1,4 @@
-import { Navbar } from "@/components/navbar"
+import { Navbar } from "@/components/navbar/navbar"
 import { PageHeader } from "@/components/page-header"
 import { Footer } from "@/components/footer"
 import {

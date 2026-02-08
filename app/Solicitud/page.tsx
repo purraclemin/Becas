@@ -1,171 +1,275 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
-import { ArrowLeft, Send, GraduationCap, ClipboardList, FileText, BarChart, AlertCircle, UserCheck, Mail } from "lucide-react"
+import { getSession } from "@/lib/ActionsSession"
 import { enviarSolicitud } from "@/lib/ActionsSolicitud"
+import { Card, CardContent, CardTitle } from "@/components/ui/card"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Button } from "@/components/ui/button"
+import { useToast } from "@/hooks/use-toast"
+import { 
+  Upload, 
+  FileText, 
+  Send, 
+  AlertCircle, 
+  Loader2, 
+  ArrowLeft, 
+  Home,
+  CheckCircle2,
+  Download
+} from "lucide-react"
 
-export default function SolicitudesPage() {
-  const [error, setError] = useState<string | null>(null)
+export default function SolicitudPage() {
+  const [user, setUser] = useState<any>(null)
+  const [loadingSession, setLoadingSession] = useState(true)
   const [isPending, setIsPending] = useState(false)
+  const [promedio, setPromedio] = useState("")
+  
+  const { toast } = useToast()
 
-  async function handleSubmit(formData: FormData) {
+  // Carga de sesión al montar el componente
+  useEffect(() => {
+    async function loadSession() {
+      const sessionData = await getSession()
+      setUser(sessionData)
+      setLoadingSession(false)
+    }
+    loadSession()
+  }, [])
+
+  const tieneSolicitudActiva = user?.estatusBeca && user?.estatusBeca !== 'ninguna'
+
+  // Validación de promedio en tiempo real (0-20)
+  const handlePromedioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    if (value === "") {
+      setPromedio("")
+      return
+    }
+    const num = parseFloat(value)
+    if (!isNaN(num) && num >= 0 && num <= 20) {
+      setPromedio(value)
+    }
+  }
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    
+    if (tieneSolicitudActiva) {
+      toast({
+        variant: "destructive",
+        title: "Acción no permitida",
+        description: "Ya tienes una solicitud en curso.",
+      })
+      return
+    }
+
     setIsPending(true)
-    setError(null)
+    const formData = new FormData(e.currentTarget)
+    
+    const valorPromedio = parseFloat(promedio)
+    if (isNaN(valorPromedio) || valorPromedio < 0 || valorPromedio > 20) {
+        toast({ variant: "destructive", title: "Promedio inválido", description: "El promedio debe estar entre 0 y 20." })
+        setIsPending(false)
+        return
+    }
 
-    const result = await enviarSolicitud(formData)
+    if (user?.id) {
+      formData.append('user_id', user.id)
+    }
 
-    if (result?.error) {
-      setError(result.error)
+    try {
+      const result = await enviarSolicitud(formData)
+      if (result?.error) {
+        toast({ variant: "destructive", title: "Error", description: result.error })
+      } else {
+        window.location.href = "/solicitud-enviada"
+      }
+    } catch (error) {
+      toast({ variant: "destructive", title: "Error", description: "Ocurrió un error inesperado." })
+    } finally {
       setIsPending(false)
     }
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#f0f4f8]">
-      {/* Top bar institucional */}
-      <div className="bg-[#1a2744]">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-2">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1e3a5f]">
-              <span className="text-sm font-extrabold text-[#d4a843] font-serif">U</span>
-            </div>
-            <span className="text-sm font-bold tracking-wide text-[#ffffff] font-serif">UNIMAR</span>
-          </Link>
-          <Link
-            href="/requisitos"
-            className="flex items-center gap-1.5 text-xs text-[#8a9bbd] transition-colors hover:text-[#ffffff]"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Volver a Requisitos
-          </Link>
+    <div className="container mx-auto py-10 px-4 max-w-3xl animate-in fade-in duration-500">
+      
+      {/* NAVEGACIÓN SUPERIOR */}
+      <div className="mb-6 flex justify-between items-center">
+        <Link href="/">
+          <Button variant="outline" className="flex items-center gap-2 border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white transition-all">
+            <ArrowLeft className="h-4 w-4" />
+            Volver al Inicio
+          </Button>
+        </Link>
+        <div className="text-[#1e3a5f] font-black text-xs uppercase tracking-widest hidden sm:block">
+          Unimar • Sistema de Becas
         </div>
       </div>
 
-      {/* Contenido Principal */}
-      <div className="flex flex-1 items-center justify-center px-4 py-12">
-        <div className="w-full max-w-2xl">
-          <div className="overflow-hidden rounded-lg bg-[#ffffff] shadow-xl">
-            {/* Header */}
-            <div className="bg-[#1e3a5f] px-8 py-8 text-center border-b-4 border-[#d4a843]">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#ffffff]">
-                <ClipboardList className="h-8 w-8 text-[#1e3a5f]" />
-              </div>
-              <h1 className="text-2xl font-bold text-[#ffffff] font-serif uppercase tracking-tight">Postulación de Beca</h1>
-              <p className="mt-2 text-sm text-[#8a9bbd]">Vinculación de cuenta personal con credenciales institucionales</p>
-            </div>
-
-            <div className="px-8 py-10">
-              {error && (
-                <div className="mb-6 flex items-center gap-3 rounded-md bg-red-50 p-4 text-sm text-red-700 border-l-4 border-red-500">
-                  <AlertCircle className="h-5 w-5" />
-                  {error}
-                </div>
-              )}
-
-              <form action={handleSubmit} className="space-y-6">
-                
-                {/* SECCIÓN 1: Identificación de Correos */}
-                <div className="grid gap-6 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase text-[#1e3a5f] flex items-center gap-2">
-                      <UserCheck className="h-3.5 w-3.5 text-[#d4a843]" /> Correo Personal (Registro)
-                    </label>
-                    <input
-                      name="email_personal"
-                      type="email"
-                      placeholder="tu-correo@gmail.com"
-                      className="w-full rounded-md border border-gray-200 bg-[#f8fafc] p-3 text-sm focus:border-[#1e3a5f] outline-none transition-all"
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase text-[#1e3a5f] flex items-center gap-2">
-                      <Mail className="h-3.5 w-3.5 text-[#d4a843]" /> Correo Institucional (Intranet)
-                    </label>
-                    <input
-                      name="email_institucional"
-                      type="email"
-                      placeholder="usuario@unimar.edu.ve"
-                      className="w-full rounded-md border border-gray-200 bg-[#f8fafc] p-3 text-sm focus:border-[#1e3a5f] outline-none transition-all"
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* SECCIÓN 2: Detalles Académicos */}
-                <div className="grid gap-6 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase text-[#1e3a5f] flex items-center gap-2">
-                      <GraduationCap className="h-3.5 w-3.5 text-[#d4a843]" /> Tipo de Beca
-                    </label>
-                    <select
-                      name="tipoBeca"
-                      className="w-full rounded-md border border-gray-200 bg-[#f8fafc] p-3 text-sm focus:border-[#1e3a5f] outline-none"
-                      required
-                    >
-                      <option value="">Seleccione una opción</option>
-                      <option value="Academica">Beca Académica (Honor)</option>
-                      <option value="Socioeconomica">Beca Socio-Económica</option>
-                      <option value="Deportiva">Beca Deportiva</option>
-                      <option value="Cultural">Beca Cultural</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase text-[#1e3a5f] flex items-center gap-2">
-                      <BarChart className="h-3.5 w-3.5 text-[#d4a843]" /> Promedio Actual
-                    </label>
-                    <input
-                      name="promedio"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      max="20"
-                      placeholder="0.00"
-                      className="w-full rounded-md border border-gray-200 bg-[#f8fafc] p-3 text-sm focus:border-[#1e3a5f] outline-none"
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* SECCIÓN 3: Justificación */}
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase text-[#1e3a5f]">Motivo de la Solicitud</label>
-                  <textarea
-                    name="motivo"
-                    rows={4}
-                    placeholder="Explique los motivos de su solicitud para la validación institucional..."
-                    className="w-full rounded-md border border-gray-200 bg-[#f8fafc] p-3 text-sm outline-none focus:border-[#1e3a5f] resize-none"
-                    required
-                  ></textarea>
-                </div>
-
-                {/* Botón de envío */}
-                <button
-                  type="submit"
-                  disabled={isPending}
-                  className="flex w-full items-center justify-center gap-3 rounded-md bg-[#1e3a5f] py-4 text-sm font-bold text-white transition-all hover:bg-[#162d4a] active:scale-[0.98] disabled:opacity-70 shadow-lg"
-                >
-                  <Send className="h-4 w-4 text-[#d4a843]" />
-                  {isPending ? "ENVIANDO DATOS..." : "ENVIAR SOLICITUD"}
-                </button>
-
-                <p className="text-[10px] text-center text-gray-500 italic">
-                  Nota: Las notificaciones sobre el estatus de su beca serán enviadas exclusivamente a su correo institucional (@unimar.edu.ve).
-                </p>
-              </form>
-            </div>
+      <Card className="border-none shadow-2xl overflow-hidden">
+        {/* HEADER INSTITUCIONAL */}
+        <div className="bg-[#1e3a5f] p-8 text-center border-b-4 border-[#d4a843]">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-lg">
+            <FileText className="h-8 w-8 text-[#1e3a5f]" />
           </div>
+          <CardTitle className="text-2xl font-black text-white uppercase tracking-tight font-serif">
+            Nueva Solicitud de Beca
+          </CardTitle>
+          <p className="text-[#8a9bbd] text-xs uppercase tracking-widest mt-2 font-bold italic">
+            Universidad de Margarita
+          </p>
         </div>
-      </div>
 
-      {/* Footer */}
-      <div className="bg-[#111b2e] py-4">
-        <p className="text-center text-[10px] text-[#4a5d7a]">
-          Universidad de Margarita - Sistema de Gestión de Becas 2026.
-        </p>
+        <CardContent className="p-8">
+          {/* AVISO DE SOLICITUD ACTIVA */}
+          {tieneSolicitudActiva && (
+            <div className="mb-8 p-6 rounded-xl border-2 border-dashed border-yellow-400 bg-yellow-50 flex flex-col items-center text-center gap-3 animate-in zoom-in duration-300">
+              <AlertCircle className="h-8 w-8 text-yellow-600" />
+              <div>
+                <p className="text-sm font-black text-[#1e3a5f] uppercase">Solicitud en trámite</p>
+                <p className="text-xs text-yellow-800 font-medium mt-1">
+                  Tu solicitud actual tiene estatus: <b>{user.estatusBeca}</b>. 
+                </p>
+              </div>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className={`space-y-6 ${tieneSolicitudActiva ? "opacity-50 pointer-events-none" : ""}`}>
+            
+            {/* EMAIL (READ ONLY) */}
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-[#1e3a5f]">Correo Institucional</Label>
+              <div className="relative">
+                <Input 
+                  type="email" 
+                  name="email_institucional"
+                  value={user?.email || ""} 
+                  readOnly 
+                  className="bg-gray-100 border-[#e2e8f0] font-bold text-[#1e3a5f] cursor-not-allowed italic"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* TIPO DE BECA */}
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-[#1e3a5f]">Tipo de Beca</Label>
+                <Select name="tipoBeca" required disabled={tieneSolicitudActiva}>
+                  <SelectTrigger className="border-[#e2e8f0]">
+                    <SelectValue placeholder="Seleccionar beneficio" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Academica">Beca Académica</SelectItem>
+                    <SelectItem value="Socioeconomica">Beca Socioeconómica</SelectItem>
+                    <SelectItem value="Deportiva">Beca Deportiva</SelectItem>
+                    <SelectItem value="Excelencia">Beca a la Excelencia</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* PROMEDIO */}
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-[#1e3a5f]">Promedio Actual</Label>
+                <Input 
+                  name="promedio"
+                  type="number"
+                  step="0.01"
+                  placeholder="Ej: 18.50"
+                  className="border-[#e2e8f0]"
+                  required
+                  disabled={tieneSolicitudActiva}
+                  value={promedio}
+                  onChange={handlePromedioChange}
+                />
+              </div>
+            </div>
+
+            {/* MOTIVO */}
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-[#1e3a5f]">Motivo de la Solicitud</Label>
+              <Textarea 
+                name="motivo"
+                placeholder="Explique detalladamente su situación..." 
+                className="min-h-[120px] border-[#e2e8f0] resize-none"
+                required
+                disabled={tieneSolicitudActiva}
+              />
+            </div>
+
+            {/* SECCIÓN DE RECAUDOS */}
+            <div className="pt-4 border-t border-gray-100">
+              <h3 className="text-xs font-black text-[#d4a843] uppercase tracking-widest mb-4 flex items-center gap-2">
+                <Upload className="h-4 w-4" /> Carga de Recaudos (PDF o Imagen)
+              </h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                
+                {/* BLOQUE DE DESCARGA DE PLANILLA */}
+                <div className="md:col-span-2 bg-[#f0f9ff] border border-blue-100 p-4 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4 mb-2">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-white p-2 rounded-full shadow-sm">
+                      <FileText className="h-6 w-6 text-[#1e3a5f]" />
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-black uppercase text-[#1e3a5f] tracking-wide">Paso 1: Descargar Formato</p>
+                      <p className="text-[10px] text-slate-500 font-medium leading-tight">Llene y firme la planilla antes de subirla.</p>
+                    </div>
+                  </div>
+                  
+                  <a href="/formatos/planilla-solicitud-beca.pdf" download="planilla-solicitud-beca.pdf" target="_blank" rel="noopener noreferrer">
+                    <Button type="button" size="sm" className="bg-[#1e3a5f] hover:bg-[#2d4f7c] text-white text-[10px] font-bold uppercase gap-2">
+                      <Download className="h-3.5 w-3.5" />
+                      Descargar Planilla
+                    </Button>
+                  </a>
+                </div>
+
+                {/* INPUTS DE ARCHIVOS */}
+                <div className="p-4 border-2 border-dashed border-gray-100 rounded-xl bg-gray-50/50 hover:bg-white transition-colors">
+                  <Label className="text-[9px] font-black uppercase text-gray-500 mb-2 block">Foto Tipo Carnet</Label>
+                  <Input name="foto_carnet" type="file" accept="image/*" className="text-xs" required disabled={tieneSolicitudActiva} />
+                </div>
+
+                <div className="p-4 border-2 border-dashed border-gray-100 rounded-xl bg-gray-50/50 hover:bg-white transition-colors">
+                  <Label className="text-[9px] font-black uppercase text-gray-500 mb-2 block">Cédula de Identidad</Label>
+                  <Input name="copia_cedula" type="file" accept="application/pdf,image/*" className="text-xs" required disabled={tieneSolicitudActiva} />
+                </div>
+                
+                <div className="p-4 border-2 border-dashed border-gray-100 rounded-xl bg-gray-50/50 hover:bg-white transition-colors md:col-span-2">
+                  <Label className="text-[9px] font-black uppercase text-gray-500 mb-2 block">Planilla de Solicitud (Llenada y Firmada)</Label>
+                  <Input name="planilla_inscripcion" type="file" accept="application/pdf,image/*" className="text-xs" required disabled={tieneSolicitudActiva} />
+                </div>
+              </div>
+            </div>
+
+            {/* BOTÓN DE ENVÍO */}
+            <Button 
+              type="submit"
+              disabled={isPending || loadingSession || tieneSolicitudActiva}
+              className={`w-full py-6 shadow-xl transition-all font-black uppercase tracking-widest ${
+                tieneSolicitudActiva 
+                ? "bg-gray-300 text-gray-500" 
+                : "bg-[#1e3a5f] hover:bg-[#152944] text-[#d4a843]"
+              }`}
+            >
+              {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+              {tieneSolicitudActiva ? "Solicitud en proceso" : isPending ? "Enviando..." : "Enviar Solicitud"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+      
+      <div className="mt-8 text-center">
+        <Link href="/" className="inline-flex items-center gap-2 text-xs font-bold text-[#8a9bbd] hover:text-[#1e3a5f] transition-colors uppercase tracking-widest">
+          <Home className="h-3 w-3" />
+          Volver al Inicio
+        </Link>
       </div>
     </div>
   )

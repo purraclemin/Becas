@@ -2,39 +2,63 @@
 'use server'
 
 import { cookies } from 'next/headers'
-import { db } from './db' // Asegúrate de tener tu conexión a BD
+import { db } from './db' 
 
 export async function getSession() {
   const cookieStore = await cookies()
-  const session = cookieStore.get('session_token')?.value
+  const sessionToken = cookieStore.get('session_token')?.value
   const role = cookieStore.get('user_role')?.value
   
-  if (!session) return { isLoggedIn: false }
+  if (!sessionToken) return { isLoggedIn: false }
 
   try {
-    // Si es estudiante, buscamos sus datos específicos
+    const parts = sessionToken.split('_')
+    const userId = parts[parts.length - 1] 
+
     if (role === 'estudiante') {
-      // Extraemos el ID del token (suponiendo que guardaste 'active_session_ID')
-      const userId = session.split('_')[2] 
       
-      const [rows]: any = await db.execute(
-        'SELECT nombre, apellido, carrera, semestre FROM students WHERE id = ?',
+      // 1. Buscamos el ESTATUS en la tabla solicitudes (usando user_id)
+      const [solicitudes]: any = await db.execute(
+        'SELECT estatus FROM solicitudes WHERE user_id = ? ORDER BY fecha_registro DESC LIMIT 1', 
         [userId]
       )
+      const estatusReal = solicitudes.length > 0 ? solicitudes[0].estatus : null
 
-      if (rows.length > 0) {
+      // 2. Buscamos al ESTUDIANTE en su tabla (usando id = userId)
+      // Agregamos 'cedula' y 'email' que son vitales para la página de Solicitud
+      const [students]: any = await db.execute(
+        'SELECT nombre, apellido, carrera, semestre, cedula, email FROM students WHERE id = ?', 
+        [userId]
+      )
+      
+      if (students.length > 0) {
+        const s = students[0]
+        
         return { 
           isLoggedIn: true, 
-          role,
-          nombre: `${rows[0].nombre} ${rows[0].apellido}`,
-          carrera: rows[0].carrera,
-          trimestre: rows[0].semestre
+          id: userId,
+          role: 'estudiante',
+          nombre: `${s.nombre} ${s.apellido}`,
+          carrera: s.carrera,
+          
+          // Enviamos el semestre con DOS nombres para que nadie se queje
+          trimestre: s.semestre, // Para el Navbar
+          semestre: s.semestre,  // Para otras páginas
+          
+          cedula: s.cedula,      // ¡Vital para la solicitud!
+          email: s.email,        // ¡Vital para la solicitud!
+
+          // Enviamos el estatus con DOS nombres también
+          estatus: estatusReal,      // Para el Navbar nuevo (UserActions.tsx)
+          estatusBeca: estatusReal || 'ninguna' // Para la página de Solicitud antigua
         }
       }
     }
 
-    return { isLoggedIn: true, role }
+    return { isLoggedIn: true, role, id: userId }
+    
   } catch (error) {
-    return { isLoggedIn: true, role }
+    console.error("❌ Error en getSession:", error)
+    return { isLoggedIn: false }
   }
 }
