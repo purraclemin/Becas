@@ -34,7 +34,7 @@ export function SolicitudesFilters({
   const router = useRouter()
   const [alturaCalculada, setAlturaCalculada] = useState(7)
 
-  // --- 1. FUNCIÓN DE REINICIO (Sincronizada para Móvil y Desktop) ---
+  // --- 1. FUNCIÓN DE REINICIO (LIMPIA UI, TABLA Y URL) ---
   const resetFilters = useCallback(() => {
     const empty = {
       search: "", 
@@ -49,19 +49,19 @@ export function SolicitudesFilters({
       limit: alturaCalculada 
     }
 
-    // Actualizamos estado local
+    // A. Limpiamos el estado visual local
     setFilters(empty)
     
-    // Notificamos al padre para limpiar la tabla
-    onFilterChange(empty)
-    
-    // Reiniciamos paginación
+    // B. Reiniciamos paginación
     setPaginaActual(1)
     if (setRegistrosPorPagina) {
       setRegistrosPorPagina(alturaCalculada)
     }
 
-    // Forzamos la limpieza de la URL para que la tabla se refresque totalmente
+    // C. Notificamos al padre para limpiar los datos inmediatamente
+    onFilterChange(empty)
+
+    // D. Limpiamos la URL (Esto dispara el refresco total de la tabla en el padre)
     router.push('/admin/solicitudes')
   }, [alturaCalculada, onFilterChange, setPaginaActual, setRegistrosPorPagina, router])
 
@@ -160,7 +160,7 @@ export function SolicitudesFilters({
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-4">
       
-      {/* SECCIÓN SUPERIOR: BUSCADOR Y PAGINACIÓN (MÓVIL Y DESKTOP) */}
+      {/* SECCIÓN SUPERIOR: BUSCADOR Y PAGINACIÓN */}
       <div className="p-3 border-b border-slate-100 bg-white flex flex-col xl:flex-row items-center justify-between gap-4">
         
         <div className="flex items-center gap-2 w-full xl:w-96">
@@ -176,12 +176,11 @@ export function SolicitudesFilters({
             />
           </div>
           
-          {/* Botón Reiniciar para Móvil y Tablet (Ahora con lógica completa aplicada) */}
+          {/* Botón Reiniciar Móvil / Tablet */}
           <button 
             type="button"
             onClick={resetFilters}
             className="xl:hidden flex items-center justify-center p-2.5 bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 rounded-lg border border-slate-200 transition-colors shadow-sm"
-            title="Reiniciar Filtros"
           >
             <RotateCcw className="h-4 w-4" />
           </button>
@@ -212,7 +211,7 @@ export function SolicitudesFilters({
         </div>
       </div>
 
-      {/* SECCIÓN INFERIOR: FILTROS CENTRADOS Y CARRERA REDUCIDA */}
+      {/* SECCIÓN INFERIOR: FILTROS (RE-CENTRADOS Y CARRERA AJUSTADA) */}
       <div className="bg-slate-50/30 p-3">
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 items-center">
           
@@ -227,7 +226,7 @@ export function SolicitudesFilters({
             <ArrowDown10 className={iconClass} />
           </div>
 
-          {/* 🟢 CARRERA REDUCIDA A UNA SOLA COLUMNA PARA MAYOR SIMETRÍA */}
+          {/* 🟢 CARRERA REDUCIDA A 1 COLUMNA PARA MAYOR SIMETRÍA */}
           <div className="relative">
             <select name="carrera" value={filters.carrera} onChange={handleChange} className={selectClass}>
               <option value="">Todas las Carreras</option>
@@ -282,7 +281,7 @@ export function SolicitudesFilters({
             </select>
           </div>
 
-          {/* ACCIONES: BOTÓN APTOS + REINICIAR PC */}
+          {/* ACCIONES: APTOS (VERDE) + REINICIAR (PC) */}
           <div className="flex items-center gap-1">
              <label 
                className={`flex-1 flex items-center justify-center gap-1 h-full rounded border cursor-pointer transition-all 
@@ -295,7 +294,6 @@ export function SolicitudesFilters({
               <span className="text-[9px] font-black uppercase tracking-widest">Aptos</span>
             </label>
             
-            {/* Botón Reiniciar para PC */}
             <button 
               type="button"
               onClick={resetFilters}
