@@ -46,12 +46,11 @@ export default function AdminDashboard() {
 
   const total = stats?.porEstatus?.reduce((acc: any, curr: any) => acc + curr.total, 0) || 0
   
-  const pendientes = stats?.porEstatus?.reduce((acc: number, curr: any) => {
-      if (curr.estatus === 'Pendiente' || curr.estatus === 'En Revisión') {
-          return acc + curr.total;
-      }
-      return acc;
-  }, 0) || 0;
+  // 🟢 Lógica desglosada por estatus individual
+  const cantPendientes = stats?.porEstatus?.find((e: any) => e.estatus === 'Pendiente')?.total || 0
+  const cantEnRevision = stats?.porEstatus?.find((e: any) => e.estatus === 'En Revisión')?.total || 0
+  const cantAprobadas = stats?.porEstatus?.find((e: any) => e.estatus === 'Aprobada')?.total || 0
+  const cantRechazadas = stats?.porEstatus?.find((e: any) => e.estatus === 'Rechazada')?.total || 0
   
   const irAFiltroCarrera = (carrera: string) => {
     if (!carrera) return;
@@ -139,12 +138,13 @@ export default function AdminDashboard() {
 
       <div className="p-4 md:p-8 space-y-6 md:space-y-8 pb-10">
         
-        {/* TARJETAS KPI */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 animate-in slide-in-from-bottom-4 duration-500">
+        {/* 🟢 TARJETAS KPI ACTUALIZADAS (Grid de 5 para mejor distribución) */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6 animate-in slide-in-from-bottom-4 duration-500">
            <StatCard label="Total" value={total} icon={FileText} color="bg-blue-500" onClick={() => irAStatus('Todas')} />
-           <StatCard label="Pendientes" value={pendientes} icon={Clock} color="bg-[#d4a843]" onClick={() => irAStatus('Pendiente')} />
-           <StatCard label="Aprobadas" value={stats?.porEstatus?.find((e: any) => e.estatus === 'Aprobada')?.total || 0} icon={CheckCircle2} color="bg-emerald-500" onClick={() => irAStatus('Aprobada')} />
-           <StatCard label="Rechazadas" value={stats?.porEstatus?.find((e: any) => e.estatus === 'Rechazada')?.total || 0} icon={XCircle} color="bg-rose-500" onClick={() => irAStatus('Rechazada')} />
+           <StatCard label="Pendientes" value={cantPendientes} icon={Clock} color="bg-[#d4a843]" onClick={() => irAStatus('Pendiente')} />
+           <StatCard label="En Revisión" value={cantEnRevision} icon={Clock} color="bg-blue-600" onClick={() => irAStatus('En Revisión')} />
+           <StatCard label="Aprobadas" value={cantAprobadas} icon={CheckCircle2} color="bg-emerald-500" onClick={() => irAStatus('Aprobada')} />
+           <StatCard label="Rechazadas" value={cantRechazadas} icon={XCircle} color="bg-rose-500" onClick={() => irAStatus('Rechazada')} />
         </div>
 
         {/* ORDEN 1 & 2: RANKING Y LUEGO GRÁFICOS */}
