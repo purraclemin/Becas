@@ -77,5 +77,5 @@ export async function logout() {
   cookieStore.delete('user_role');
   
   // Redirigimos al usuario a la página de login
-  redirect('/login');
+  redirect('/');
 }

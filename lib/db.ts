@@ -1,20 +1,18 @@
 import mysql from 'mysql2/promise';
 
-// 1. Definimos la conexión usando la variable de entorno de Vercel o el localhost
-const connectionString = process.env.DATABASE_URL || 'mysql://root:UWlGmfQzAfFjBnqoFXjfKFpmgTlOHnwA@mainline.proxy.rlwy.net:18980/unimar_becas';
-
-const poolConfig = {
-  uri: connectionString, // Usamos 'uri' para que acepte la URL completa de Railway
+const dbConfig = {
+  host: 'localhost',
+  user: 'root',
+  password: '',
+  database: 'unimar_becas', 
   waitForConnections: true,
   connectionLimit: 5,
   queueLimit: 0,
-  // Railway requiere SSL para conexiones seguras
-  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : undefined 
 };
 
+// Singleton para Next.js
 const globalForDb = global as unknown as { pool: mysql.Pool };
 
-// 2. Creamos el pool usando la configuración dinámica
-export const db = globalForDb.pool || mysql.createPool(poolConfig);
+export const db = globalForDb.pool || mysql.createPool(dbConfig);
 
 if (process.env.NODE_ENV !== 'production') globalForDb.pool = db;

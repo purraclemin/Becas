@@ -40,31 +40,41 @@ export function Navbar() {
 
       {/* Barra Blanca de Logo y Acciones */}
       <div className="bg-white border-b border-[#e2e8f0]">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#1e3a5f] shadow-md border-2 border-[#d4a843]/20">
-              <span className="text-2xl font-extrabold text-[#d4a843] font-serif">U</span>
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-2 sm:py-3">
+          
+          <Link href="/" className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <div className="flex h-10 w-10 sm:h-14 sm:w-14 items-center justify-center rounded-full bg-[#1e3a5f] shadow-md border-2 border-[#d4a843]/20">
+              <span className="text-lg sm:text-2xl font-extrabold text-[#d4a843] font-serif">U</span>
             </div>
             <div>
-              <span className="block text-xl font-extrabold tracking-wide text-[#1e3a5f] font-serif">UNIMAR</span>
-              <span className="block text-[11px] font-medium uppercase tracking-widest text-[#6b7280]">Gestión de Becas</span>
+              <span className="block text-sm sm:text-xl font-extrabold tracking-wide text-[#1e3a5f] font-serif leading-none">UNIMAR</span>
+              <span className="block text-[9px] sm:text-[11px] font-medium uppercase tracking-widest text-[#6b7280] mt-1">Gestión de Becas</span>
             </div>
           </Link>
 
-          <div className="flex items-center gap-3">
+          {/* Bloque de Acciones y Menú alineados de derecha a izquierda */}
+          <div className="flex items-center flex-row-reverse gap-1 sm:gap-3">
             
-            {/* Componente de Acciones de Usuario (Login/Logout/Perfil) */}
+            {/* 1. Botón de Menú Hamburguesa Principal (Derecha) */}
+            <button 
+              className="lg:hidden p-1.5 rounded-lg bg-[#f8fafb] border border-[#e2e8f0] text-[#1e3a5f] transition-colors" 
+              onClick={() => setMobileOpen(!mobileOpen)}
+            >
+              {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
+
+            {/* 2. Línea Vertical Separadora (Solo en móvil) */}
+            <div className="lg:hidden h-8 w-[1px] bg-black/10 mx-1" />
+
+            {/* 3. Componente de Acciones e Información (Izquierda) */}
             <UserActions user={user} loading={loading} />
             
-            <button className="lg:hidden text-[#1e3a5f]" onClick={() => setMobileOpen(!mobileOpen)}>
-              {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </button>
           </div>
         </div>
       </div>
 
       {/* Menú azul de navegación */}
-      <NavMenu />
+      <NavMenu mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} user={user} />
       
     </header>
   )
