@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useCallback } from "react"
+import React, { useState, useEffect, useCallback, useRef } from "react"
 import { 
   Search, RotateCcw, ShieldCheck, GraduationCap, 
   ChevronLeft, ChevronRight, ArrowDown10
@@ -31,22 +31,40 @@ export function SolicitudesFilters({
 }: SolicitudesFiltersProps) {
 
   const [alturaCalculada, setAlturaCalculada] = useState(7)
+  const isResetting = useRef(false) // Flag para evitar que el efecto de sincronización sobrescriba el reset
 
-  // 1. Memorizamos la función de reinicio para que no cambie entre renders
+  // 1. FUNCIÓN DE REINICIO OPTIMIZADA
   const resetFilters = useCallback(() => {
+    isResetting.current = true // Bloqueamos temporalmente la sincronización de props
+    
     const empty = {
-      search: "", status: "", carrera: "", tipoBeca: "",
-      fecha: "", vulnerabilidad: "", rankingElite: false, estadoEstudio: "",
+      search: "", 
+      status: "", 
+      carrera: "", 
+      tipoBeca: "",
+      fecha: "", 
+      vulnerabilidad: "", 
+      rankingElite: false, 
+      estadoEstudio: "",
       filtroPromedio: "", 
       limit: alturaCalculada 
     }
+
     setFilters(empty)
     onFilterChange(empty)
     setPaginaActual(1)
-    if (setRegistrosPorPagina) setRegistrosPorPagina(alturaCalculada)
+    
+    if (setRegistrosPorPagina) {
+      setRegistrosPorPagina(alturaCalculada)
+    }
+
+    // Liberamos el flag después de un breve momento
+    setTimeout(() => {
+      isResetting.current = false
+    }, 500)
   }, [alturaCalculada, onFilterChange, setPaginaActual, setRegistrosPorPagina])
 
-  // 2. Efecto para calcular filas (Dependencias estables)
+  // 2. EFECTO PARA CALCULAR FILAS
   useEffect(() => {
     const calcularFilasDisponibles = () => {
       if (typeof window !== 'undefined') {
@@ -82,8 +100,10 @@ export function SolicitudesFilters({
     limit: initialFilters.limit || alturaCalculada 
   })
 
-  // 3. Sincronizar filtros externos
+  // 3. SINCRONIZACIÓN BASADA EN PRIMITIVOS (Evita que el botón "vuelva" atrás)
   useEffect(() => {
+    if (isResetting.current) return; // Si estamos reseteando, ignoramos las props externas
+
     setFilters(prev => ({
       ...prev,
       search: initialFilters.search || "",
@@ -91,13 +111,24 @@ export function SolicitudesFilters({
       carrera: initialFilters.carrera || "",
       tipoBeca: initialFilters.tipoBeca || "",
       filtroPromedio: initialFilters.filtroPromedio || "", 
-      rankingElite: !!initialFilters.rankingElite
+      rankingElite: !!initialFilters.rankingElite,
+      vulnerabilidad: initialFilters.vulnerabilidad || "",
+      estadoEstudio: initialFilters.estadoEstudio || ""
     }));
-  }, [initialFilters]) 
+    // Usamos las propiedades específicas para que el objeto initialFilters no dispare el efecto por referencia
+  }, [
+    initialFilters.search, 
+    initialFilters.status, 
+    initialFilters.carrera, 
+    initialFilters.tipoBeca, 
+    initialFilters.rankingElite,
+    initialFilters.vulnerabilidad,
+    initialFilters.estadoEstudio
+  ]) 
   
-  // 4. Debounce de búsqueda
+  // 4. DEBOUNCE DE BÚSQUEDA
   useEffect(() => {
-    if (filters.search === initialFilters.search) return;
+    if (filters.search === initialFilters.search || isResetting.current) return;
 
     const timer = setTimeout(() => {
       onFilterChange(filters)
@@ -134,7 +165,7 @@ export function SolicitudesFilters({
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-4">
       
-      {/* SECCIÓN SUPERIOR: BUSCADOR Y HERRAMIENTAS */}
+      {/* SUPERIOR */}
       <div className="p-3 border-b border-slate-100 bg-white flex flex-col xl:flex-row items-center justify-between gap-4">
         
         <div className="flex items-center gap-2 w-full xl:w-96">
@@ -149,8 +180,9 @@ export function SolicitudesFilters({
               onChange={handleChange}
             />
           </div>
-          {/* Botón Reiniciar para móviles */}
+          {/* Botón Reiniciar Móvil */}
           <button 
+            type="button"
             onClick={resetFilters}
             className="xl:hidden flex items-center justify-center p-2.5 bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-600 rounded-lg border border-slate-200 transition-colors"
           >
@@ -158,7 +190,6 @@ export function SolicitudesFilters({
           </button>
         </div>
 
-        {/* HERRAMIENTAS RESPONSIVAS */}
         <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto justify-between md:justify-end">
           <div className="flex items-center bg-slate-50 rounded border border-slate-200 px-2 h-9">
             <span className="text-[10px] font-bold text-slate-400 mr-2 uppercase">Filas:</span>
@@ -198,7 +229,7 @@ export function SolicitudesFilters({
         </div>
       </div>
 
-      {/* SECCIÓN INFERIOR: FILTROS AVANZADOS */}
+      {/* INFERIOR */}
       <div className="bg-slate-50/30 p-3">
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
           
@@ -267,11 +298,12 @@ export function SolicitudesFilters({
             </select>
           </div>
 
+          {/* ACCIONES (APTOS VERDE + REINICIAR WEB) */}
           <div className="flex items-center gap-1">
              <label 
                className={`flex-1 flex items-center justify-center gap-1 h-full rounded border cursor-pointer transition-all 
                ${filters.rankingElite 
-                 ? 'bg-emerald-500 border-emerald-600 text-white shadow-sm' 
+                 ? 'bg-emerald-600 border-emerald-700 text-white shadow-sm' 
                  : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'}`}
              >
               <input type="checkbox" name="rankingElite" className="hidden" checked={filters.rankingElite} onChange={handleChange} />
@@ -280,8 +312,9 @@ export function SolicitudesFilters({
             </label>
             
             <button 
+              type="button"
               onClick={resetFilters}
-              className="flex items-center justify-center h-full px-2.5 bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-600 rounded border border-slate-200 hover:border-rose-200 transition-all shadow-sm"
+              className="flex items-center justify-center h-full px-2.5 bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 rounded border border-slate-200 hover:border-rose-300 transition-all shadow-sm"
               title="Limpiar Filtros"
             >
               <RotateCcw className="h-3.5 w-3.5" />
