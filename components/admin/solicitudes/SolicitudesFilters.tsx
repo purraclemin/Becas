@@ -34,7 +34,7 @@ export function SolicitudesFilters({
   const router = useRouter()
   const [alturaCalculada, setAlturaCalculada] = useState(7)
 
-  // --- 1. FUNCIÓN DE REINICIO (LIMPIA UI, TABLA Y URL) ---
+  // --- 1. FUNCIÓN DE REINICIO (Sincronizada para Móvil y Desktop) ---
   const resetFilters = useCallback(() => {
     const empty = {
       search: "", 
@@ -52,7 +52,7 @@ export function SolicitudesFilters({
     // Actualizamos estado local
     setFilters(empty)
     
-    // Notificamos al padre para refrescar la tabla
+    // Notificamos al padre para limpiar la tabla
     onFilterChange(empty)
     
     // Reiniciamos paginación
@@ -61,7 +61,7 @@ export function SolicitudesFilters({
       setRegistrosPorPagina(alturaCalculada)
     }
 
-    // Limpiamos la URL para forzar un estado limpio en el navegador
+    // Forzamos la limpieza de la URL para que la tabla se refresque totalmente
     router.push('/admin/solicitudes')
   }, [alturaCalculada, onFilterChange, setPaginaActual, setRegistrosPorPagina, router])
 
@@ -101,7 +101,7 @@ export function SolicitudesFilters({
     limit: initialFilters.limit || alturaCalculada 
   })
 
-  // --- 3. SINCRONIZACIÓN (CORREGIDO ERROR DE TAMAÑO DE ARGUMENTO) ---
+  // --- 3. SINCRONIZACIÓN CON CAMBIOS EN URL/PADRE ---
   useEffect(() => {
     setFilters(prev => ({
       ...prev,
@@ -114,7 +114,12 @@ export function SolicitudesFilters({
       vulnerabilidad: initialFilters.vulnerabilidad || "",
       estadoEstudio: initialFilters.estadoEstudio || ""
     }));
-  }, [initialFilters]) // Se usa el objeto completo para mantener el tamaño del array constante
+  }, [
+    initialFilters.search, initialFilters.status, initialFilters.carrera, 
+    initialFilters.tipoBeca, initialFilters.rankingElite, 
+    initialFilters.vulnerabilidad, initialFilters.estadoEstudio,
+    initialFilters.filtroPromedio
+  ]) 
   
   // --- 4. DEBOUNCE PARA LA BÚSQUEDA ---
   useEffect(() => {
@@ -124,7 +129,7 @@ export function SolicitudesFilters({
       onFilterChange(filters)
     }, 400)
     return () => clearTimeout(timer)
-  }, [filters.search, initialFilters.search, onFilterChange])
+  }, [filters.search, initialFilters.search, onFilterChange, filters])
 
   const handleChange = (e: any) => {
     const { name, value, type, checked } = e.target
@@ -155,6 +160,7 @@ export function SolicitudesFilters({
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-4">
       
+      {/* SECCIÓN SUPERIOR: BUSCADOR Y PAGINACIÓN (MÓVIL Y DESKTOP) */}
       <div className="p-3 border-b border-slate-100 bg-white flex flex-col xl:flex-row items-center justify-between gap-4">
         
         <div className="flex items-center gap-2 w-full xl:w-96">
@@ -170,10 +176,12 @@ export function SolicitudesFilters({
             />
           </div>
           
+          {/* Botón Reiniciar para Móvil y Tablet (Ahora con lógica completa aplicada) */}
           <button 
             type="button"
             onClick={resetFilters}
             className="xl:hidden flex items-center justify-center p-2.5 bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 rounded-lg border border-slate-200 transition-colors shadow-sm"
+            title="Reiniciar Filtros"
           >
             <RotateCcw className="h-4 w-4" />
           </button>
@@ -204,6 +212,7 @@ export function SolicitudesFilters({
         </div>
       </div>
 
+      {/* SECCIÓN INFERIOR: FILTROS CENTRADOS Y CARRERA REDUCIDA */}
       <div className="bg-slate-50/30 p-3">
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 items-center">
           
@@ -218,20 +227,20 @@ export function SolicitudesFilters({
             <ArrowDown10 className={iconClass} />
           </div>
 
-          {/* 🟢 CARRERA REDUCIDA A 1 COLUMNA PARA MAYOR SIMETRÍA */}
+          {/* 🟢 CARRERA REDUCIDA A UNA SOLA COLUMNA PARA MAYOR SIMETRÍA */}
           <div className="relative">
             <select name="carrera" value={filters.carrera} onChange={handleChange} className={selectClass}>
               <option value="">Todas las Carreras</option>
-              <option value="Ingenieria de Sistemas">Sistemas</option>
-              <option value="Ingenieria Industrial">Industrial</option>
+              <option value="Ingenieria de Sistemas">Ingeniería de Sistemas</option>
+              <option value="Ingenieria Industrial">Ingeniería Industrial</option>
               <option value="Administracion">Administración</option>
-              <option value="Contaduria Publica">Contaduría</option>
+              <option value="Contaduria Publica">Contaduría Pública</option>
               <option value="Derecho">Derecho</option>
               <option value="Psicologia">Psicología</option>
-              <option value="Educacion Integral">Educación</option>
-              <option value="Diseño Grafico">Diseño</option>
-              <option value="Idiomas Modernos">Idiomas</option>
-              <option value="Comunicacion Social">Comunicación</option>
+              <option value="Educacion Integral">Educación Integral</option>
+              <option value="Diseño Grafico">Diseño Gráfico</option>
+              <option value="Idiomas Modernos">Idiomas Modernos</option>
+              <option value="Comunicacion Social">Comunicación Social</option>
               <option value="Turismo">Turismo</option>
             </select>
             <GraduationCap className={iconClass} />
@@ -239,7 +248,7 @@ export function SolicitudesFilters({
 
           <div className="relative">
              <select name="tipoBeca" value={filters.tipoBeca} onChange={handleChange} className={selectClass}>
-              <option value="">Becas: Todas</option>
+              <option value="">Beca: Todas</option>
               <option value="Academica">Académica</option>
               <option value="Socioeconomica">Socioeconómica</option>
               <option value="Deportiva">Deportiva</option>
@@ -273,6 +282,7 @@ export function SolicitudesFilters({
             </select>
           </div>
 
+          {/* ACCIONES: BOTÓN APTOS + REINICIAR PC */}
           <div className="flex items-center gap-1">
              <label 
                className={`flex-1 flex items-center justify-center gap-1 h-full rounded border cursor-pointer transition-all 
@@ -285,6 +295,7 @@ export function SolicitudesFilters({
               <span className="text-[9px] font-black uppercase tracking-widest">Aptos</span>
             </label>
             
+            {/* Botón Reiniciar para PC */}
             <button 
               type="button"
               onClick={resetFilters}
