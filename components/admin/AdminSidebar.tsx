@@ -31,14 +31,14 @@ export function AdminSidebar({ isOpen, onClose, onLogout }: SidebarProps) {
     { href: "/admin/estudio-socioeconomico", label: "Socioeconómico", icon: ClipboardList },
   ]
 
-  // Lógica mejorada para cerrar el sidebar en móviles
+  // Lógica de navegación y cierre
   const handleLinkClick = (e: React.MouseEvent, href: string) => {
-    // Cerramos el sidebar en dispositivos móviles/tablets antes de navegar
+    // Cerramos el sidebar en dispositivos móviles/tablets
     if (window.innerWidth < 1024) { 
       onClose();
     }
 
-    // Si ya estamos en la ruta, forzamos recarga para asegurar el cierre del estado
+    // Si es el link actual, forzamos recarga
     if (pathname === href) {
       e.preventDefault(); 
       window.location.href = href; 
@@ -47,14 +47,13 @@ export function AdminSidebar({ isOpen, onClose, onLogout }: SidebarProps) {
 
   return (
     <>
-      {/* ASIDE: Se añade h-screen y max-h-screen para evitar el efecto de "scroll infinito" */}
       <aside className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-[#1a2744] text-white flex flex-col shadow-2xl transition-transform duration-300 h-screen max-h-screen
+        fixed inset-y-0 left-0 z-50 w-64 bg-[#1a2744] text-white flex flex-col shadow-2xl transition-transform duration-300 h-screen
         ${isOpen ? "translate-x-0" : "-translate-x-full"} 
         lg:translate-x-0 lg:fixed lg:inset-y-0
       `}>
         
-        {/* HEADER: Se mantiene intacto el diseño */}
+        {/* HEADER */}
         <div className="h-16 flex items-center px-6 border-b border-[#1e3a5f]/50 shrink-0">
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#1e3a5f] to-[#0f172a] border border-[#d4a843]/30 shadow-inner">
@@ -70,50 +69,55 @@ export function AdminSidebar({ isOpen, onClose, onLogout }: SidebarProps) {
           </button>
         </div>
 
-        {/* NAVEGACIÓN: flex-1 con overflow-y-auto asegura que solo esta parte haga scroll si hay muchos links */}
-        <nav className="flex-1 p-3 space-y-1 overflow-y-auto custom-scrollbar mt-2">
-          {links.map((link) => {
-            const Icon = link.icon
-            const isActive = pathname === link.href
+        {/* CONTENEDOR DE NAVEGACIÓN SCROLLABLE */}
+        <nav className="flex-1 p-3 overflow-y-auto custom-scrollbar mt-2 flex flex-col">
+          {/* Listado de Enlaces */}
+          <div className="space-y-1">
+            {links.map((link) => {
+              const Icon = link.icon
+              const isActive = pathname === link.href
 
-            return (
-              <Link 
-                key={link.href}
-                href={link.href} 
-                onClick={(e) => handleLinkClick(e, link.href)} 
-                className={`
-                  flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-bold tracking-wide transition-all group
-                  ${isActive 
-                    ? "bg-[#d4a843] text-[#1a2744] shadow-md shadow-[#d4a843]/10 translate-x-1" 
-                    : "text-[#8a9bbd] hover:text-white hover:bg-white/5 hover:translate-x-1"
-                  }
-                `}
-              >
-                <Icon className={`h-4 w-4 ${isActive ? "text-[#1a2744]" : "text-[#d4a843] group-hover:text-white"} transition-colors`} /> 
-                {link.label}
-              </Link>
-            )
-          })}
+              return (
+                <Link 
+                  key={link.href}
+                  href={link.href} 
+                  onClick={(e) => handleLinkClick(e, link.href)} 
+                  className={`
+                    flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-bold tracking-wide transition-all group
+                    ${isActive 
+                      ? "bg-[#d4a843] text-[#1a2744] shadow-md shadow-[#d4a843]/10 translate-x-1" 
+                      : "text-[#8a9bbd] hover:text-white hover:bg-white/5 hover:translate-x-1"
+                    }
+                  `}
+                >
+                  <Icon className={`h-4 w-4 ${isActive ? "text-[#1a2744]" : "text-[#d4a843] group-hover:text-white"} transition-colors`} /> 
+                  {link.label}
+                </Link>
+              )
+            })}
+          </div>
+
+          {/* BOTÓN CERRAR SESIÓN: 
+              Ahora está dentro del flujo del nav, justo abajo del último enlace.
+          */}
+          <div className="mt-8 pt-4 border-t border-[#1e3a5f]/50 mb-10">
+            <button 
+              onClick={() => {
+                if (window.innerWidth < 1024) onClose();
+                onLogout();
+              }} 
+              className="flex w-full items-center justify-center gap-2 text-rose-400/80 hover:text-rose-300 px-4 py-3 text-[10px] font-black uppercase hover:bg-rose-500/10 rounded-lg transition-all border border-transparent hover:border-rose-500/20"
+            >
+              <LogOut className="h-4 w-4" /> Cerrar Sesión
+            </button>
+          </div>
         </nav>
-
-        {/* FOOTER: shrink-0 garantiza que el botón de cerrar sesión NUNCA se desplace fuera de la pantalla */}
-        <div className="p-4 border-t border-[#1e3a5f]/50 bg-[#15203b] shrink-0 mb-safe">
-          <button 
-            onClick={() => {
-              onClose(); // Cerramos sidebar al desloguear
-              onLogout();
-            }} 
-            className="flex w-full items-center justify-center gap-2 text-rose-400/80 hover:text-rose-300 px-4 py-3 text-[10px] font-black uppercase hover:bg-rose-500/10 rounded-lg transition-all border border-transparent hover:border-rose-500/20"
-          >
-            <LogOut className="h-4 w-4" /> Cerrar Sesión
-          </button>
-        </div>
       </aside>
 
-      {/* OVERLAY: Mejora visual y funcional para cerrar al tocar fuera */}
+      {/* OVERLAY */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-black/60 z-40 lg:hidden backdrop-blur-[2px] transition-opacity duration-300" 
+          className="fixed inset-0 bg-black/60 z-40 lg:hidden backdrop-blur-[2px]" 
           onClick={onClose}
         ></div>
       )}
