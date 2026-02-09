@@ -17,7 +17,8 @@ interface CarreraBarChartProps {
 
 export function CarreraBarChart({ data, onNavigate }: CarreraBarChartProps) {
   return (
-    <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-200 h-[400px] md:h-96 flex flex-col">
+    /* h-[320px] para que no desborde en móvil, mb-6 para separar de la siguiente card */
+    <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-200 h-[320px] md:h-96 flex flex-col mb-6 md:mb-0 overflow-hidden">
       <h3 className="font-black text-[#1a2744] mb-4 text-[9px] md:text-[10px] uppercase tracking-widest">
         Solicitudes por Carrera
       </h3>
@@ -25,7 +26,8 @@ export function CarreraBarChart({ data, onNavigate }: CarreraBarChartProps) {
         <ResponsiveContainer width="100%" height="100%">
           <BarChart 
             data={data} 
-            margin={{ top: 25, right: 5, left: 5, bottom: 5 }}
+            /* Margen horizontal aumentado (15) para que las etiquetas no toquen los bordes */
+            margin={{ top: 25, right: 15, left: 15, bottom: 5 }}
           >
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
             <XAxis dataKey="name" hide />
@@ -48,14 +50,12 @@ export function CarreraBarChart({ data, onNavigate }: CarreraBarChartProps) {
                 <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} />
               ))}
 
-              {/* Valor encima de la barra - Ajustado para móvil */}
               <LabelList 
                 dataKey="value" 
                 position="top" 
                 style={{ fill: '#1a2744', fontSize: '10px', fontWeight: '900' }} 
               />
 
-              {/* Nombre de la carrera dentro de la barra (Vertical) - Ajustado para móvil */}
               <LabelList 
                 dataKey="name" 
                 position="center" 
@@ -90,7 +90,8 @@ export function BecaPieChart({ data, onNavigate }: BecaPieChartProps) {
   })) : []
   
   return (
-    <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-200 h-[450px] md:h-96 flex flex-col">
+    /* h-[380px] en móvil para dar espacio a la leyenda sin pegar, mb-6 de separación */
+    <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-200 h-[380px] md:h-96 flex flex-col mb-6 md:mb-0 overflow-hidden">
       <h3 className="font-black text-[#1a2744] mb-4 text-[9px] md:text-[10px] uppercase tracking-widest text-center">
         Distribución por Programa
       </h3>
@@ -100,8 +101,9 @@ export function BecaPieChart({ data, onNavigate }: BecaPieChartProps) {
           <PieChart>
             <Pie 
               data={chartData} 
-              innerRadius={50} 
-              outerRadius={70} 
+              /* Radios reducidos ligeramente en móvil para evitar colisiones */
+              innerRadius={45} 
+              outerRadius={65} 
               paddingAngle={4} 
               dataKey="value"
               className="cursor-pointer outline-none"
@@ -135,7 +137,7 @@ export function BecaPieChart({ data, onNavigate }: BecaPieChartProps) {
         </div>
       </div>
       
-      {/* Leyenda Interactiva (Scrollable) - Ajustada para mejor usabilidad táctil */}
+      {/* Leyenda Interactiva (Scrollable) */}
       <div className="mt-4 space-y-2 overflow-y-auto max-h-32 md:max-h-28 pr-1 custom-scrollbar">
         {data?.map((item, i) => (
           <div 
