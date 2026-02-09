@@ -1,6 +1,7 @@
 "use client"
 
-import React, { useState, useEffect, useCallback, useRef } from "react"
+import React, { useState, useEffect, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import { 
   Search, RotateCcw, ShieldCheck, GraduationCap, 
   ChevronLeft, ChevronRight, ArrowDown10
@@ -30,13 +31,11 @@ export function SolicitudesFilters({
   setRegistrosPorPagina
 }: SolicitudesFiltersProps) {
 
+  const router = useRouter()
   const [alturaCalculada, setAlturaCalculada] = useState(7)
-  const isResetting = useRef(false) // Flag para evitar que el efecto de sincronización sobrescriba el reset
 
-  // 1. FUNCIÓN DE REINICIO OPTIMIZADA
+  // --- 1. FUNCIÓN DE REINICIO (LIMPIA UI, TABLA Y URL) ---
   const resetFilters = useCallback(() => {
-    isResetting.current = true // Bloqueamos temporalmente la sincronización de props
-    
     const empty = {
       search: "", 
       status: "", 
@@ -50,21 +49,23 @@ export function SolicitudesFilters({
       limit: alturaCalculada 
     }
 
+    // A. Limpiamos el estado visual local
     setFilters(empty)
-    onFilterChange(empty)
-    setPaginaActual(1)
     
+    // B. Reiniciamos paginación
+    setPaginaActual(1)
     if (setRegistrosPorPagina) {
       setRegistrosPorPagina(alturaCalculada)
     }
 
-    // Liberamos el flag después de un breve momento
-    setTimeout(() => {
-      isResetting.current = false
-    }, 500)
-  }, [alturaCalculada, onFilterChange, setPaginaActual, setRegistrosPorPagina])
+    // C. Notificamos al padre para limpiar los datos inmediatamente
+    onFilterChange(empty)
 
-  // 2. EFECTO PARA CALCULAR FILAS
+    // D. Limpiamos la URL (Esto dispara el refresco total de la tabla en el padre)
+    router.push('/admin/solicitudes')
+  }, [alturaCalculada, onFilterChange, setPaginaActual, setRegistrosPorPagina, router])
+
+  // --- 2. CÁLCULO DE ALTURA DISPONIBLE ---
   useEffect(() => {
     const calcularFilasDisponibles = () => {
       if (typeof window !== 'undefined') {
@@ -100,10 +101,8 @@ export function SolicitudesFilters({
     limit: initialFilters.limit || alturaCalculada 
   })
 
-  // 3. SINCRONIZACIÓN BASADA EN PRIMITIVOS (Evita que el botón "vuelva" atrás)
+  // --- 3. SINCRONIZACIÓN CON CAMBIOS EN URL/PADRE ---
   useEffect(() => {
-    if (isResetting.current) return; // Si estamos reseteando, ignoramos las props externas
-
     setFilters(prev => ({
       ...prev,
       search: initialFilters.search || "",
@@ -115,20 +114,16 @@ export function SolicitudesFilters({
       vulnerabilidad: initialFilters.vulnerabilidad || "",
       estadoEstudio: initialFilters.estadoEstudio || ""
     }));
-    // Usamos las propiedades específicas para que el objeto initialFilters no dispare el efecto por referencia
   }, [
-    initialFilters.search, 
-    initialFilters.status, 
-    initialFilters.carrera, 
-    initialFilters.tipoBeca, 
-    initialFilters.rankingElite,
-    initialFilters.vulnerabilidad,
-    initialFilters.estadoEstudio
+    initialFilters.search, initialFilters.status, initialFilters.carrera, 
+    initialFilters.tipoBeca, initialFilters.rankingElite, 
+    initialFilters.vulnerabilidad, initialFilters.estadoEstudio,
+    initialFilters.filtroPromedio
   ]) 
   
-  // 4. DEBOUNCE DE BÚSQUEDA
+  // --- 4. DEBOUNCE PARA LA BÚSQUEDA ---
   useEffect(() => {
-    if (filters.search === initialFilters.search || isResetting.current) return;
+    if (filters.search === initialFilters.search) return;
 
     const timer = setTimeout(() => {
       onFilterChange(filters)
@@ -159,13 +154,13 @@ export function SolicitudesFilters({
     setPaginaActual(1) 
   }
 
-  const selectClass = "w-full pl-2 pr-6 py-2 bg-slate-50/50 border border-slate-200 rounded text-[10px] font-bold text-slate-600 outline-none focus:border-[#1a2744] focus:bg-white transition-all appearance-none cursor-pointer hover:border-slate-300"
+  const selectClass = "w-full pl-2 pr-6 py-2 bg-slate-50/50 border border-slate-200 rounded text-[10px] font-bold text-slate-600 outline-none focus:border-[#1a2744] focus:bg-white transition-all appearance-none cursor-pointer hover:border-slate-300 text-center"
   const iconClass = "absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-300 pointer-events-none"
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-4">
       
-      {/* SUPERIOR */}
+      {/* SECCIÓN SUPERIOR: BUSCADOR Y PAGINACIÓN */}
       <div className="p-3 border-b border-slate-100 bg-white flex flex-col xl:flex-row items-center justify-between gap-4">
         
         <div className="flex items-center gap-2 w-full xl:w-96">
@@ -180,11 +175,12 @@ export function SolicitudesFilters({
               onChange={handleChange}
             />
           </div>
-          {/* Botón Reiniciar Móvil */}
+          
+          {/* Botón Reiniciar Móvil / Tablet */}
           <button 
             type="button"
             onClick={resetFilters}
-            className="xl:hidden flex items-center justify-center p-2.5 bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-600 rounded-lg border border-slate-200 transition-colors"
+            className="xl:hidden flex items-center justify-center p-2.5 bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 rounded-lg border border-slate-200 transition-colors shadow-sm"
           >
             <RotateCcw className="h-4 w-4" />
           </button>
@@ -193,11 +189,7 @@ export function SolicitudesFilters({
         <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto justify-between md:justify-end">
           <div className="flex items-center bg-slate-50 rounded border border-slate-200 px-2 h-9">
             <span className="text-[10px] font-bold text-slate-400 mr-2 uppercase">Filas:</span>
-            <select 
-              value={registrosPorPagina || filters.limit} 
-              onChange={handleLimitChange} 
-              className="bg-transparent py-1.5 text-[10px] font-bold outline-none cursor-pointer"
-            >
+            <select value={registrosPorPagina || filters.limit} onChange={handleLimitChange} className="bg-transparent py-1.5 text-[10px] font-bold outline-none cursor-pointer">
               <option value={alturaCalculada}>Auto</option>
               <option value={10}>10</option>
               <option value={20}>20</option>
@@ -207,21 +199,11 @@ export function SolicitudesFilters({
 
           {!loading && hasData && (
             <div className="flex items-center bg-slate-50 rounded border border-slate-200 p-0.5 h-9">
-              <button 
-                onClick={() => setPaginaActual(Math.max(1, paginaActual - 1))} 
-                disabled={paginaActual === 1} 
-                className="p-1.5 rounded hover:bg-white text-slate-500 disabled:opacity-30"
-              >
+              <button onClick={() => setPaginaActual(Math.max(1, paginaActual - 1))} disabled={paginaActual === 1} className="p-1.5 rounded hover:bg-white text-slate-500 disabled:opacity-30">
                 <ChevronLeft className="h-4 w-4" />
               </button>
-              <span className="px-3 text-[10px] font-black text-[#1a2744] min-w-[50px] text-center">
-                {paginaActual} / {totalPaginas}
-              </span>
-              <button 
-                onClick={() => setPaginaActual(Math.min(totalPaginas, paginaActual + 1))} 
-                disabled={paginaActual === totalPaginas} 
-                className="p-1.5 rounded hover:bg-white text-slate-500 disabled:opacity-30"
-              >
+              <span className="px-3 text-[10px] font-black text-[#1a2744] min-w-[50px] text-center">{paginaActual} / {totalPaginas}</span>
+              <button onClick={() => setPaginaActual(Math.min(totalPaginas, paginaActual + 1))} disabled={paginaActual === totalPaginas} className="p-1.5 rounded hover:bg-white text-slate-500 disabled:opacity-30">
                 <ChevronRight className="h-4 w-4" />
               </button>
             </div>
@@ -229,9 +211,9 @@ export function SolicitudesFilters({
         </div>
       </div>
 
-      {/* INFERIOR */}
+      {/* SECCIÓN INFERIOR: FILTROS (RE-CENTRADOS Y CARRERA AJUSTADA) */}
       <div className="bg-slate-50/30 p-3">
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 items-center">
           
           <div className="relative">
             <select name="status" value={filters.status} onChange={handleChange} className={selectClass}>
@@ -244,7 +226,8 @@ export function SolicitudesFilters({
             <ArrowDown10 className={iconClass} />
           </div>
 
-          <div className="relative col-span-2 md:col-span-2">
+          {/* 🟢 CARRERA REDUCIDA A 1 COLUMNA PARA MAYOR SIMETRÍA */}
+          <div className="relative">
             <select name="carrera" value={filters.carrera} onChange={handleChange} className={selectClass}>
               <option value="">Todas las Carreras</option>
               <option value="Ingenieria de Sistemas">Ingeniería de Sistemas</option>
@@ -266,7 +249,7 @@ export function SolicitudesFilters({
              <select name="tipoBeca" value={filters.tipoBeca} onChange={handleChange} className={selectClass}>
               <option value="">Beca: Todas</option>
               <option value="Academica">Académica</option>
-              <option value="Socioeconomica">Socioeconomica</option>
+              <option value="Socioeconomica">Socioeconómica</option>
               <option value="Deportiva">Deportiva</option>
               <option value="Excelencia">Excelencia</option>
             </select>
@@ -298,7 +281,7 @@ export function SolicitudesFilters({
             </select>
           </div>
 
-          {/* ACCIONES (APTOS VERDE + REINICIAR WEB) */}
+          {/* ACCIONES: APTOS (VERDE) + REINICIAR (PC) */}
           <div className="flex items-center gap-1">
              <label 
                className={`flex-1 flex items-center justify-center gap-1 h-full rounded border cursor-pointer transition-all 

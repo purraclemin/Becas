@@ -8,27 +8,38 @@ import { SolicitudesView } from "@/components/admin/solicitudes/SolicitudesView"
 function PageContent() {
   const searchParams = useSearchParams()
 
-  // 🟢 CORRECCIÓN: Capturamos los valores reales de la URL
+  // 🟢 Capturamos todos los valores reales de la URL, incluyendo los que faltaban
   const initialFilters = {
-    // Usamos 'search' para que coincida con filtros.search en el Action
+    // Búsqueda por texto
     search: searchParams.get('search') || searchParams.get('q') || "", 
     
-    // Usamos 'status' para que coincida con filtros.status
-    status: searchParams.get('status') || searchParams.get('filter') || "Todas",
+    // Estatus de la solicitud (Si es vacío, el backend lo interpreta como 'Todas')
+    status: searchParams.get('status') || searchParams.get('filter') || "",
     
-    // LEEMOS LA CARRERA (Esto era lo que faltaba)
+    // Filtros de categorización
     carrera: searchParams.get('carrera') || "",
-    
-    // LEEMOS LA BECA (Esto era lo que faltaba)
     tipoBeca: searchParams.get('tipoBeca') || "",
     
+    // Filtros de mérito y riesgo
     fecha: searchParams.get('fecha') || "",
     vulnerabilidad: searchParams.get('vulnerabilidad') || "",
     rankingElite: searchParams.get('rankingElite') === 'true',
-    estadoEstudio: searchParams.get('estadoEstudio') || ""
+    
+    // Filtros de seguimiento
+    estadoEstudio: searchParams.get('estadoEstudio') || "",
+    filtroPromedio: searchParams.get('filtroPromedio') || ""
   }
 
-  return <SolicitudesView initialFilters={initialFilters} />
+  /**
+   * 🚀 LA CLAVE DEL REINICIO:
+   * Al pasar 'key={viewKey}', obligamos a React a destruir el componente viejo 
+   * y montar uno nuevo cada vez que la URL cambie. 
+   * Esto garantiza que al presionar "Limpiar", la tabla se refresque 
+   * con los datos originales sin quedarse "pegada".
+   */
+  const viewKey = searchParams.toString() || 'root-view';
+
+  return <SolicitudesView key={viewKey} initialFilters={initialFilters} />
 }
 
 export default function GestionSolicitudesPage() {
@@ -37,7 +48,9 @@ export default function GestionSolicitudesPage() {
       <Suspense fallback={
         <div className="flex h-screen flex-col items-center justify-center text-[#1a2744]">
           <Loader2 className="h-10 w-10 animate-spin mb-4 text-[#d4a843]" />
-          <span className="font-black uppercase tracking-widest text-xs">Sincronizando registros...</span>
+          <p className="font-black uppercase tracking-[0.2em] text-[10px] mt-4">
+            Sincronizando base de datos...
+          </p>
         </div>
       }>
         <PageContent />
