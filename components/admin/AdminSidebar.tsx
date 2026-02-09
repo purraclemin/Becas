@@ -31,8 +31,14 @@ export function AdminSidebar({ isOpen, onClose, onLogout }: SidebarProps) {
     { href: "/admin/estudio-socioeconomico", label: "Socioeconómico", icon: ClipboardList },
   ]
 
-  const handleClick = (e: React.MouseEvent, href: string) => {
-    if (window.innerWidth < 768) onClose();
+  // Lógica mejorada para cerrar el sidebar en móviles
+  const handleLinkClick = (e: React.MouseEvent, href: string) => {
+    // Cerramos el sidebar en dispositivos móviles/tablets antes de navegar
+    if (window.innerWidth < 1024) { 
+      onClose();
+    }
+
+    // Si ya estamos en la ruta, forzamos recarga para asegurar el cierre del estado
     if (pathname === href) {
       e.preventDefault(); 
       window.location.href = href; 
@@ -41,14 +47,15 @@ export function AdminSidebar({ isOpen, onClose, onLogout }: SidebarProps) {
 
   return (
     <>
+      {/* ASIDE: Se añade h-screen y max-h-screen para evitar el efecto de "scroll infinito" */}
       <aside className={`
-        fixed inset-y-0 left-0 z-50 w-56 bg-[#1a2744] text-white flex flex-col shadow-2xl transition-transform duration-300
+        fixed inset-y-0 left-0 z-50 w-64 bg-[#1a2744] text-white flex flex-col shadow-2xl transition-transform duration-300 h-screen max-h-screen
         ${isOpen ? "translate-x-0" : "-translate-x-full"} 
-        md:translate-x-0 md:fixed md:inset-y-0
+        lg:translate-x-0 lg:fixed lg:inset-y-0
       `}>
         
-        {/* HEADER MÁS COMPACTO */}
-        <div className="h-16 flex items-center px-6 border-b border-[#1e3a5f]/50">
+        {/* HEADER: Se mantiene intacto el diseño */}
+        <div className="h-16 flex items-center px-6 border-b border-[#1e3a5f]/50 shrink-0">
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#1e3a5f] to-[#0f172a] border border-[#d4a843]/30 shadow-inner">
               <span className="text-sm font-black text-[#d4a843]">U</span>
@@ -58,12 +65,12 @@ export function AdminSidebar({ isOpen, onClose, onLogout }: SidebarProps) {
                <p className="text-[9px] text-[#8a9bbd] uppercase tracking-widest">Control</p>
             </div>
           </div>
-          <button onClick={onClose} className="md:hidden ml-auto text-[#8a9bbd] hover:text-white">
-            <X className="h-5 w-5" />
+          <button onClick={onClose} className="lg:hidden ml-auto text-[#8a9bbd] hover:text-white p-1">
+            <X className="h-6 w-6" />
           </button>
         </div>
 
-        {/* NAVEGACIÓN ESTILIZADA */}
+        {/* NAVEGACIÓN: flex-1 con overflow-y-auto asegura que solo esta parte haga scroll si hay muchos links */}
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto custom-scrollbar mt-2">
           {links.map((link) => {
             const Icon = link.icon
@@ -73,7 +80,7 @@ export function AdminSidebar({ isOpen, onClose, onLogout }: SidebarProps) {
               <Link 
                 key={link.href}
                 href={link.href} 
-                onClick={(e) => handleClick(e, link.href)} 
+                onClick={(e) => handleLinkClick(e, link.href)} 
                 className={`
                   flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-bold tracking-wide transition-all group
                   ${isActive 
@@ -89,17 +96,26 @@ export function AdminSidebar({ isOpen, onClose, onLogout }: SidebarProps) {
           })}
         </nav>
 
-        {/* FOOTER MÁS LIMPIO */}
-        <div className="p-3 border-t border-[#1e3a5f]/50 bg-[#15203b]">
-          <button onClick={onLogout} className="flex w-full items-center justify-center gap-2 text-rose-400/80 hover:text-rose-300 px-4 py-2 text-[10px] font-black uppercase hover:bg-rose-500/10 rounded-lg transition-all border border-transparent hover:border-rose-500/20">
+        {/* FOOTER: shrink-0 garantiza que el botón de cerrar sesión NUNCA se desplace fuera de la pantalla */}
+        <div className="p-4 border-t border-[#1e3a5f]/50 bg-[#15203b] shrink-0 mb-safe">
+          <button 
+            onClick={() => {
+              onClose(); // Cerramos sidebar al desloguear
+              onLogout();
+            }} 
+            className="flex w-full items-center justify-center gap-2 text-rose-400/80 hover:text-rose-300 px-4 py-3 text-[10px] font-black uppercase hover:bg-rose-500/10 rounded-lg transition-all border border-transparent hover:border-rose-500/20"
+          >
             <LogOut className="h-4 w-4" /> Cerrar Sesión
           </button>
         </div>
       </aside>
 
-      {/* OVERLAY */}
+      {/* OVERLAY: Mejora visual y funcional para cerrar al tocar fuera */}
       {isOpen && (
-        <div className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-[2px]" onClick={onClose}></div>
+        <div 
+          className="fixed inset-0 bg-black/60 z-40 lg:hidden backdrop-blur-[2px] transition-opacity duration-300" 
+          onClick={onClose}
+        ></div>
       )}
     </>
   )

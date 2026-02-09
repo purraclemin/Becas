@@ -1,15 +1,17 @@
-// components/admin/dashboard/RankingPrioridad.tsx
+"use client"
+
 import { Award, Star, TrendingUp, Heart } from "lucide-react"
 
 interface RankingProps {
   estudiantes: any[]
-  onNavigate: (cedula: string) => void // <--- Nueva prop
+  onNavigate: (cedula: string) => void
 }
 
 export function RankingPrioridad({ estudiantes, onNavigate }: RankingProps) {
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden h-full flex flex-col">
-      <div className="bg-[#1a2744] px-6 py-5 flex justify-between items-center border-b-4 border-[#d4a843]">
+      {/* Cabecera del Ranking */}
+      <div className="bg-[#1a2744] px-6 py-5 flex justify-between items-center border-b-4 border-[#d4a843] shrink-0">
         <div className="flex items-center gap-2">
           <Star className="h-5 w-5 text-[#d4a843] fill-[#d4a843]" />
           <div>
@@ -21,27 +23,33 @@ export function RankingPrioridad({ estudiantes, onNavigate }: RankingProps) {
         </div>
       </div>
       
-      <div className="divide-y divide-slate-100 flex-1">
+      {/* CONTENEDOR SCROLLABLE: 
+          - max-h-[380px] limita la altura en móviles.
+          - overflow-y-auto permite el scroll.
+          - md:max-h-none elimina el límite en escritorio para usar el h-full del padre.
+      */}
+      <div className="divide-y divide-slate-100 flex-1 overflow-y-auto max-h-[380px] md:max-h-none custom-scrollbar bg-white">
         {estudiantes.length > 0 ? estudiantes.map((est, index) => (
           <div 
             key={est.id} 
-            // EVENTO CLICK
             onClick={() => onNavigate(est.cedula)}
             className="p-4 hover:bg-blue-50 transition-all flex items-center justify-between group cursor-pointer"
           >
             <div className="flex items-center gap-4">
-              <div className="h-10 w-10 rounded-full bg-slate-50 flex items-center justify-center border-2 border-slate-100 text-[#1a2744] font-black text-xs group-hover:border-[#d4a843] group-hover:bg-white transition-all">
+              <div className="h-10 w-10 rounded-full bg-slate-50 flex items-center justify-center border-2 border-slate-100 text-[#1a2744] font-black text-xs group-hover:border-[#d4a843] group-hover:bg-white transition-all shrink-0">
                 {index === 0 ? "🏆" : index + 1}
               </div>
-              <div>
-                <p className="text-xs font-black text-[#1a2744] uppercase leading-none group-hover:text-blue-700 transition-colors">
+              <div className="min-w-0">
+                <p className="text-xs font-black text-[#1a2744] uppercase leading-none group-hover:text-blue-700 transition-colors truncate">
                   {est.nombre} {est.apellido}
                 </p>
-                <p className="text-[9px] text-slate-400 font-bold mt-1 uppercase tracking-tighter">{est.carrera}</p>
+                <p className="text-[9px] text-slate-400 font-bold mt-1 uppercase tracking-tighter truncate">
+                  {est.carrera}
+                </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-4 md:gap-6 shrink-0 ml-2">
               <div className="flex flex-col items-center">
                 <span className="text-[7px] font-black text-slate-400 uppercase">Promedio</span>
                 <div className="flex items-center gap-1 text-emerald-600">
