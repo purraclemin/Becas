@@ -34,36 +34,16 @@ export function SolicitudesFilters({
   const router = useRouter()
   const [alturaCalculada, setAlturaCalculada] = useState(7)
 
-  // --- 1. FUNCIÓN DE REINICIO (LIMPIA UI, TABLA Y URL) ---
+  // --- 1. FUNCIÓN DE REINICIO TOTAL (SOLO URL PARA EVITAR PARPADEO) ---
   const resetFilters = useCallback(() => {
-    const empty = {
-      search: "", 
-      status: "", 
-      carrera: "", 
-      tipoBeca: "",
-      fecha: "", 
-      vulnerabilidad: "", 
-      rankingElite: false, 
-      estadoEstudio: "",
-      filtroPromedio: "", 
-      limit: alturaCalculada 
-    }
-
-    // A. Limpiamos el estado visual local
-    setFilters(empty)
+    // Al limpiar la URL, el componente Padre detectará el cambio vía props (initialFilters)
+    // y reseteará todo el estado en un solo paso de datos.
+    router.push('/admin/solicitudes')
     
-    // B. Reiniciamos paginación
-    setPaginaActual(1)
     if (setRegistrosPorPagina) {
       setRegistrosPorPagina(alturaCalculada)
     }
-
-    // C. Notificamos al padre para limpiar los datos inmediatamente
-    onFilterChange(empty)
-
-    // D. Limpiamos la URL (Esto dispara el refresco total de la tabla en el padre)
-    router.push('/admin/solicitudes')
-  }, [alturaCalculada, onFilterChange, setPaginaActual, setRegistrosPorPagina, router])
+  }, [router, setRegistrosPorPagina, alturaCalculada])
 
   // --- 2. CÁLCULO DE ALTURA DISPONIBLE ---
   useEffect(() => {
@@ -101,35 +81,24 @@ export function SolicitudesFilters({
     limit: initialFilters.limit || alturaCalculada 
   })
 
-  // --- 3. SINCRONIZACIÓN CON CAMBIOS EN URL/PADRE ---
+  // --- 3. SINCRONIZACIÓN CON LA URL ---
   useEffect(() => {
     setFilters(prev => ({
       ...prev,
-      search: initialFilters.search || "",
-      status: initialFilters.status || "",
-      carrera: initialFilters.carrera || "",
-      tipoBeca: initialFilters.tipoBeca || "",
-      filtroPromedio: initialFilters.filtroPromedio || "", 
-      rankingElite: !!initialFilters.rankingElite,
-      vulnerabilidad: initialFilters.vulnerabilidad || "",
-      estadoEstudio: initialFilters.estadoEstudio || ""
+      ...initialFilters,
+      rankingElite: !!initialFilters.rankingElite
     }));
-  }, [
-    initialFilters.search, initialFilters.status, initialFilters.carrera, 
-    initialFilters.tipoBeca, initialFilters.rankingElite, 
-    initialFilters.vulnerabilidad, initialFilters.estadoEstudio,
-    initialFilters.filtroPromedio
-  ]) 
+  }, [initialFilters]) 
   
   // --- 4. DEBOUNCE PARA LA BÚSQUEDA ---
   useEffect(() => {
-    if (filters.search === initialFilters.search) return;
+    if (filters.search === (initialFilters.search || "")) return;
 
     const timer = setTimeout(() => {
       onFilterChange(filters)
     }, 400)
     return () => clearTimeout(timer)
-  }, [filters.search, initialFilters.search, onFilterChange, filters])
+  }, [filters.search, initialFilters.search, onFilterChange])
 
   const handleChange = (e: any) => {
     const { name, value, type, checked } = e.target
@@ -176,11 +145,12 @@ export function SolicitudesFilters({
             />
           </div>
           
-          {/* Botón Reiniciar Móvil / Tablet */}
+          {/* 🟢 BOTÓN REINICIAR MÓVIL (Lógica de limpieza completa aplicada) */}
           <button 
             type="button"
             onClick={resetFilters}
             className="xl:hidden flex items-center justify-center p-2.5 bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 rounded-lg border border-slate-200 transition-colors shadow-sm"
+            title="Reiniciar Filtros"
           >
             <RotateCcw className="h-4 w-4" />
           </button>
@@ -211,7 +181,7 @@ export function SolicitudesFilters({
         </div>
       </div>
 
-      {/* SECCIÓN INFERIOR: FILTROS (RE-CENTRADOS Y CARRERA AJUSTADA) */}
+      {/* SECCIÓN INFERIOR: FILTROS (CENTRADOS) */}
       <div className="bg-slate-50/30 p-3">
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 items-center">
           
@@ -226,20 +196,25 @@ export function SolicitudesFilters({
             <ArrowDown10 className={iconClass} />
           </div>
 
-          {/* 🟢 CARRERA REDUCIDA A 1 COLUMNA PARA MAYOR SIMETRÍA */}
+          {/* 🟢 CARRERA: REDUCIDO PARA MÓVIL Y TABLET */}
           <div className="relative">
-            <select name="carrera" value={filters.carrera} onChange={handleChange} className={selectClass}>
+            <select 
+              name="carrera" 
+              value={filters.carrera} 
+              onChange={handleChange} 
+              className={selectClass}
+            >
               <option value="">Todas las Carreras</option>
-              <option value="Ingenieria de Sistemas">Ingeniería de Sistemas</option>
-              <option value="Ingenieria Industrial">Ingeniería Industrial</option>
-              <option value="Administracion">Administración</option>
-              <option value="Contaduria Publica">Contaduría Pública</option>
+              <option value="Ingenieria de Sistemas">Sistemas</option>
+              <option value="Ingenieria Industrial">Industrial</option>
+              <option value="Administracion">Admin</option>
+              <option value="Contaduria Publica">Contaduría</option>
               <option value="Derecho">Derecho</option>
               <option value="Psicologia">Psicología</option>
-              <option value="Educacion Integral">Educación Integral</option>
-              <option value="Diseño Grafico">Diseño Gráfico</option>
-              <option value="Idiomas Modernos">Idiomas Modernos</option>
-              <option value="Comunicacion Social">Comunicación Social</option>
+              <option value="Educacion Integral">Educación</option>
+              <option value="Diseño Grafico">Diseño</option>
+              <option value="Idiomas Modernos">Idiomas</option>
+              <option value="Comunicacion Social">Comunicación</option>
               <option value="Turismo">Turismo</option>
             </select>
             <GraduationCap className={iconClass} />
@@ -247,7 +222,7 @@ export function SolicitudesFilters({
 
           <div className="relative">
              <select name="tipoBeca" value={filters.tipoBeca} onChange={handleChange} className={selectClass}>
-              <option value="">Beca: Todas</option>
+              <option value="">Becas: Todas</option>
               <option value="Academica">Académica</option>
               <option value="Socioeconomica">Socioeconómica</option>
               <option value="Deportiva">Deportiva</option>
@@ -281,7 +256,7 @@ export function SolicitudesFilters({
             </select>
           </div>
 
-          {/* ACCIONES: APTOS (VERDE) + REINICIAR (PC) */}
+          {/* ACCIONES: APTOS + REINICIAR PC */}
           <div className="flex items-center gap-1">
              <label 
                className={`flex-1 flex items-center justify-center gap-1 h-full rounded border cursor-pointer transition-all 
