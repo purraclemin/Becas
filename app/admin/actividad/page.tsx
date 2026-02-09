@@ -50,20 +50,19 @@ export default function ActividadPage() {
   }
 
   return (
-    /* h-screen y overflow-hidden en móvil bloquean la página para que no sea infinita. 
-       md:h-auto y md:overflow-visible mantienen tu versión PC intacta. */
-    <div className="w-full h-screen md:h-auto md:min-h-screen bg-[#f8fafc] flex flex-col overflow-hidden md:overflow-visible selection:bg-[#d4a843]/30">
+    /* Se añade max-w-full y overflow-x-hidden para blindar el ancho de la página en móviles */
+    <div className="w-full h-screen md:h-auto md:min-h-screen bg-[#f8fafc] flex flex-col overflow-hidden md:overflow-visible max-w-full">
       
       {/* --- HEADER --- */}
       <div className="sticky top-0 z-30 bg-[#f8fafc] h-16 flex items-center px-4 md:px-8 shrink-0">
-        <div className="w-full bg-white px-4 md:px-6 py-2 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center">
-          <div className="min-w-0">
-            <h1 className="text-sm md:text-lg font-black text-[#1a2744] uppercase tracking-widest truncate">
+        <div className="w-full bg-white px-4 md:px-6 py-2 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center overflow-hidden">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xs md:text-lg font-black text-[#1a2744] uppercase tracking-widest truncate">
               Registro de Actividad
             </h1>
           </div>
 
-          <div className="flex items-center gap-3 md:gap-5 border-l border-slate-100 pl-3 md:pl-5">
+          <div className="flex items-center gap-3 md:gap-5 border-l border-slate-100 pl-3 md:pl-5 shrink-0">
             <Link href="/admin/dashboard" title="Volver al Dashboard">
                 <div className="text-[10px] font-bold text-slate-500 hover:text-[#1a2744] uppercase tracking-wider cursor-pointer whitespace-nowrap">
                   <span className="hidden sm:inline">Volver</span>
@@ -87,12 +86,11 @@ export default function ActividadPage() {
       </div>
 
       {/* --- CONTENIDO --- */}
-      {/* flex-1 y overflow-hidden obligan al contenido a ajustarse al espacio disponible sin estirar la página */}
-      <div className="p-4 md:p-8 flex-1 overflow-hidden flex flex-col min-h-0">
+      {/* Se añade min-h-0 para que el flex-1 funcione correctamente con el scroll interno en móviles */}
+      <div className="p-3 md:p-8 flex-1 overflow-hidden flex flex-col min-h-0 w-full max-w-full">
         
-        {/* La Card ahora tiene h-full para llenar el espacio y scroll interno */}
-        <div className="bg-white rounded-2xl shadow-xl border border-slate-200 flex flex-col h-full overflow-hidden">
-          <div className="bg-slate-50 px-6 py-5 border-b flex justify-between items-center shrink-0">
+        <div className="bg-white rounded-2xl shadow-xl border border-slate-200 flex flex-col h-full overflow-hidden w-full max-w-full">
+          <div className="bg-slate-50 px-5 md:px-6 py-4 md:py-5 border-b flex justify-between items-center shrink-0">
             <h3 className="text-[10px] md:text-xs font-black text-[#1a2744] uppercase tracking-widest flex items-center gap-2">
               <Clock className="h-4 w-4 text-[#d4a843]" /> Últimos 50 Movimientos
             </h3>
@@ -101,8 +99,8 @@ export default function ActividadPage() {
             </span>
           </div>
           
-          {/* Este es el contenedor que hace el scroll de los datos sin mover la página */}
-          <div className="overflow-auto flex-1 custom-scrollbar">
+          {/* Contenedor del scroll: Aseguramos que el scroll sea horizontal solo aquí adentro */}
+          <div className="overflow-auto flex-1 custom-scrollbar w-full">
             <table className="w-full text-left min-w-[1000px]">
               <thead className="sticky top-0 z-20 bg-slate-100 shadow-sm">
                 <tr className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">
@@ -187,7 +185,6 @@ export default function ActividadPage() {
           </div>
         </div>
 
-        {/* Footer pequeño que no empuja la pantalla hacia abajo */}
         <p className="text-center text-[8px] text-gray-400 font-bold uppercase tracking-[0.5em] py-3 shrink-0">
           Unimar &bull; Auditoría &bull; 2026
         </p>
