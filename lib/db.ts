@@ -4,7 +4,7 @@ const dbConfig = {
   host: 'localhost',
   user: 'root',
   password: '',
-  database: 'unimar_becas', 
+  database: 'mysql://root:QyFRfPxRNHyslPyWaHhiMTSAaMErDwHn@hopper.proxy.rlwy.net:38539/railway', 
   waitForConnections: true,
   connectionLimit: 5,
   queueLimit: 0,
