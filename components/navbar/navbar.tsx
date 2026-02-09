@@ -51,54 +51,50 @@ export function Navbar() {
                 <span className="block text-[9px] sm:text-[11px] font-medium uppercase tracking-widest text-[#6b7280] mt-1">Gestión de Becas</span>
               </div>
             </Link>
-
-            {/* BOTONES PARA MÓVIL (Al lado del Logo) - Iconos Grandes */}
-            {!loading && (!user || !user.isLoggedIn) && (
-              <div className="lg:hidden flex items-center gap-1.5 sm:gap-2 animate-in fade-in duration-500">
-                <Link href="/login" className="flex items-center gap-1 rounded-md border border-[#1e3a5f] px-2 py-1.5 text-[10px] font-bold text-[#1e3a5f] hover:bg-gray-50">
-                  <LogIn className="h-5 w-5" /> <span>Entrar</span>
-                </Link>
-                <Link href="/registro" className="flex items-center gap-1 rounded-md bg-[#d4a843] px-2 py-1.5 text-[10px] font-bold text-[#1e3a5f] hover:bg-[#c49a3a]">
-                  <UserPlus className="h-5 w-5" /> <span className="hidden xs:inline">Registrarse</span>
-                </Link>
-              </div>
-            )}
           </div>
 
           {/* Bloque de Acciones y Menú alineados de derecha a izquierda */}
-          <div className="flex items-center flex-row-reverse gap-1 sm:gap-3">
+          <div className="flex items-center flex-row-reverse">
             
-            {/* 1. Botón de Menú Hamburguesa Principal (Derecha) */}
+            {/* 1. Botón de Menú Hamburguesa Principal (Extremo derecho) */}
             <button 
-              className="lg:hidden p-1.5 rounded-lg bg-[#f8fafb] border border-[#e2e8f0] text-[#1e3a5f] transition-colors" 
+              className="lg:hidden p-1.5 rounded-lg bg-[#f8fafb] border border-[#e2e8f0] text-[#1e3a5f] transition-colors ml-2" 
               onClick={() => setMobileOpen(!mobileOpen)}
             >
               {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
 
-            {/* 2. Línea Vertical Separadora (Solo en móvil si hay usuario) */}
-            {user?.isLoggedIn && <div className="lg:hidden h-8 w-[1px] bg-black/10 mx-1" />}
-
-            {/* 3. Componente de Perfil (Solo se activa si hay usuario) */}
-            <UserActions user={user} loading={loading} />
-
-            {/* 4. Botones para Escritorio (Cuando no hay sesión) */}
+            {/* 2. Botones de Sesión (Entrar / Registrarse) - Pegados al menú de hamburguesa */}
             {!loading && (!user || !user.isLoggedIn) && (
-              <div className="hidden lg:flex items-center gap-3 animate-in fade-in duration-500">
-                <Link href="/login" className="flex items-center gap-2 rounded-md border border-[#1e3a5f] px-4 py-2 text-sm font-semibold text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white transition-all">
-                  <LogIn className="h-5 w-5" /> Iniciar Sesión
+              <div className="flex items-center gap-1.5 sm:gap-2 animate-in fade-in duration-500">
+                <Link 
+                  href="/login" 
+                  className="flex items-center gap-1 rounded-md border border-[#1e3a5f] px-2 py-1.5 lg:px-4 lg:py-2 text-[10px] lg:text-sm font-bold text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white transition-all"
+                >
+                  <LogIn className="h-5 w-5" /> <span>Entrar</span>
                 </Link>
-                <Link href="/registro" className="flex items-center gap-2 rounded-md bg-[#d4a843] px-4 py-2 text-sm font-semibold text-[#1e3a5f] hover:bg-[#c49a3a] shadow-sm transition-all">
-                  <UserPlus className="h-5 w-5" /> Registrarse
+                <Link 
+                  href="/registro" 
+                  className="flex items-center gap-1 rounded-md bg-[#d4a843] px-2 py-1.5 lg:px-4 lg:py-2 text-[10px] lg:text-sm font-bold text-[#1e3a5f] hover:bg-[#c49a3a] shadow-sm transition-all"
+                >
+                  <UserPlus className="h-5 w-5" /> <span>Registrarse</span>
                 </Link>
               </div>
             )}
+
+            {/* 3. Línea Vertical Separadora (Solo si hay usuario logueado en móvil) */}
+            {user?.isLoggedIn && <div className="lg:hidden h-8 w-[1px] bg-black/10 mx-2" />}
+
+            {/* 4. Componente de Perfil / Información (Solo si hay usuario) */}
+            <UserActions user={user} loading={loading} />
             
           </div>
         </div>
       </div>
 
+      {/* Menú azul de navegación */}
       <NavMenu mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} user={user} />
+      
     </header>
   )
 }
