@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import { 
   Search, RotateCcw, ShieldCheck, GraduationCap, 
   ChevronLeft, ChevronRight, ArrowDown10
@@ -32,6 +32,21 @@ export function SolicitudesFilters({
 
   const [alturaCalculada, setAlturaCalculada] = useState(7)
 
+  // 1. Memorizamos la función de reinicio para que no cambie entre renders
+  const resetFilters = useCallback(() => {
+    const empty = {
+      search: "", status: "", carrera: "", tipoBeca: "",
+      fecha: "", vulnerabilidad: "", rankingElite: false, estadoEstudio: "",
+      filtroPromedio: "", 
+      limit: alturaCalculada 
+    }
+    setFilters(empty)
+    onFilterChange(empty)
+    setPaginaActual(1)
+    if (setRegistrosPorPagina) setRegistrosPorPagina(alturaCalculada)
+  }, [alturaCalculada, onFilterChange, setPaginaActual, setRegistrosPorPagina])
+
+  // 2. Efecto para calcular filas (Dependencias estables)
   useEffect(() => {
     const calcularFilasDisponibles = () => {
       if (typeof window !== 'undefined') {
@@ -52,7 +67,7 @@ export function SolicitudesFilters({
     calcularFilasDisponibles();
     window.addEventListener('resize', calcularFilasDisponibles);
     return () => window.removeEventListener('resize', calcularFilasDisponibles);
-  }, []);
+  }, [initialFilters.limit, setRegistrosPorPagina]);
 
   const [filters, setFilters] = useState({
     search: initialFilters.search || "",
@@ -61,12 +76,13 @@ export function SolicitudesFilters({
     tipoBeca: initialFilters.tipoBeca || "", 
     fecha: initialFilters.fecha || "", 
     vulnerabilidad: initialFilters.vulnerabilidad || "", 
-    rankingElite: initialFilters.rankingElite === 'true' || initialFilters.rankingElite === true || false, 
+    rankingElite: !!initialFilters.rankingElite, 
     estadoEstudio: initialFilters.estadoEstudio || "", 
     filtroPromedio: initialFilters.filtroPromedio || "", 
     limit: initialFilters.limit || alturaCalculada 
   })
 
+  // 3. Sincronizar filtros externos
   useEffect(() => {
     setFilters(prev => ({
       ...prev,
@@ -75,10 +91,11 @@ export function SolicitudesFilters({
       carrera: initialFilters.carrera || "",
       tipoBeca: initialFilters.tipoBeca || "",
       filtroPromedio: initialFilters.filtroPromedio || "", 
-      rankingElite: initialFilters.rankingElite === 'true' || initialFilters.rankingElite === true
+      rankingElite: !!initialFilters.rankingElite
     }));
   }, [initialFilters]) 
   
+  // 4. Debounce de búsqueda
   useEffect(() => {
     if (filters.search === initialFilters.search) return;
 
@@ -86,7 +103,7 @@ export function SolicitudesFilters({
       onFilterChange(filters)
     }, 400)
     return () => clearTimeout(timer)
-  }, [filters.search])
+  }, [filters.search, initialFilters.search, onFilterChange, filters])
 
   const handleChange = (e: any) => {
     const { name, value, type, checked } = e.target
@@ -111,19 +128,6 @@ export function SolicitudesFilters({
     setPaginaActual(1) 
   }
 
-  const resetFilters = () => {
-    const empty = {
-      search: "", status: "", carrera: "", tipoBeca: "",
-      fecha: "", vulnerabilidad: "", rankingElite: false, estadoEstudio: "",
-      filtroPromedio: "", 
-      limit: alturaCalculada 
-    }
-    setFilters(empty)
-    onFilterChange(empty)
-    setPaginaActual(1)
-    if(setRegistrosPorPagina) setRegistrosPorPagina(alturaCalculada);
-  }
-
   const selectClass = "w-full pl-2 pr-6 py-2 bg-slate-50/50 border border-slate-200 rounded text-[10px] font-bold text-slate-600 outline-none focus:border-[#1a2744] focus:bg-white transition-all appearance-none cursor-pointer hover:border-slate-300"
   const iconClass = "absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-300 pointer-events-none"
 
@@ -133,7 +137,6 @@ export function SolicitudesFilters({
       {/* SECCIÓN SUPERIOR: BUSCADOR Y HERRAMIENTAS */}
       <div className="p-3 border-b border-slate-100 bg-white flex flex-col xl:flex-row items-center justify-between gap-4">
         
-        {/* BUSCADOR CON BOTÓN REINICIAR EN MÓVIL */}
         <div className="flex items-center gap-2 w-full xl:w-96">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
@@ -141,16 +144,15 @@ export function SolicitudesFilters({
               name="search"
               type="text"
               placeholder="Buscar por Nombre o Cédula..."
-              className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium outline-none focus:border-[#1a2744] focus:ring-1 focus:ring-[#1a2744]/10 transition-all"
+              className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium outline-none focus:border-[#1a2744] transition-all"
               value={filters.search}
               onChange={handleChange}
             />
           </div>
-          {/* Botón Reiniciar visible solo en Móvil/Tablet */}
+          {/* Botón Reiniciar para móviles */}
           <button 
             onClick={resetFilters}
-            className="xl:hidden flex items-center justify-center p-2.5 bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-600 rounded-lg border border-slate-200 transition-colors shadow-sm"
-            title="Reiniciar Filtros"
+            className="xl:hidden flex items-center justify-center p-2.5 bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-600 rounded-lg border border-slate-200 transition-colors"
           >
             <RotateCcw className="h-4 w-4" />
           </button>
@@ -158,16 +160,6 @@ export function SolicitudesFilters({
 
         {/* HERRAMIENTAS RESPONSIVAS */}
         <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto justify-between md:justify-end">
-          
-          {/* LEYENDA (Oculta en móviles pequeños) */}
-          <div className="hidden lg:flex items-center gap-4 mr-2">
-            <div className="flex items-center gap-2 text-[11px] font-bold text-slate-600"><div className="w-2.5 h-2.5 rounded-full bg-[#cbd5e1]"></div>Ver</div>
-            <div className="flex items-center gap-2 text-[11px] font-bold text-[#4a89dc]"><div className="w-2.5 h-2.5 rounded-full bg-[#60a5fa]"></div>Rev</div>
-            <div className="flex items-center gap-2 text-[11px] font-bold text-[#2ecc71]"><div className="w-2.5 h-2.5 rounded-full bg-[#34d399]"></div>Apr</div>
-            <div className="flex items-center gap-2 text-[11px] font-bold text-[#e74c3c]"><div className="w-2.5 h-2.5 rounded-full bg-[#fb7185]"></div>Rec</div>
-          </div>
-
-          {/* SELECTOR FILAS */}
           <div className="flex items-center bg-slate-50 rounded border border-slate-200 px-2 h-9">
             <span className="text-[10px] font-bold text-slate-400 mr-2 uppercase">Filas:</span>
             <select 
@@ -182,13 +174,12 @@ export function SolicitudesFilters({
             </select>
           </div>
 
-          {/* PAGINACIÓN */}
           {!loading && hasData && (
             <div className="flex items-center bg-slate-50 rounded border border-slate-200 p-0.5 h-9">
               <button 
                 onClick={() => setPaginaActual(Math.max(1, paginaActual - 1))} 
                 disabled={paginaActual === 1} 
-                className="p-1.5 rounded hover:bg-white hover:shadow-sm text-slate-500 disabled:opacity-30 transition-all"
+                className="p-1.5 rounded hover:bg-white text-slate-500 disabled:opacity-30"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
@@ -198,7 +189,7 @@ export function SolicitudesFilters({
               <button 
                 onClick={() => setPaginaActual(Math.min(totalPaginas, paginaActual + 1))} 
                 disabled={paginaActual === totalPaginas} 
-                className="p-1.5 rounded hover:bg-white hover:shadow-sm text-slate-500 disabled:opacity-30 transition-all"
+                className="p-1.5 rounded hover:bg-white text-slate-500 disabled:opacity-30"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>
@@ -277,16 +268,20 @@ export function SolicitudesFilters({
           </div>
 
           <div className="flex items-center gap-1">
-             <label className={`flex-1 flex items-center justify-center gap-1 h-full rounded border cursor-pointer transition-all ${filters.rankingElite ? 'bg-amber-50 border-amber-200 text-amber-600' : 'bg-white border-slate-200 text-slate-400'}`}>
+             <label 
+               className={`flex-1 flex items-center justify-center gap-1 h-full rounded border cursor-pointer transition-all 
+               ${filters.rankingElite 
+                 ? 'bg-emerald-500 border-emerald-600 text-white shadow-sm' 
+                 : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'}`}
+             >
               <input type="checkbox" name="rankingElite" className="hidden" checked={filters.rankingElite} onChange={handleChange} />
-              <ShieldCheck className="h-3.5 w-3.5" />
-              <span className="text-[9px] font-black uppercase">Aptos</span>
+              <ShieldCheck className={`h-3.5 w-3.5 ${filters.rankingElite ? 'text-white' : 'text-slate-300'}`} />
+              <span className="text-[9px] font-black uppercase tracking-widest">Aptos</span>
             </label>
             
-            {/* Botón Reiniciar visible solo en Escritorio para mantener balance */}
             <button 
               onClick={resetFilters}
-              className="hidden xl:flex items-center justify-center h-full px-2.5 bg-slate-100 hover:bg-rose-50 text-slate-400 hover:text-rose-500 rounded border border-slate-200 hover:border-rose-200 transition-all"
+              className="flex items-center justify-center h-full px-2.5 bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-600 rounded border border-slate-200 hover:border-rose-200 transition-all shadow-sm"
               title="Limpiar Filtros"
             >
               <RotateCcw className="h-3.5 w-3.5" />
