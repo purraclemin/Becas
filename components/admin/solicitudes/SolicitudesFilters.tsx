@@ -34,16 +34,36 @@ export function SolicitudesFilters({
   const router = useRouter()
   const [alturaCalculada, setAlturaCalculada] = useState(7)
 
-  // --- 1. FUNCIÓN DE REINICIO TOTAL (SOLO URL PARA EVITAR PARPADEO) ---
+  // --- 1. FUNCIÓN DE REINICIO (LIMPIA UI, TABLA Y URL) ---
   const resetFilters = useCallback(() => {
-    // Al limpiar la URL, el componente Padre detectará el cambio vía props (initialFilters)
-    // y reseteará todo el estado en un solo paso de datos.
-    router.push('/admin/solicitudes')
+    const empty = {
+      search: "", 
+      status: "", 
+      carrera: "", 
+      tipoBeca: "",
+      fecha: "", 
+      vulnerabilidad: "", 
+      rankingElite: false, 
+      estadoEstudio: "",
+      filtroPromedio: "", 
+      limit: alturaCalculada 
+    }
+
+    // Actualizamos estado local
+    setFilters(empty)
     
+    // Notificamos al padre para refrescar la tabla
+    onFilterChange(empty)
+    
+    // Reiniciamos paginación
+    setPaginaActual(1)
     if (setRegistrosPorPagina) {
       setRegistrosPorPagina(alturaCalculada)
     }
-  }, [router, setRegistrosPorPagina, alturaCalculada])
+
+    // Limpiamos la URL para forzar un estado limpio en el navegador
+    router.push('/admin/solicitudes')
+  }, [alturaCalculada, onFilterChange, setPaginaActual, setRegistrosPorPagina, router])
 
   // --- 2. CÁLCULO DE ALTURA DISPONIBLE ---
   useEffect(() => {
@@ -81,18 +101,24 @@ export function SolicitudesFilters({
     limit: initialFilters.limit || alturaCalculada 
   })
 
-  // --- 3. SINCRONIZACIÓN CON LA URL ---
+  // --- 3. SINCRONIZACIÓN (CORREGIDO ERROR DE TAMAÑO DE ARGUMENTO) ---
   useEffect(() => {
     setFilters(prev => ({
       ...prev,
-      ...initialFilters,
-      rankingElite: !!initialFilters.rankingElite
+      search: initialFilters.search || "",
+      status: initialFilters.status || "",
+      carrera: initialFilters.carrera || "",
+      tipoBeca: initialFilters.tipoBeca || "",
+      filtroPromedio: initialFilters.filtroPromedio || "", 
+      rankingElite: !!initialFilters.rankingElite,
+      vulnerabilidad: initialFilters.vulnerabilidad || "",
+      estadoEstudio: initialFilters.estadoEstudio || ""
     }));
-  }, [initialFilters]) 
+  }, [initialFilters]) // Se usa el objeto completo para mantener el tamaño del array constante
   
   // --- 4. DEBOUNCE PARA LA BÚSQUEDA ---
   useEffect(() => {
-    if (filters.search === (initialFilters.search || "")) return;
+    if (filters.search === initialFilters.search) return;
 
     const timer = setTimeout(() => {
       onFilterChange(filters)
@@ -129,7 +155,6 @@ export function SolicitudesFilters({
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-4">
       
-      {/* SECCIÓN SUPERIOR: BUSCADOR Y PAGINACIÓN */}
       <div className="p-3 border-b border-slate-100 bg-white flex flex-col xl:flex-row items-center justify-between gap-4">
         
         <div className="flex items-center gap-2 w-full xl:w-96">
@@ -145,12 +170,10 @@ export function SolicitudesFilters({
             />
           </div>
           
-          {/* 🟢 BOTÓN REINICIAR MÓVIL (Lógica de limpieza completa aplicada) */}
           <button 
             type="button"
             onClick={resetFilters}
             className="xl:hidden flex items-center justify-center p-2.5 bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 rounded-lg border border-slate-200 transition-colors shadow-sm"
-            title="Reiniciar Filtros"
           >
             <RotateCcw className="h-4 w-4" />
           </button>
@@ -181,7 +204,6 @@ export function SolicitudesFilters({
         </div>
       </div>
 
-      {/* SECCIÓN INFERIOR: FILTROS (CENTRADOS) */}
       <div className="bg-slate-50/30 p-3">
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 items-center">
           
@@ -196,18 +218,13 @@ export function SolicitudesFilters({
             <ArrowDown10 className={iconClass} />
           </div>
 
-          {/* 🟢 CARRERA: REDUCIDO PARA MÓVIL Y TABLET */}
+          {/* 🟢 CARRERA REDUCIDA A 1 COLUMNA PARA MAYOR SIMETRÍA */}
           <div className="relative">
-            <select 
-              name="carrera" 
-              value={filters.carrera} 
-              onChange={handleChange} 
-              className={selectClass}
-            >
+            <select name="carrera" value={filters.carrera} onChange={handleChange} className={selectClass}>
               <option value="">Todas las Carreras</option>
               <option value="Ingenieria de Sistemas">Sistemas</option>
               <option value="Ingenieria Industrial">Industrial</option>
-              <option value="Administracion">Admin</option>
+              <option value="Administracion">Administración</option>
               <option value="Contaduria Publica">Contaduría</option>
               <option value="Derecho">Derecho</option>
               <option value="Psicologia">Psicología</option>
@@ -256,7 +273,6 @@ export function SolicitudesFilters({
             </select>
           </div>
 
-          {/* ACCIONES: APTOS + REINICIAR PC */}
           <div className="flex items-center gap-1">
              <label 
                className={`flex-1 flex items-center justify-center gap-1 h-full rounded border cursor-pointer transition-all 
