@@ -100,9 +100,10 @@ export function SolicitudesView({ initialFilters }: { initialFilters: any }) {
     setIsModalOpen(true)
   }
 
-  const handleStatusChange = async (id: number, newStatus: string) => {
+  // 🟢 ACTUALIZADO: Ahora recibe y envía las observaciones al servidor
+  const handleStatusChange = async (id: number, newStatus: string, observaciones?: string) => {
     try {
-      const resultado = await actualizarEstatusBeca(id, newStatus);
+      const resultado = await actualizarEstatusBeca(id, newStatus, observaciones);
       if (resultado.error) {
         alert("No se pudo actualizar: " + resultado.error);
         return;

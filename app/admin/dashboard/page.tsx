@@ -171,7 +171,7 @@ export default function AdminDashboard() {
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-full">
             <div className="bg-slate-50 px-5 md:px-6 py-4 border-b flex justify-between items-center">
               <h3 className="font-black text-[#1a2744] text-[10px] uppercase tracking-widest">Distribución Detallada</h3>
-              <Link href="/admin/reportes" className="text-[9px] font-black text-blue-600 hover:underline uppercase">Ver Todo</Link>
+              <Link href="/admin/analitica" className="text-[9px] font-black text-blue-600 hover:underline uppercase">Ver Todo</Link>
             </div>
             <div className="flex-1 overflow-y-auto max-h-64 custom-scrollbar">
               <table className="w-full text-left">

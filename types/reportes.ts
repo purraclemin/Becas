@@ -1,4 +1,4 @@
-// types/reportes.ts
+// types/analitica.ts
 
 /**
  * Datos para la Matriz de Justicia Social (Scatter Plot)
@@ -32,7 +32,7 @@ export interface DatosEmbudo {
 }
 
 /**
- * Objeto global que devuelve la Server Action de analíticas
+ * Objeto global que devuelve la Server Action de analiticas
  */
 export interface AnaliticasAvanzadas {
   matriz: DatosMatriz[];

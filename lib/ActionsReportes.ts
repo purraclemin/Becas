@@ -1,4 +1,4 @@
-// lib/ActionsReportes.ts
+// lib/Actionsanalitica.ts
 'use server'
 
 import { db } from './db'
@@ -36,7 +36,7 @@ export async function obtenerEstadisticasBecas() {
       porCarrera: conteoCarrera // <-- ¡Aquí va la data para tu gráfico de barras!
     };
   } catch (error) {
-    console.error("Error al generar reportes:", error);
+    console.error("Error al generar analitica:", error);
     // Devolvemos estructura vacía segura para que no rompa el dashboard
     return { porEstatus: [], porTipo: [], promedio: 0, porCarrera: [] };
   }

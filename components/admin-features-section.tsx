@@ -15,8 +15,8 @@ const features = [
   },
   {
     icon: BarChart3,
-    title: "Reportes Automatizados",
-    description: "Genere reportes detallados sobre solicitudes y estadisticas del programa.",
+    title: "analitica Automatizados",
+    description: "Genere analitica detallados sobre solicitudes y estadisticas del programa.",
   },
   {
     icon: Users,
@@ -60,7 +60,7 @@ export function AdminFeaturesSection() {
             </div>
             <p className="mb-6 text-sm leading-relaxed text-[#6b7280]">
               La plataforma incluye herramientas para que la universidad administre criterios
-              de elegibilidad, evalue postulaciones y genere reportes automatizados, agilizando
+              de elegibilidad, evalue postulaciones y genere analitica automatizados, agilizando
               el proceso de seleccion.
             </p>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

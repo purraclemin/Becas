@@ -1,7 +1,7 @@
 'use server'
 
 import { db } from './db'
-import { AnaliticasAvanzadas } from '@/types/reportes'
+import { AnaliticasAvanzadas } from '@/types/analitica'
 
 export async function obtenerAnaliticasAvanzadas(): Promise<AnaliticasAvanzadas> {
   try {

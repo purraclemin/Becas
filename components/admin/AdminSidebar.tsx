@@ -26,9 +26,10 @@ export function AdminSidebar({ isOpen, onClose, onLogout }: SidebarProps) {
     { href: "/admin/dashboard", label: "Inicio", icon: Settings },
     { href: "/admin/actividad", label: "Actividad", icon: Clock },
     { href: "/admin/solicitudes", label: "Validar Becas", icon: ClipboardCheck },
-    { href: "/admin/reportes", label: "Reportes", icon: BarChart3 },
+    { href: "/admin/analitica", label: "Analitica", icon: BarChart3 },
     { href: "/admin/estudiantes", label: "Estudiantes", icon: Users },
     { href: "/admin/estudio-socioeconomico", label: "Socioeconómico", icon: ClipboardList },
+    { href: "/admin/reportes", label: "Reportes", icon: ClipboardList },
   ]
 
   // Lógica de navegación y cierre

@@ -6,18 +6,20 @@ import {
   ClipboardList, Calendar, GraduationCap,
   Image as ImageIcon, Paperclip, ExternalLink,
   Mail, Phone, Hash, AlertTriangle,
-  // Nuevos iconos para el estudio
-  Home, DollarSign, Users, Wifi, Activity
+  // Iconos para el estudio
+  Home, DollarSign, Users, Wifi, Activity,
+  MessageSquare
 } from "lucide-react"
 
 interface ModalProps {
   solicitud: any
   onClose: () => void
-  onStatusChange: (id: number, status: string) => void
+  onStatusChange: (id: number, status: string, observaciones?: string) => void
 }
 
 export function SolicitudModal({ solicitud, onClose, onStatusChange }: ModalProps) {
   const [confirmando, setConfirmando] = useState<string | null>(null)
+  const [observaciones, setObservaciones] = useState("")
 
   // Lógica para extraer datos del estudio socioeconómico de forma segura
   const estudioData = useMemo(() => {
@@ -84,6 +86,17 @@ export function SolicitudModal({ solicitud, onClose, onStatusChange }: ModalProp
         {/* BODY */}
         <div className="p-8 space-y-8 overflow-y-auto custom-scrollbar bg-slate-50/50">
           
+          {/* Alerta de Elegibilidad (Bala de Plata) */}
+          {solicitud.ha_tenido_beca === 1 && (
+            <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-black text-amber-900 uppercase tracking-tight">Atención: Antecedente de Beneficio</p>
+                <p className="text-[11px] font-medium text-amber-700 mt-1">Este estudiante ya ha contado con el beneficio de beca anteriormente en su expediente.</p>
+              </div>
+            </div>
+          )}
+
           {/* Stats Rápidos */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
@@ -200,23 +213,51 @@ export function SolicitudModal({ solicitud, onClose, onStatusChange }: ModalProp
         {/* FOOTER */}
         <div className="bg-white p-6 border-t border-slate-100 shrink-0">
           {confirmando ? (
-            <div className={`flex items-center justify-between p-4 rounded-2xl animate-in slide-in-from-bottom-2 border ${
-                confirmando === 'En Revisión' ? 'bg-blue-50 border-blue-200' : 'bg-amber-50 border-amber-200'
+            <div className={`flex flex-col p-4 rounded-2xl animate-in slide-in-from-bottom-2 border ${
+                confirmando === 'En Revisión' ? 'bg-blue-50 border-blue-200' : 
+                confirmando === 'Aprobada' ? 'bg-emerald-50 border-emerald-200' :
+                'bg-rose-50 border-rose-200'
             }`}>
-              <div className="flex items-center gap-3">
-                <AlertTriangle className={`h-5 w-5 ${confirmando === 'En Revisión' ? 'text-blue-600' : 'text-amber-600'}`} />
-                <p className={`text-sm font-bold ${confirmando === 'En Revisión' ? 'text-blue-900' : 'text-amber-900'}`}>
-                    ¿Cambiar estatus a <span className="uppercase">{confirmando}</span>?
-                </p>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <AlertTriangle className={`h-5 w-5 ${
+                    confirmando === 'En Revisión' ? 'text-blue-600' : 
+                    confirmando === 'Aprobada' ? 'text-emerald-600' : 
+                    'text-rose-600'
+                  }`} />
+                  <p className={`text-sm font-bold ${
+                    confirmando === 'En Revisión' ? 'text-blue-900' : 
+                    confirmando === 'Aprobada' ? 'text-emerald-900' : 
+                    'text-rose-900'
+                  }`}>
+                      ¿Cambiar estatus a <span className="uppercase">{confirmando}</span>?
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => { setConfirmando(null); setObservaciones(""); }} className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-white rounded-lg transition-all">Cancelar</button>
+                  <button 
+                    onClick={() => { onStatusChange(solicitud.id, confirmando!, observaciones); onClose(); }} 
+                    className={`px-6 py-2 text-white text-xs font-black uppercase rounded-lg shadow-lg ${
+                      confirmando === 'Aprobada' ? 'bg-emerald-600' : 
+                      confirmando === 'Rechazada' ? 'bg-rose-600' :
+                      'bg-blue-600'
+                    }`}
+                  >
+                    Confirmar
+                  </button>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <button onClick={() => setConfirmando(null)} className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-white rounded-lg transition-all">Cancelar</button>
-                <button 
-                  onClick={() => { onStatusChange(solicitud.id, confirmando!); onClose(); }} 
-                  className="px-6 py-2 bg-[#1a2744] text-[#d4a843] text-xs font-black uppercase rounded-lg shadow-lg"
-                >
-                  Confirmar
-                </button>
+
+              {/* CAMPO DE OBSERVACIONES */}
+              <div className="relative">
+                <MessageSquare className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                <textarea
+                  value={observaciones}
+                  onChange={(e) => setObservaciones(e.target.value)}
+                  placeholder={`Justifique el cambio a ${confirmando} (opcional)...`}
+                  className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-xs font-medium outline-none focus:border-[#1a2744] transition-all resize-none shadow-inner"
+                  rows={2}
+                />
               </div>
             </div>
           ) : (
@@ -224,7 +265,6 @@ export function SolicitudModal({ solicitud, onClose, onStatusChange }: ModalProp
               <button onClick={onClose} className="text-slate-400 font-bold text-xs uppercase hover:text-slate-600 transition-colors">Volver al listado</button>
               
               <div className="flex gap-2 w-full sm:w-auto">
-                {/* 🔵 BOTÓN NUEVO: A REVISIÓN */}
                 <button 
                     onClick={() => setConfirmando('En Revisión')} 
                     className="flex-1 sm:flex-none px-4 py-3 bg-blue-50 text-blue-600 rounded-xl font-black text-[10px] uppercase hover:bg-blue-100 transition-all border border-blue-100"

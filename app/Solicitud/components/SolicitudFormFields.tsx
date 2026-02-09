@@ -9,20 +9,25 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
+import { SolicitudArchivos } from "./SolicitudArchivos"
+import { SolicitudMaterias } from "./SolicitudMaterias" // Nuevo Componente Importado
 import { 
-  Upload, FileText, Send, AlertCircle, Loader2, Download, 
-  Mail, BookOpen, GraduationCap, CheckCircle2 
+  FileText, Send, AlertCircle, Loader2, 
+  Mail, BookOpen, GraduationCap, CheckCircle2,
+  Clock, Lock
 } from "lucide-react"
 
 // Recibimos al usuario directamente desde la Page (Server)
 export function SolicitudForm({ user }: { user: any }) {
   const [isPending, setIsPending] = useState(false)
-  const [promedio, setPromedio] = useState("")
+  // 🟢 AUTOCAMPLETADO: Inicializamos con el promedio de la base de datos si existe
+  const [promedio, setPromedio] = useState(user?.promedio_notas?.toString() || "")
   const { toast } = useToast()
   const router = useRouter()
 
-  // Verificamos si ya tiene una solicitud activa
-  const tieneSolicitudActiva = user?.estatusBeca && user?.estatusBeca !== 'ninguna'
+  // Verificamos si ya tiene una solicitud activa (Pendiente o En Revisión)
+  const tieneSolicitudActiva = user?.estatusBeca === 'Pendiente' || user?.estatusBeca === 'En Revisión';
+  const esRevision = user?.estatusBeca === 'En Revisión';
 
   // Control del input de promedio (0-20)
   const handlePromedioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -71,7 +76,6 @@ export function SolicitudForm({ user }: { user: any }) {
       if (result?.error) {
         toast({ variant: "destructive", title: "Error", description: result.error })
       } else {
-        // ¡Éxito! Redirigimos a la página de confirmación
         router.push("/solicitud-enviada") 
       }
     } catch (error) {
@@ -83,25 +87,38 @@ export function SolicitudForm({ user }: { user: any }) {
 
   return (
     <>
-      {/* AVISO DE SOLICITUD ACTIVA (Si ya tiene una) */}
+      {/* 🟢 AVISO INTEGRADO: Solo muestra un pequeño banner informativo si está en trámite */}
       {tieneSolicitudActiva && (
-        <div className="mb-8 p-6 rounded-xl border-2 border-dashed border-yellow-400 bg-yellow-50 flex flex-col items-center text-center gap-3 animate-in zoom-in duration-300">
-          <AlertCircle className="h-8 w-8 text-yellow-600" />
-          <div>
-            <p className="text-sm font-black text-[#1e3a5f] uppercase">Solicitud en trámite</p>
-            <p className="text-xs text-yellow-800 font-medium mt-1">
-              Tu solicitud actual tiene estatus: <b>{user.estatusBeca}</b>. 
-            </p>
-          </div>
+        <div className={`mb-6 p-4 rounded-xl border flex items-center gap-3 animate-in fade-in zoom-in duration-300 ${
+            esRevision ? 'bg-blue-50 border-blue-200 text-blue-900' : 'bg-yellow-50 border-yellow-200 text-yellow-900'
+        }`}>
+            {esRevision ? <Clock className="h-5 w-5 shrink-0" /> : <AlertCircle className="h-5 w-5 shrink-0" />}
+            <div>
+                <p className="text-xs font-black uppercase tracking-wide">
+                    {esRevision ? 'Su Solicitud está en Revisión' : 'Solicitud Pendiente'}
+                </p>
+                <p className="text-[10px] font-medium opacity-80 leading-tight">
+                    Tu trámite está en curso. Los datos no pueden ser modificados en este momento.
+                </p>
+            </div>
         </div>
       )}
 
       {/* FORMULARIO PRINCIPAL */}
-      <form onSubmit={handleSubmit} className={`space-y-6 ${tieneSolicitudActiva ? "opacity-50 pointer-events-none" : ""}`}>
+      <form onSubmit={handleSubmit} className={`space-y-6 relative ${tieneSolicitudActiva ? "opacity-60 pointer-events-none select-none" : ""}`}>
         
+        {/* Capa de bloqueo visual si está activo */}
+        {tieneSolicitudActiva && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center">
+                <div className="bg-white/80 backdrop-blur-[1px] px-6 py-3 rounded-full shadow-lg border border-slate-200 flex items-center gap-2">
+                    <Lock className="h-4 w-4 text-slate-500" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-600">Formulario Bloqueado</span>
+                </div>
+            </div>
+        )}
+
         {/* --- DATOS DEL ESTUDIANTE --- */}
         <div className="space-y-6">
-           {/* 1. CORREO INSTITUCIONAL */}
            <div className="space-y-2">
             <Label className="text-[10px] font-black uppercase tracking-widest text-[#1e3a5f] flex items-center gap-2">
               <Mail className="h-3 w-3 text-[#d4a843]" /> Correo Institucional
@@ -114,19 +131,19 @@ export function SolicitudForm({ user }: { user: any }) {
                 readOnly 
                 className="bg-slate-100 border-[#e2e8f0] font-bold text-[#1e3a5f] cursor-not-allowed italic pr-10 focus-visible:ring-0"
               />
-              <div className="absolute right-3 top-1/2 -translate-y-1/2" title="Usuario Verificado">
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
                 <CheckCircle2 className="h-4 w-4 text-emerald-500" />
               </div>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* 2. TIPO DE BECA */}
+            {/* 🟢 AUTOCAMPLETADO: Tipo de Beca */}
             <div className="space-y-2">
               <Label className="text-[10px] font-black uppercase tracking-widest text-[#1e3a5f] flex items-center gap-2">
                 <BookOpen className="h-3 w-3 text-[#d4a843]" /> Tipo de Beca
               </Label>
-              <Select name="tipoBeca" required disabled={tieneSolicitudActiva}>
+              <Select name="tipoBeca" required disabled={tieneSolicitudActiva} defaultValue={user?.tipo_beca}>
                 <SelectTrigger className="border-[#e2e8f0] bg-white text-xs font-medium text-[#1e3a5f]">
                   <SelectValue placeholder="Seleccionar beneficio..." />
                 </SelectTrigger>
@@ -139,7 +156,6 @@ export function SolicitudForm({ user }: { user: any }) {
               </Select>
             </div>
 
-            {/* 3. PROMEDIO ACADÉMICO */}
             <div className="space-y-2">
               <Label className="text-[10px] font-black uppercase tracking-widest text-[#1e3a5f] flex items-center gap-2">
                 <GraduationCap className="h-3 w-3 text-[#d4a843]" /> Promedio Actual
@@ -165,7 +181,7 @@ export function SolicitudForm({ user }: { user: any }) {
             </div>
           </div>
 
-          {/* 4. MOTIVO DE SOLICITUD */}
+          {/* 🟢 AUTOCAMPLETADO: Motivo */}
           <div className="space-y-2">
             <Label className="text-[10px] font-black uppercase tracking-widest text-[#1e3a5f] flex items-center gap-2">
                <FileText className="h-3 w-3 text-[#d4a843]" /> Motivo de la Solicitud
@@ -176,55 +192,23 @@ export function SolicitudForm({ user }: { user: any }) {
               className="min-h-[120px] border-[#e2e8f0] resize-none text-xs bg-white text-slate-700 leading-relaxed" 
               required 
               disabled={tieneSolicitudActiva} 
+              defaultValue={user?.motivo_solicitud}
             />
           </div>
         </div>
 
-        {/* --- SECCIÓN DE ARCHIVOS --- */}
-        <div className="pt-4 border-t border-gray-100">
-          <h3 className="text-xs font-black text-[#d4a843] uppercase tracking-widest mb-4 flex items-center gap-2">
-            <Upload className="h-4 w-4" /> Carga de Recaudos (PDF o Imagen)
-          </h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            
-            {/* Descarga Planilla */}
-            <div className="md:col-span-2 bg-[#f0f9ff] border border-blue-100 p-4 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4 mb-2">
-              <div className="flex items-center gap-3">
-                <div className="bg-white p-2 rounded-full shadow-sm">
-                  <FileText className="h-6 w-6 text-[#1e3a5f]" />
-                </div>
-                <div>
-                  <p className="text-[11px] font-black uppercase text-[#1e3a5f] tracking-wide">Paso 1: Descargar Formato</p>
-                  <p className="text-[10px] text-slate-500 font-medium leading-tight">Llene y firme la planilla antes de subirla.</p>
-                </div>
-              </div>
-              
-              <a href="/formatos/planilla-solicitud-beca.pdf" download="planilla-solicitud-beca.pdf" target="_blank" rel="noopener noreferrer">
-                <Button type="button" size="sm" className="bg-[#1e3a5f] hover:bg-[#2d4f7c] text-white text-[10px] font-bold uppercase gap-2">
-                  <Download className="h-3.5 w-3.5" />
-                  Descargar Planilla
-                </Button>
-              </a>
-            </div>
+        {/* 🟢 NUEVO COMPONENTE: Lista Dinámica de Materias */}
+        <SolicitudMaterias disabled={tieneSolicitudActiva} materiasGuardadas={user?.materias} />
 
-            {/* Inputs de Archivo - Componente Interno */}
-            <FileInput label="Foto Tipo Carnet" name="foto_carnet" disabled={tieneSolicitudActiva} />
-            <FileInput label="Cédula de Identidad" name="copia_cedula" disabled={tieneSolicitudActiva} />
-            
-            <div className="md:col-span-2">
-              <FileInput label="Planilla de Solicitud (Llenada y Firmada)" name="planilla_inscripcion" disabled={tieneSolicitudActiva} />
-            </div>
-          </div>
-        </div>
+        {/* 🟢 COMPONENTE DE ARCHIVOS: Muestra "Cargado" si ya existe */}
+        <SolicitudArchivos disabled={tieneSolicitudActiva} user={user} />
 
-        {/* BOTÓN DE ENVÍO */}
         <Button 
           type="submit"
           disabled={isPending || tieneSolicitudActiva}
           className={`w-full py-6 shadow-xl transition-all font-black uppercase tracking-widest ${
             tieneSolicitudActiva 
-            ? "bg-gray-300 text-gray-500" 
+            ? "bg-gray-300 text-gray-500 cursor-not-allowed" 
             : "bg-[#1e3a5f] hover:bg-[#152944] text-[#d4a843]"
           }`}
         >
@@ -233,15 +217,5 @@ export function SolicitudForm({ user }: { user: any }) {
         </Button>
       </form>
     </>
-  )
-}
-
-// Subcomponente simple para inputs de archivo (Para no repetir código)
-function FileInput({ label, name, disabled }: any) {
-  return (
-    <div className="p-4 border-2 border-dashed border-gray-100 rounded-xl bg-gray-50/50 hover:bg-white transition-colors">
-      <Label className="text-[9px] font-black uppercase text-gray-500 mb-2 block">{label}</Label>
-      <Input name={name} type="file" accept="application/pdf,image/*" className="text-xs" required disabled={disabled} />
-    </div>
   )
 }
