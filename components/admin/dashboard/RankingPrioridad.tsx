@@ -9,9 +9,12 @@ interface RankingProps {
 
 export function RankingPrioridad({ estudiantes, onNavigate }: RankingProps) {
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden h-full flex flex-col">
-      {/* Cabecera: Ajustada de px-6 py-5 a px-4 py-4 en móvil */}
-      <div className="bg-[#1a2744] px-4 py-4 md:px-6 md:py-5 flex justify-between items-center border-b-4 border-[#d4a843]">
+    /* h-[400px] asegura un tamaño definido en móvil para que el scroll funcione y no se monte. 
+       mb-6 añade separación con el siguiente elemento en la pila vertical. */
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden h-[400px] md:h-full flex flex-col mb-6 md:mb-0">
+      
+      {/* Cabecera */}
+      <div className="bg-[#1a2744] px-4 py-4 md:px-6 md:py-5 flex justify-between items-center border-b-4 border-[#d4a843] shrink-0">
         <div className="flex items-center gap-2">
           <Star className="h-4 w-4 md:h-5 md:w-5 text-[#d4a843] fill-[#d4a843]" />
           <div>
@@ -23,8 +26,8 @@ export function RankingPrioridad({ estudiantes, onNavigate }: RankingProps) {
         </div>
       </div>
       
-      {/* Listado: Ajustado el scroll y los paddings de las filas */}
-      <div className="divide-y divide-slate-100 flex-1 overflow-y-auto custom-scrollbar">
+      {/* Listado con Scroll Independiente */}
+      <div className="divide-y divide-slate-100 flex-1 overflow-y-auto custom-scrollbar bg-white">
         {estudiantes.length > 0 ? estudiantes.map((est, index) => (
           <div 
             key={est.id} 
