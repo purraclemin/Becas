@@ -70,7 +70,7 @@ export function SolicitudArchivos({ disabled, user }: { disabled: boolean, user?
         border: "border-amber-200",
         text: "text-amber-700",
         icon: <Clock className="h-4 w-4 text-amber-600" />,
-        label: "Archivo Cargado (Pendiente)"
+        label: "Archivo Cargado"
       };
     }
     return {
