@@ -1,85 +1,75 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { enviarSolicitud } from "@/lib/ActionsSolicitud"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { SolicitudArchivos } from "./SolicitudArchivos"
-import { SolicitudMaterias } from "./SolicitudMaterias" // Nuevo Componente Importado
-import { 
-  FileText, Send, AlertCircle, Loader2, 
-  Mail, BookOpen, GraduationCap, CheckCircle2,
-  Clock, Lock
-} from "lucide-react"
+import { SolicitudMaterias } from "./SolicitudMaterias"
+import { SolicitudEncuesta } from "./SolicitudEncuesta"
+import { DetallesBeca } from "./DetallesBeca" 
+import { SolicitudBanners } from "./SolicitudBanners"
+import { SolicitudSectionAction } from "./SolicitudSectionAction"
+import { SolicitudEmailField } from "./SolicitudEmailField"
+import { SeccionFormulario } from "./EncuestaUI"
+import { ClipboardList, Edit3, Lock, Loader2, Send } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
-// Recibimos al usuario directamente desde la Page (Server)
 export function SolicitudForm({ user }: { user: any }) {
   const [isPending, setIsPending] = useState(false)
-  // 🟢 AUTOCAMPLETADO: Inicializamos con el promedio de la base de datos si existe
-  const [promedio, setPromedio] = useState(user?.promedio_notas?.toString() || "")
+  const [promedio, setPromedio] = useState(user?.promedio_notas?.toString() || "0.00")
+  
+  // 🟢 NUEVO ESTADO: Controla si el formulario está en modo edición global
+  const [isEditing, setIsEditing] = useState(false)
+  
+  const estatus = user?.estatusBeca || 'ninguna';
+  const esPendiente = estatus === 'Pendiente';
+  const estaBloqueadoTotalmente = estatus === 'En Revisión';
+
+  // Calculamos si el formulario debe comportarse como bloqueado (Read-Only)
+  // Está bloqueado si: (Es revisión administrativa) O (Es pendiente Y NO se ha activado la edición)
+  const isFormDisabled = estaBloqueadoTotalmente || (esPendiente && !isEditing);
+
+  const [seccionAbierta, setSeccionAbierta] = useState<string | null>(esPendiente ? "full" : "datos-beca")
+  
+  // Estado heredado (se mantiene para compatibilidad con hijos aunque no se use activamente en la lógica nueva)
+  const [editingSection, setEditingSection] = useState<number | null>(null)
+
   const { toast } = useToast()
   const router = useRouter()
 
-  // Verificamos si ya tiene una solicitud activa (Pendiente o En Revisión)
-  const tieneSolicitudActiva = user?.estatusBeca === 'Pendiente' || user?.estatusBeca === 'En Revisión';
-  const esRevision = user?.estatusBeca === 'En Revisión';
-
-  // Control del input de promedio (0-20)
-  const handlePromedioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    if (value === "") {
-      setPromedio("")
-      return
-    }
-    const num = parseFloat(value)
-    if (!isNaN(num) && num >= 0 && num <= 20) {
-      setPromedio(value)
-    }
+  const toggleSeccion = (seccion: string) => {
+    if (esPendiente) return;
+    setSeccionAbierta(seccionAbierta === seccion ? null : seccion)
   }
+
+  // 🟢 OPTIMIZACIÓN: useCallback para evitar recrear la función en cada renderizado
+  const handleMateriasChange = useCallback((notas: string[]) => {
+    const notasNumericas = notas.map(n => parseFloat(n)).filter(n => !isNaN(n));
+    setPromedio(notasNumericas.length > 0 
+      ? (notasNumericas.reduce((a, b) => a + b, 0) / notasNumericas.length).toFixed(2) 
+      : "0.00");
+  }, []);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    
-    if (tieneSolicitudActiva) {
-      toast({
-        variant: "destructive",
-        title: "Acción no permitida",
-        description: "Ya tienes una solicitud en curso.",
-      })
-      return
-    }
-
     setIsPending(true)
     const formData = new FormData(e.currentTarget)
-    
-    // Validación final antes de enviar
-    const valorPromedio = parseFloat(promedio)
-    if (isNaN(valorPromedio) || valorPromedio < 0 || valorPromedio > 20) {
-        toast({ variant: "destructive", title: "Promedio inválido", description: "Verifique el valor ingresado." })
-        setIsPending(false)
-        return
-    }
-
-    // Adjuntamos el ID del usuario de forma segura
-    if (user?.id) {
-      formData.append('user_id', user.id)
-    }
+    formData.set('promedio', promedio) 
+    if (user?.id) formData.append('user_id', user.id)
 
     try {
       const result = await enviarSolicitud(formData)
-      
       if (result?.error) {
         toast({ variant: "destructive", title: "Error", description: result.error })
       } else {
-        router.push("/solicitud-enviada") 
+        toast({ title: "Éxito", description: esPendiente ? "Solicitud actualizada correctamente." : "Solicitud enviada." })
+        setIsEditing(false) // Volvemos a bloquear tras guardar
+        router.refresh()
+        if (!esPendiente) router.push("/solicitud-enviada")
       }
     } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: "Ocurrió un error inesperado." })
+      toast({ variant: "destructive", title: "Error", description: "Error de conexión." })
     } finally {
       setIsPending(false)
     }
@@ -87,134 +77,85 @@ export function SolicitudForm({ user }: { user: any }) {
 
   return (
     <>
-      {/* 🟢 AVISO INTEGRADO: Solo muestra un pequeño banner informativo si está en trámite */}
-      {tieneSolicitudActiva && (
-        <div className={`mb-6 p-4 rounded-xl border flex items-center gap-3 animate-in fade-in zoom-in duration-300 ${
-            esRevision ? 'bg-blue-50 border-blue-200 text-blue-900' : 'bg-yellow-50 border-yellow-200 text-yellow-900'
-        }`}>
-            {esRevision ? <Clock className="h-5 w-5 shrink-0" /> : <AlertCircle className="h-5 w-5 shrink-0" />}
-            <div>
-                <p className="text-xs font-black uppercase tracking-wide">
-                    {esRevision ? 'Su Solicitud está en Revisión' : 'Solicitud Pendiente'}
-                </p>
-                <p className="text-[10px] font-medium opacity-80 leading-tight">
-                    Tu trámite está en curso. Los datos no pueden ser modificados en este momento.
-                </p>
+      <SolicitudBanners estatus={estatus} estaBloqueadoTotalmente={estaBloqueadoTotalmente} />
+
+      {/* 🟢 BOTÓN DE DESBLOQUEO MAESTRO (Sin animaciones de entrada para mayor fluidez) */}
+      {esPendiente && !estaBloqueadoTotalmente && !isEditing && (
+        <div className="flex justify-end mb-6">
+            <Button 
+                onClick={() => setIsEditing(true)}
+                className="bg-[#1e3a5f] text-[#d4a843] border border-[#d4a843] hover:bg-[#254674] shadow-lg gap-2 font-black uppercase tracking-widest text-xs h-10 px-6"
+            >
+                <Edit3 className="h-4 w-4" /> Habilitar Edición
+            </Button>
+        </div>
+      )}
+
+      {/* Si se está editando, mostramos un indicador visual (Sin animaciones) */}
+      {isEditing && (
+        <div className="flex justify-end mb-6">
+            <div className="bg-amber-100 text-amber-800 border border-amber-200 px-4 py-2 rounded-lg flex items-center gap-2 text-xs font-bold uppercase tracking-wide">
+                <Lock className="h-3 w-3" /> Modo Edición Activo
             </div>
         </div>
       )}
 
-      {/* FORMULARIO PRINCIPAL */}
-      <form onSubmit={handleSubmit} className={`space-y-6 relative ${tieneSolicitudActiva ? "opacity-60 pointer-events-none select-none" : ""}`}>
+      <form onSubmit={handleSubmit} noValidate className={`space-y-8 relative ${estaBloqueadoTotalmente ? "opacity-75 pointer-events-none" : ""}`}>
         
-        {/* Capa de bloqueo visual si está activo */}
-        {tieneSolicitudActiva && (
-            <div className="absolute inset-0 z-10 flex items-center justify-center">
-                <div className="bg-white/80 backdrop-blur-[1px] px-6 py-3 rounded-full shadow-lg border border-slate-200 flex items-center gap-2">
-                    <Lock className="h-4 w-4 text-slate-500" />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-600">Formulario Bloqueado</span>
-                </div>
-            </div>
-        )}
+        <SolicitudEmailField user={user} />
 
-        {/* --- DATOS DEL ESTUDIANTE --- */}
-        <div className="space-y-6">
-           <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-[#1e3a5f] flex items-center gap-2">
-              <Mail className="h-3 w-3 text-[#d4a843]" /> Correo Institucional
-            </Label>
-            <div className="relative group">
-              <Input 
-                type="email" 
-                name="email_institucional" 
-                defaultValue={user?.email || ""} 
-                readOnly 
-                className="bg-slate-100 border-[#e2e8f0] font-bold text-[#1e3a5f] cursor-not-allowed italic pr-10 focus-visible:ring-0"
-              />
-              <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-              </div>
-            </div>
-          </div>
+        {/* Pasamos isFormDisabled a todos los componentes hijos */}
+        
+        <SolicitudSectionAction sectionNum={1} editingSection={null} setEditingSection={() => {}} estaBloqueadoTotalmente={estaBloqueadoTotalmente} esPendiente={esPendiente}>
+          <SolicitudMaterias disabled={isFormDisabled} materiasGuardadas={user?.materias_registradas} onChangeNotas={handleMateriasChange} />
+        </SolicitudSectionAction>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* 🟢 AUTOCAMPLETADO: Tipo de Beca */}
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-[#1e3a5f] flex items-center gap-2">
-                <BookOpen className="h-3 w-3 text-[#d4a843]" /> Tipo de Beca
-              </Label>
-              <Select name="tipoBeca" required disabled={tieneSolicitudActiva} defaultValue={user?.tipo_beca}>
-                <SelectTrigger className="border-[#e2e8f0] bg-white text-xs font-medium text-[#1e3a5f]">
-                  <SelectValue placeholder="Seleccionar beneficio..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Academica">Beca Académica</SelectItem>
-                  <SelectItem value="Socioeconomica">Beca Socioeconómica</SelectItem>
-                  <SelectItem value="Deportiva">Beca Deportiva</SelectItem>
-                  <SelectItem value="Excelencia">Beca a la Excelencia</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+        <div className="w-full space-y-4">
+            <SolicitudSectionAction sectionNum={2} editingSection={null} setEditingSection={() => {}} estaBloqueadoTotalmente={estaBloqueadoTotalmente} esPendiente={esPendiente}>
+                <DetallesBeca disabled={isFormDisabled} promedio={promedio} user={user} isOpen={true} />
+            </SolicitudSectionAction>
 
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-[#1e3a5f] flex items-center gap-2">
-                <GraduationCap className="h-3 w-3 text-[#d4a843]" /> Promedio Actual
-              </Label>
-              <div className="relative">
-                <Input 
-                  name="promedio" 
-                  type="number" 
-                  step="0.01" 
-                  min={0} 
-                  max={20}
-                  placeholder="Ej: 18.50" 
-                  className="border-[#e2e8f0] bg-white text-xs font-bold text-[#1e3a5f]" 
-                  required
-                  disabled={tieneSolicitudActiva}
-                  value={promedio}
-                  onChange={handlePromedioChange}
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-bold text-slate-400 uppercase tracking-widest pointer-events-none">
-                  PTS
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* 🟢 AUTOCAMPLETADO: Motivo */}
-          <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-[#1e3a5f] flex items-center gap-2">
-               <FileText className="h-3 w-3 text-[#d4a843]" /> Motivo de la Solicitud
-            </Label>
-            <Textarea 
-              name="motivo" 
-              placeholder="Explique detalladamente su situación académica y socioeconómica..." 
-              className="min-h-[120px] border-[#e2e8f0] resize-none text-xs bg-white text-slate-700 leading-relaxed" 
-              required 
-              disabled={tieneSolicitudActiva} 
-              defaultValue={user?.motivo_solicitud}
-            />
-          </div>
+            <SeccionFormulario
+                titulo="Investigación Socioeconómica"
+                icono={ClipboardList}
+                iconoBg="bg-[#d4a843]"
+                iconoColor="text-[#1e3a5f]"
+                estaAbierto={seccionAbierta === "encuesta" || esPendiente}
+                alAlternar={() => toggleSeccion("encuesta")}
+            >
+                {/* SolicitudEncuesta ya no recibe props de edición, solo disabled */}
+                <SolicitudEncuesta disabled={isFormDisabled} user={user} />
+            </SeccionFormulario>
         </div>
 
-        {/* 🟢 NUEVO COMPONENTE: Lista Dinámica de Materias */}
-        <SolicitudMaterias disabled={tieneSolicitudActiva} materiasGuardadas={user?.materias} />
+        <SolicitudArchivos disabled={isFormDisabled} user={user} />
 
-        {/* 🟢 COMPONENTE DE ARCHIVOS: Muestra "Cargado" si ya existe */}
-        <SolicitudArchivos disabled={tieneSolicitudActiva} user={user} />
-
-        <Button 
-          type="submit"
-          disabled={isPending || tieneSolicitudActiva}
-          className={`w-full py-6 shadow-xl transition-all font-black uppercase tracking-widest ${
-            tieneSolicitudActiva 
-            ? "bg-gray-300 text-gray-500 cursor-not-allowed" 
-            : "bg-[#1e3a5f] hover:bg-[#152944] text-[#d4a843]"
-          }`}
-        >
-          {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-          {tieneSolicitudActiva ? "Solicitud en proceso" : isPending ? "Enviando..." : "Enviar Solicitud"}
-        </Button>
+        {/* 🟢 BOTÓN DE ENVÍO INTEGRADO (Sin animaciones pesadas) */}
+        <div className="sticky bottom-6 z-30">
+            <Button 
+                type="submit" 
+                disabled={isPending || isFormDisabled} 
+                className={`w-full py-8 transition-all duration-200 transform active:scale-[0.98] font-black uppercase tracking-widest border-b-4 ${
+                isFormDisabled 
+                    ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed shadow-none" 
+                    : "bg-[#1e3a5f] text-[#d4a843] shadow-[0_20px_50px_rgba(30,58,95,0.3)] hover:bg-[#254674] border-[#d4a843]"
+                }`}
+            >
+                {isPending ? (
+                <Loader2 className="mr-2 h-6 w-6 animate-spin" />
+                ) : (
+                <Send className={`mr-2 h-6 w-6 ${isFormDisabled ? "text-slate-300" : ""}`} />
+                )}
+                
+                {isPending 
+                ? "Procesando..." 
+                : isFormDisabled 
+                    ? "Solicitud Protegida" 
+                    : esPendiente 
+                    ? "Actualizar Solicitud" 
+                    : "Enviar Solicitud de Beca"}
+            </Button>
+        </div>
       </form>
     </>
   )

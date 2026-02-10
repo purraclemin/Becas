@@ -18,6 +18,9 @@ export default function RegistroPage() {
     nombre: "",
     apellido: "",
     cedula: "",
+    sexo: "", // 🟢 Nuevo campo
+    fecha_nacimiento: "", // 🟢 Nuevo campo
+    municipio: "", // 🟢 Nuevo campo
     telefono: "",
     email: "",
     password: "",
@@ -31,9 +34,6 @@ export default function RegistroPage() {
     setForm((prev) => ({ ...prev, [field]: value }))
   }
 
-  /**
-   * Valida la complejidad de la contraseña según estándares modernos
-   */
   const validatePassword = (password: string) => {
     if (password.length < 8) return "La contraseña debe tener al menos 8 caracteres";
     if (!/[A-Z]/.test(password)) return "La contraseña debe incluir al menos una letra mayúscula";
@@ -41,15 +41,13 @@ export default function RegistroPage() {
     return null;
   }
 
-  /**
-   * Valida cada paso antes de avanzar
-   */
   const validateStep = async (currentStep: number) => {
     setError(null)
     
     if (currentStep === 1) {
-      if (!form.nombre || !form.apellido || !form.cedula || !form.telefono || !form.email) {
-        setError("Por favor completa todos los datos personales")
+      // 🟢 Validación extendida para los nuevos campos demográficos
+      if (!form.nombre || !form.apellido || !form.cedula || !form.telefono || !form.email || !form.sexo || !form.fecha_nacimiento || !form.municipio) {
+        setError("Por favor completa todos los datos personales y demográficos")
         return false
       }
       
@@ -58,12 +56,10 @@ export default function RegistroPage() {
         return false
       }
 
-      // VERIFICACIÓN DE DUPLICADOS EN TIEMPO REAL
       setIsPending(true)
       try {
         const check = await checkExistence(form.cedula, form.email)
         if (check.exists) {
-          // Muestra el error específico (Email o Cédula) enviado por el servidor
           setError(check.error || "La cédula o el correo ya están registrados")
           return false
         }
@@ -84,9 +80,6 @@ export default function RegistroPage() {
     return true
   }
 
-  /**
-   * Maneja el proceso de envío final y navegación entre pasos
-   */
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     
@@ -96,7 +89,6 @@ export default function RegistroPage() {
       return
     }
     
-    // VALIDACIONES DE SEGURIDAD (PASO 3)
     const passwordError = validatePassword(form.password);
     if (passwordError) return setError(passwordError);
 

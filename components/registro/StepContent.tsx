@@ -27,7 +27,8 @@ export function StepContent(props: StepContentProps) {
 
   switch (step) {
     case 1:
-      // Paso de Datos Personales (Nombre, Apellido, Cédula, Teléfono, Email)
+      // Paso de Datos Personales (Nombre, Apellido, Cédula, Sexo, Fecha Nac, Municipio, Teléfono, Email)
+      // {...props} envía automáticamente el objeto 'form' actualizado
       return <Step1Personal {...props} />;
     
     case 2:

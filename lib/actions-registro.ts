@@ -4,13 +4,8 @@ import { db } from './db'
 import { cookies } from 'next/headers'
 import bcrypt from 'bcryptjs'
 
-/**
- * FUNCIÓN 1: Validación en tiempo real
- * Se usa para que el formulario se ponga rojo antes de enviar.
- */
 export async function checkExistence(cedula: string, email: string) {
   try {
-    // 1. Verificar Email en la tabla USERS (la fuente de verdad para el login)
     const [emailRows]: any = await db.execute(
       'SELECT id FROM users WHERE email = ? LIMIT 1',
       [email]
@@ -24,7 +19,6 @@ export async function checkExistence(cedula: string, email: string) {
       };
     }
 
-    // 2. Verificar Cédula en la tabla STUDENTS
     const [cedulaRows]: any = await db.execute(
       'SELECT id FROM students WHERE cedula = ? LIMIT 1',
       [cedula]
@@ -45,9 +39,6 @@ export async function checkExistence(cedula: string, email: string) {
   }
 }
 
-/**
- * FUNCIÓN 2: Registro Transaccional (Todo o Nada)
- */
 export async function register(formData: FormData) {
   const nombre = formData.get('nombre') as string
   const apellido = formData.get('apellido') as string
@@ -57,6 +48,11 @@ export async function register(formData: FormData) {
   const telefono = formData.get('telefono') as string
   const carrera = formData.get('carrera') as string
   const semestre = formData.get('semestre') as string
+  
+  // 🟢 Extraer nuevos campos
+  const sexo = formData.get('sexo') as string
+  const fecha_nacimiento = formData.get('fecha_nacimiento') as string
+  const municipio = formData.get('municipio') as string
 
   let connection;
 
@@ -64,37 +60,37 @@ export async function register(formData: FormData) {
     connection = await db.getConnection();
     await connection.beginTransaction();
 
-    // 1. HASH: Encriptar contraseña
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 2. INSERTAR USUARIO (Genera el ID Automático)
     const [userResult]: any = await connection.execute(
       'INSERT INTO users (email, password, role) VALUES (?, ?, ?)',
       [email, hashedPassword, 'estudiante']
     );
 
-    const userId = userResult.insertId; // Ej: 45
+    const userId = userResult.insertId;
 
-    // 3. INSERTAR ESTUDIANTE (Usando el MISMO ID)
-    // Aquí es donde ocurre la magia de la relación 1 a 1 estricta
+    // 🟢 Guardar datos extendidos en la tabla students
     await connection.execute(
-      'INSERT INTO students (id, nombre, apellido, cedula, telefono, carrera, semestre, email) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [userId, nombre, apellido, cedula, telefono, carrera, semestre, email]
+      `INSERT INTO students (
+        id, nombre, apellido, cedula, sexo, fecha_nacimiento, 
+        telefono, carrera, semestre, email, municipio_residencia
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        userId, nombre, apellido, cedula, sexo, fecha_nacimiento, 
+        telefono, carrera, semestre, email, municipio
+      ]
     );
 
     await connection.commit();
 
-    // 4. AUTO-LOGIN (Crear sesión inmediatamente)
     const cookieStore = await cookies();
-    
-    // Usamos 'active_session_' para mantener consistencia con ActionsAuth.ts
     const sessionToken = `active_session_${userId}`;
     
     cookieStore.set('session_token', sessionToken, { 
       httpOnly: true, 
       secure: process.env.NODE_ENV === 'production',
       path: '/',
-      maxAge: 60 * 60 * 24 // 24 horas
+      maxAge: 60 * 60 * 24 
     });
 
     cookieStore.set('user_role', 'estudiante', { 
@@ -109,7 +105,6 @@ export async function register(formData: FormData) {
   } catch (e: any) {
     if (connection) await connection.rollback();
     
-    // Error específico de duplicados (por si alguien envió el formulario dos veces muy rápido)
     if (e.code === 'ER_DUP_ENTRY') {
       return { error: 'Error: El usuario o la cédula ya existen.' };
     }
