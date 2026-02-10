@@ -1,15 +1,19 @@
 "use client"
 
+import { useState } from "react"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
-import { User, BookOpen, Users2, Wallet, Home, HeartPulse, Building2 } from "lucide-react"
+import { User, BookOpen, Users2, Wallet, Home, HeartPulse, Building2, Briefcase } from "lucide-react"
 import { CustomSection, Field, SelectField, CheckItem, RadioItem } from "./EncuestaUI"
 
 // SECCIÓN 3: IDENTIFICACIÓN DEL SOLICITANTE
 export function SeccionIdentificacion({ isOpen, onToggle, disabled, user }: any) {
   const esDatoMaestro = !!user?.tieneDatosRegistro;
+  
+  // 🟢 LÓGICA CONDICIONAL: Estado para mostrar/ocultar bloque laboral
+  const [tieneEmpleo, setTieneEmpleo] = useState(!!user?.socio_trabajo_empresa);
 
   return (
     <CustomSection title="3. Identificación del Solicitante" icon={User} isOpen={isOpen} onToggle={onToggle}>
@@ -48,17 +52,33 @@ export function SeccionIdentificacion({ isOpen, onToggle, disabled, user }: any)
           <Field label="Correo Institucional" name="socio_Institucional" type="email" disabled={disabled} readOnly={esDatoMaestro} defaultValue={user?.socio_Institucional || user?.email_institucional} />
         </div>
 
-        <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-5">
-          <Label className="text-[10px] font-black uppercase text-[#1e3a5f] flex items-center gap-2">
-            <Building2 className="h-3.5 w-3.5 text-[#d4a843]" /> Datos Laborales (Si trabaja)
-          </Label>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <Field label="Nombre de la Empresa" name="socio_trabajo_empresa" disabled={disabled} defaultValue={user?.socio_trabajo_empresa} />
-            <Field label="Dirección Empresa" name="socio_trabajo_dir" disabled={disabled} defaultValue={user?.socio_trabajo_dir} />
-            <Field label="Cargo" name="socio_trabajo_cargo" disabled={disabled} defaultValue={user?.socio_trabajo_cargo} />
-            <Field label="Sueldo Mensual" name="socio_trabajo_sueldo" type="number" disabled={disabled} defaultValue={user?.socio_trabajo_sueldo} />
-          </div>
+        {/* 🟢 PREGUNTA DISPARADORA: Datos Laborales */}
+        <div className="pt-4 border-t border-slate-100">
+          <Label className="text-[9px] font-black uppercase text-slate-500 ml-1">¿Realiza actualmente alguna actividad laboral?</Label>
+          <RadioGroup 
+            defaultValue={tieneEmpleo ? "Si" : "No"} 
+            onValueChange={(v) => setTieneEmpleo(v === "Si")}
+            className="flex gap-4 mt-2" 
+            disabled={disabled}
+          >
+            <RadioItem value="Si" id="trabaja_si" label="Sí, trabajo" />
+            <RadioItem value="No" id="trabaja_no" label="No poseo empleo" />
+          </RadioGroup>
         </div>
+
+        {tieneEmpleo && (
+          <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-5 animate-in fade-in zoom-in-95 duration-300">
+            <Label className="text-[10px] font-black uppercase text-[#1e3a5f] flex items-center gap-2">
+              <Building2 className="h-3.5 w-3.5 text-[#d4a843]" /> Datos Laborales
+            </Label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <Field label="Nombre de la Empresa" name="socio_trabajo_empresa" disabled={disabled} defaultValue={user?.socio_trabajo_empresa} />
+              <Field label="Dirección Empresa" name="socio_trabajo_dir" disabled={disabled} defaultValue={user?.socio_trabajo_dir} />
+              <Field label="Cargo" name="socio_trabajo_cargo" disabled={disabled} defaultValue={user?.socio_trabajo_cargo} />
+              <Field label="Sueldo Mensual" name="socio_trabajo_sueldo" type="number" disabled={disabled} defaultValue={user?.socio_trabajo_sueldo} />
+            </div>
+          </div>
+        )}
     </CustomSection>
   )
 }
@@ -94,7 +114,6 @@ export function SeccionAcademica({ isOpen, onToggle, disabled, user }: any) {
 
           <div className="space-y-3 md:col-span-2">
             <Label className="text-[9px] font-black uppercase text-slate-500 ml-1">Modalidad de Estudio</Label>
-            {/* 🟢 CORRECCIÓN: flex-wrap y gap responsivo para evitar que se pegue 'Virtual' */}
             <RadioGroup defaultValue={user?.socio_modalidad || "P"} className="flex flex-wrap gap-6 items-center" disabled={disabled} name="socio_modalidad">
               <div className="flex items-center space-x-2"><RadioGroupItem value="P" id="mp" /><Label htmlFor="mp" className="text-xs font-bold">Presencial</Label></div>
               <div className="flex items-center space-x-2"><RadioGroupItem value="S" id="ms" /><Label htmlFor="ms" className="text-xs font-bold">Semipresencial</Label></div>
@@ -105,6 +124,7 @@ export function SeccionAcademica({ isOpen, onToggle, disabled, user }: any) {
     </CustomSection>
   )
 }
+
 // SECCIÓN 5: ENTORNO FAMILIAR
 export function SeccionFamiliar({ isOpen, onToggle, disabled, user }: any) {
   return (
@@ -202,18 +222,41 @@ export function SeccionVivienda({ isOpen, onToggle, disabled, user }: any) {
 
 // SECCIÓN 8: SALUD Y ENTORNO FAMILIAR
 export function SeccionSalud({ isOpen, onToggle, disabled, user }: any) {
+  
+  // 🟢 LÓGICA CONDICIONAL: Estado para mostrar/ocultar detalles médicos
+  const [estaEnfermo, setEstaEnfermo] = useState(!!user?.salud_enfermedad_desc || !!user?.salud_tratamiento);
+
   return (
     <CustomSection title="8. Salud y Entorno Familiar" icon={HeartPulse} isOpen={isOpen} onToggle={onToggle}>
         <div className="space-y-5">
-            <div className="space-y-2">
-                <Label className="text-[9px] font-black uppercase text-slate-500 ml-1">¿Padece alguna enfermedad?</Label>
-                <Textarea name="salud_enfermedad_desc" className="text-xs bg-white min-h-[80px] resize-none" placeholder="Especifique si padece alguna condición..." disabled={disabled} defaultValue={user?.salud_enfermedad_desc} />
+            {/* 🟢 PREGUNTA DISPARADORA: Salud */}
+            <div className="pb-2">
+              <Label className="text-[9px] font-black uppercase text-slate-500 ml-1">¿Padece alguna enfermedad o condición médica actualmente?</Label>
+              <RadioGroup 
+                defaultValue={estaEnfermo ? "Si" : "No"} 
+                onValueChange={(v) => setEstaEnfermo(v === "Si")}
+                className="flex gap-4 mt-2" 
+                disabled={disabled}
+              >
+                <RadioItem value="Si" id="salud_si" label="Sí, poseo una condición" />
+                <RadioItem value="No" id="salud_no" label="Gozo de buena salud" />
+              </RadioGroup>
             </div>
-            <div className="space-y-2">
-                <Label className="text-[9px] font-black uppercase text-slate-500 ml-1">¿Recibe algún tratamiento médico?</Label>
-                <Input name="salud_tratamiento" className="text-xs bg-white" placeholder="Indique medicamentos o tratamiento constante" disabled={disabled} defaultValue={user?.salud_tratamiento} />
-            </div>
-            <div className="space-y-2">
+
+            {estaEnfermo && (
+              <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="space-y-2">
+                    <Label className="text-[9px] font-black uppercase text-slate-500 ml-1">Descripción de la enfermedad</Label>
+                    <Textarea name="salud_enfermedad_desc" className="text-xs bg-white min-h-[80px] resize-none" placeholder="Especifique su condición..." disabled={disabled} defaultValue={user?.salud_enfermedad_desc} />
+                </div>
+                <div className="space-y-2">
+                    <Label className="text-[9px] font-black uppercase text-slate-500 ml-1">Tratamiento médico</Label>
+                    <Input name="salud_tratamiento" className="text-xs bg-white" placeholder="Indique medicamentos o tratamiento constante" disabled={disabled} defaultValue={user?.salud_tratamiento} />
+                </div>
+              </div>
+            )}
+
+            <div className="pt-4 border-t border-slate-100 space-y-2">
                 <Label className="text-[9px] font-black uppercase text-slate-500 ml-1">Relación del Grupo Familiar</Label>
                 <RadioGroup defaultValue={user?.socio_relacion_fam || "Buena"} className="flex gap-6" disabled={disabled} name="socio_relacion_fam">
                   <div className="flex items-center space-x-2"><RadioGroupItem value="Buena" id="rb" /><Label htmlFor="rb" className="text-xs font-bold">Buena</Label></div>

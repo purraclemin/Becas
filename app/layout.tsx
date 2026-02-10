@@ -1,6 +1,7 @@
 import React from "react"
 import type { Metadata } from 'next'
 import { Inter, Montserrat } from 'next/font/google'
+import { Toaster } from "@/components/ui/toaster" // 🟢 Importación del Toaster
 
 import './globals.css'
 
@@ -19,7 +20,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      <body className={`${_inter.variable} ${_montserrat.variable} font-sans antialiased`}>{children}</body>
+      <body className={`${_inter.variable} ${_montserrat.variable} font-sans antialiased`}>
+        {children}
+        {/* 🟢 El Toaster actúa como el "contenedor" que muestra los anuncios */}
+        <Toaster /> 
+      </body>
     </html>
   )
 }

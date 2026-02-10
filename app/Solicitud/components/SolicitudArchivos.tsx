@@ -1,14 +1,16 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Upload, CheckCircle2, FileText, Image as ImageIcon, RefreshCcw, Clock, ShieldCheck } from "lucide-react"
+import { Upload, CheckCircle2, FileText, Image as ImageIcon, RefreshCcw, Clock, ShieldCheck, AlertTriangle } from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { useToast } from "@/hooks/use-toast"
 
 export function SolicitudArchivos({ disabled, user }: { disabled: boolean, user?: any }) {
   const [reemplazarFoto, setReemplazarFoto] = useState(false);
   const [reemplazarCedula, setReemplazarCedula] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (disabled) {
@@ -17,7 +19,39 @@ export function SolicitudArchivos({ disabled, user }: { disabled: boolean, user?
     }
   }, [disabled]);
 
-  // Lógica de colores según el estado
+  // 🟢 FUNCIÓN DE VALIDACIÓN: Revisa peso y formato
+  const validarArchivo = (e: React.ChangeEvent<HTMLInputElement>, tipo: 'foto' | 'documento') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const MAX_SIZE = 2 * 1024 * 1024; // 2MB
+    
+    // Alerta específica de peso
+    if (file.size > MAX_SIZE) {
+      toast({
+        variant: "destructive",
+        title: "¡Error de carga!",
+        description: "Este archivo pesa más de 2mb. Por favor, sube uno más ligero.",
+      });
+      e.target.value = ""; // Limpiar el input para que no se envíe
+      return;
+    }
+
+    const formatosFoto = ['image/jpeg', 'image/png', 'image/jpg'];
+    const formatosDoc = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+    const formatosPermitidos = tipo === 'foto' ? formatosFoto : formatosDoc;
+
+    if (!formatosPermitidos.includes(file.type)) {
+      toast({
+        variant: "destructive",
+        title: "Formato no válido",
+        description: tipo === 'foto' ? "Solo se permiten imágenes (JPG, PNG)." : "Solo se permiten PDF o imágenes.",
+      });
+      e.target.value = "";
+      return;
+    }
+  };
+
   const estatus = user?.estatusBeca || "Pendiente";
   
   const getStatusStyles = () => {
@@ -39,7 +73,6 @@ export function SolicitudArchivos({ disabled, user }: { disabled: boolean, user?
         label: "Archivo Cargado (Pendiente)"
       };
     }
-    // Default o Aprobado
     return {
       bg: "bg-emerald-50/80",
       border: "border-emerald-200",
@@ -52,7 +85,7 @@ export function SolicitudArchivos({ disabled, user }: { disabled: boolean, user?
   const statusStyle = getStatusStyles();
 
   return (
-    <div className={`pt-8 border-t-2 border-slate-100 mt-6 animate-in fade-in duration-700 delay-300 transition-opacity ${disabled ? "opacity-80" : "opacity-100"}`}>
+    <div className={`pt-8 border-t-2 border-slate-100 mt-6 transition-opacity ${disabled ? "opacity-80" : "opacity-100"}`}>
       <h3 className="text-xs font-black text-[#d4a843] uppercase tracking-widest mb-6 flex items-center gap-2">
         <Upload className="h-4 w-4" /> Recaudos Digitales
       </h3>
@@ -90,11 +123,13 @@ export function SolicitudArchivos({ disabled, user }: { disabled: boolean, user?
                 )}
             </div>
           ) : (
-            <div className="space-y-2 animate-in fade-in zoom-in-95 duration-300">
+            <div className="space-y-2">
                 <Input 
                     name="foto_carnet" 
                     type="file" 
-                    accept="image/*" 
+                    accept="image/jpeg,image/png,image/jpg" 
+                    // 🟢 CONEXIÓN AL DISPARADOR:
+                    onChange={(e) => validarArchivo(e, 'foto')}
                     className={`text-[10px] file:bg-[#1e3a5f] file:text-white file:border-0 file:rounded-lg file:px-2 file:py-1 file:text-[9px] file:font-bold file:uppercase file:mr-2 transition-colors ${
                         disabled 
                         ? "bg-slate-200/50 text-slate-400 cursor-not-allowed file:bg-slate-300" 
@@ -104,19 +139,14 @@ export function SolicitudArchivos({ disabled, user }: { disabled: boolean, user?
                     disabled={disabled} 
                 />
                 {reemplazarFoto && (
-                    <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => setReemplazarFoto(false)}
-                        className="text-[9px] h-6 text-slate-400 hover:text-slate-600 w-full"
-                    >
-                        Cancelar cambio
-                    </Button>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setReemplazarFoto(false)} className="text-[9px] h-6 text-slate-400 w-full">Cancelar cambio</Button>
                 )}
             </div>
           )}
-          <p className="text-[9px] text-slate-400 mt-2 font-medium italic text-right">Formato: JPG, PNG</p>
+          <div className="flex justify-end items-center gap-1.5 mt-2">
+            <AlertTriangle className="h-2.5 w-2.5 text-amber-500" />
+            <p className="text-[9px] text-slate-400 font-medium italic">Límite 2mb. JPG, PNG</p>
+          </div>
         </div>
 
         {/* Cédula de Identidad */}
@@ -150,11 +180,13 @@ export function SolicitudArchivos({ disabled, user }: { disabled: boolean, user?
                 )}
             </div>
           ) : (
-            <div className="space-y-2 animate-in fade-in zoom-in-95 duration-300">
+            <div className="space-y-2">
                 <Input 
                     name="copia_cedula" 
                     type="file" 
-                    accept="application/pdf,image/*" 
+                    accept="application/pdf,image/jpeg,image/png,image/jpg" 
+                    // 🟢 CONEXIÓN AL DISPARADOR:
+                    onChange={(e) => validarArchivo(e, 'documento')}
                     className={`text-[10px] file:bg-[#1e3a5f] file:text-white file:border-0 file:rounded-lg file:px-2 file:py-1 file:text-[9px] file:font-bold file:uppercase file:mr-2 transition-colors ${
                         disabled 
                         ? "bg-slate-200/50 text-slate-400 cursor-not-allowed file:bg-slate-300" 
@@ -164,19 +196,14 @@ export function SolicitudArchivos({ disabled, user }: { disabled: boolean, user?
                     disabled={disabled} 
                 />
                 {reemplazarCedula && (
-                    <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => setReemplazarCedula(false)}
-                        className="text-[9px] h-6 text-slate-400 hover:text-slate-600 w-full"
-                    >
-                        Cancelar cambio
-                    </Button>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setReemplazarCedula(false)} className="text-[9px] h-6 text-slate-400 w-full">Cancelar cambio</Button>
                 )}
             </div>
           )}
-          <p className="text-[9px] text-slate-400 mt-2 font-medium italic text-right">Formato: PDF o Imagen Clara</p>
+          <div className="flex justify-end items-center gap-1.5 mt-2">
+            <AlertTriangle className="h-2.5 w-2.5 text-amber-500" />
+            <p className="text-[9px] text-slate-400 font-medium italic">Límite 2mb. PDF, JPG, PNG</p>
+          </div>
         </div>
 
       </div>

@@ -12,27 +12,27 @@ import { SolicitudBanners } from "./SolicitudBanners"
 import { SolicitudSectionAction } from "./SolicitudSectionAction"
 import { SolicitudEmailField } from "./SolicitudEmailField"
 import { SeccionFormulario } from "./EncuestaUI"
-import { ClipboardList, Edit3, Lock, Loader2, Send } from "lucide-react"
+import { ClipboardList, Edit3, Lock, Loader2, Send, FileDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
+
+// 🟢 IMPORTS PARA EL PDF PROFESIONAL
+import { PDFDownloadLink } from "@react-pdf/renderer"
+import { PlanillaSolicitud } from "@/components/pdf/PlanillaSolicitud"
 
 export function SolicitudForm({ user }: { user: any }) {
   const [isPending, setIsPending] = useState(false)
   const [promedio, setPromedio] = useState(user?.promedio_notas?.toString() || "0.00")
   
-  // 🟢 NUEVO ESTADO: Controla si el formulario está en modo edición global
   const [isEditing, setIsEditing] = useState(false)
   
   const estatus = user?.estatusBeca || 'ninguna';
   const esPendiente = estatus === 'Pendiente';
   const estaBloqueadoTotalmente = estatus === 'En Revisión';
 
-  // Calculamos si el formulario debe comportarse como bloqueado (Read-Only)
-  // Está bloqueado si: (Es revisión administrativa) O (Es pendiente Y NO se ha activado la edición)
   const isFormDisabled = estaBloqueadoTotalmente || (esPendiente && !isEditing);
 
   const [seccionAbierta, setSeccionAbierta] = useState<string | null>(esPendiente ? "full" : "datos-beca")
   
-  // Estado heredado (se mantiene para compatibilidad con hijos aunque no se use activamente en la lógica nueva)
   const [editingSection, setEditingSection] = useState<number | null>(null)
 
   const { toast } = useToast()
@@ -43,7 +43,6 @@ export function SolicitudForm({ user }: { user: any }) {
     setSeccionAbierta(seccionAbierta === seccion ? null : seccion)
   }
 
-  // 🟢 OPTIMIZACIÓN: useCallback para evitar recrear la función en cada renderizado
   const handleMateriasChange = useCallback((notas: string[]) => {
     const notasNumericas = notas.map(n => parseFloat(n)).filter(n => !isNaN(n));
     setPromedio(notasNumericas.length > 0 
@@ -64,7 +63,7 @@ export function SolicitudForm({ user }: { user: any }) {
         toast({ variant: "destructive", title: "Error", description: result.error })
       } else {
         toast({ title: "Éxito", description: esPendiente ? "Solicitud actualizada correctamente." : "Solicitud enviada." })
-        setIsEditing(false) // Volvemos a bloquear tras guardar
+        setIsEditing(false) 
         router.refresh()
         if (!esPendiente) router.push("/solicitud-enviada")
       }
@@ -79,19 +78,41 @@ export function SolicitudForm({ user }: { user: any }) {
     <>
       <SolicitudBanners estatus={estatus} estaBloqueadoTotalmente={estaBloqueadoTotalmente} />
 
-      {/* 🟢 BOTÓN DE DESBLOQUEO MAESTRO (Sin animaciones de entrada para mayor fluidez) */}
-      {esPendiente && !estaBloqueadoTotalmente && !isEditing && (
-        <div className="flex justify-end mb-6">
-            <Button 
-                onClick={() => setIsEditing(true)}
-                className="bg-[#1e3a5f] text-[#d4a843] border border-[#d4a843] hover:bg-[#254674] shadow-lg gap-2 font-black uppercase tracking-widest text-xs h-10 px-6"
+      {/* 🟢 ACCIONES DE CABECERA (PDF + EDICIÓN) */}
+      <div className="flex justify-end items-center gap-3 mb-6">
+          
+          {/* BOTÓN DE DESCARGA PROFESIONAL */}
+          {!isEditing && user?.id && (
+            <PDFDownloadLink
+              document={<PlanillaSolicitud user={user} promedio={promedio} />}
+              fileName={`Planilla_Solicitud_${user?.cedula || 'UNIMAR'}.pdf`}
+              className="inline-flex items-center justify-center rounded-md text-xs font-black uppercase tracking-widest h-10 px-6 py-2 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-white text-[#1e3a5f] border border-[#1e3a5f]/20 hover:bg-slate-50 hover:border-[#1e3a5f] shadow-sm gap-2"
             >
-                <Edit3 className="h-4 w-4" /> Habilitar Edición
-            </Button>
-        </div>
-      )}
+              {({ blob, url, loading, error }) =>
+                loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" /> Generando...
+                  </>
+                ) : (
+                  <>
+                    <FileDown className="h-4 w-4" /> Descargar Planilla
+                  </>
+                )
+              }
+            </PDFDownloadLink>
+          )}
 
-      {/* Si se está editando, mostramos un indicador visual (Sin animaciones) */}
+          {/* BOTÓN DE DESBLOQUEO MAESTRO */}
+          {esPendiente && !estaBloqueadoTotalmente && !isEditing && (
+              <Button 
+                  onClick={() => setIsEditing(true)}
+                  className="bg-[#1e3a5f] text-[#d4a843] border border-[#d4a843] hover:bg-[#254674] shadow-lg gap-2 font-black uppercase tracking-widest text-xs h-10 px-6"
+              >
+                  <Edit3 className="h-4 w-4" /> Habilitar Edición
+              </Button>
+          )}
+      </div>
+
       {isEditing && (
         <div className="flex justify-end mb-6">
             <div className="bg-amber-100 text-amber-800 border border-amber-200 px-4 py-2 rounded-lg flex items-center gap-2 text-xs font-bold uppercase tracking-wide">
@@ -103,8 +124,6 @@ export function SolicitudForm({ user }: { user: any }) {
       <form onSubmit={handleSubmit} noValidate className={`space-y-8 relative ${estaBloqueadoTotalmente ? "opacity-75 pointer-events-none" : ""}`}>
         
         <SolicitudEmailField user={user} />
-
-        {/* Pasamos isFormDisabled a todos los componentes hijos */}
         
         <SolicitudSectionAction sectionNum={1} editingSection={null} setEditingSection={() => {}} estaBloqueadoTotalmente={estaBloqueadoTotalmente} esPendiente={esPendiente}>
           <SolicitudMaterias disabled={isFormDisabled} materiasGuardadas={user?.materias_registradas} onChangeNotas={handleMateriasChange} />
@@ -123,21 +142,19 @@ export function SolicitudForm({ user }: { user: any }) {
                 estaAbierto={seccionAbierta === "encuesta" || esPendiente}
                 alAlternar={() => toggleSeccion("encuesta")}
             >
-                {/* SolicitudEncuesta ya no recibe props de edición, solo disabled */}
                 <SolicitudEncuesta disabled={isFormDisabled} user={user} />
             </SeccionFormulario>
         </div>
 
         <SolicitudArchivos disabled={isFormDisabled} user={user} />
 
-        {/* 🟢 BOTÓN DE ENVÍO INTEGRADO (Sin animaciones pesadas) */}
         <div className="sticky bottom-6 z-30">
             <Button 
                 type="submit" 
                 disabled={isPending || isFormDisabled} 
                 className={`w-full py-8 transition-all duration-200 transform active:scale-[0.98] font-black uppercase tracking-widest border-b-4 ${
                 isFormDisabled 
-                    ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed shadow-none" 
+                    ? "bg-slate-100 text-slate-400 border-slate-200 shadow-none" 
                     : "bg-[#1e3a5f] text-[#d4a843] shadow-[0_20px_50px_rgba(30,58,95,0.3)] hover:bg-[#254674] border-[#d4a843]"
                 }`}
             >
