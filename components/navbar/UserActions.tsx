@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
 import { User, LayoutDashboard, LogOut } from "lucide-react"
 import { logout } from "@/lib/ActionsAuth"
 
@@ -37,7 +39,7 @@ export function UserActions({ user, loading }: UserActionsProps) {
     }
   }
 
-  // 🟢 LÓGICA DE ESTILOS DINÁMICOS PARA EL BADGE
+  // 🟢 LÓGICA DE ESTILOS DINÁMICOS ACTUALIZADA
   const getStatusStyles = (status: string) => {
     if (!status) return "bg-gray-50 text-gray-400 border-gray-100 font-black"
     const s = status.toLowerCase().trim()
@@ -46,16 +48,18 @@ export function UserActions({ user, loading }: UserActionsProps) {
     if (s === 'aprobada' || s === 'aprobado') return "bg-emerald-50 text-emerald-700 border-emerald-200 font-black"
     if (s === 'rechazada' || s === 'rechazado') return "bg-red-50 text-red-700 border-red-200 font-black"
     
-    // 2. ESTADOS TITILANTES (ANIMATE-PULSE)
-    // Revisión Especial (Naranja)
+    // 2. NUEVO ESTADO: RENOVACIÓN (VIOLETA)
+    if (s.includes('renovación') || s.includes('renovacion')) {
+      return "bg-violet-50 text-violet-700 border-violet-200 font-black animate-pulse shadow-[0_0_8px_rgba(139,92,246,0.3)]"
+    }
+    
+    // 3. ESTADOS TITILANTES
     if (s.includes('especial')) {
       return "bg-orange-50 text-orange-700 border-orange-200 font-black animate-pulse shadow-[0_0_8px_rgba(249,115,22,0.2)]"
     }
-    // En Revisión (Azul)
     if (s.includes('revisión') || s.includes('revision')) {
       return "bg-blue-50 text-blue-700 border-blue-200 font-black animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.2)]"
     }
-    // Pendiente (Amarillo)
     if (s === 'pendiente') {
       return "bg-amber-50 text-amber-700 border-amber-200 font-black animate-pulse shadow-[0_0_8px_rgba(212,168,67,0.2)]"
     }
@@ -66,15 +70,17 @@ export function UserActions({ user, loading }: UserActionsProps) {
   const userStatus = user?.estatus || user?.status || null;
   const s = userStatus?.toLowerCase().trim() || '';
   
-  // Determinamos si debe mostrar el punto titilante
-  const shouldPulse = s === 'pendiente' || s.includes('revisión') || s.includes('revision');
+  // Determinamos si debe mostrar el punto titilante (Añadimos renovación)
+  const shouldPulse = s === 'pendiente' || s.includes('revisión') || s.includes('revision') || s.includes('renovacion');
   
-  // Colores dinámicos para el punto titilante
-  const dotColor = s.includes('especial') ? 'bg-orange-600' : 
+  // Colores dinámicos para el punto
+  const dotColor = s.includes('renovacion') ? 'bg-violet-600' :
+                   s.includes('especial') ? 'bg-orange-600' : 
                    (s.includes('revisión') || s.includes('revision')) ? 'bg-blue-600' :
                    s === 'pendiente' ? 'bg-amber-600' : 'bg-gray-400';
 
-  const dotPingColor = s.includes('especial') ? 'bg-orange-400' : 
+  const dotPingColor = s.includes('renovacion') ? 'bg-violet-400' :
+                       s.includes('especial') ? 'bg-orange-400' : 
                        (s.includes('revisión') || s.includes('revision')) ? 'bg-blue-400' :
                        s === 'pendiente' ? 'bg-amber-400' : 'bg-gray-300';
 
@@ -99,11 +105,10 @@ export function UserActions({ user, loading }: UserActionsProps) {
                 </p>
                 <div className="flex items-center gap-1 mt-0.5">
                   <span className="text-[6px] md:text-[7px] text-[#1e3a5f] font-black uppercase bg-gray-100 px-1 py-0.5 rounded leading-none">
-                    {user.trimestre || "0"}° Trimestre.
+                    {user.trimestre || "0"}° Trim.
                   </span>
                   
                   <div className="flex items-center gap-1">
-                    {/* 🟢 PUNTO TITILANTE CON COLOR DINÁMICO */}
                     {shouldPulse && (
                       <span className="relative flex h-1.5 w-1.5">
                         <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${dotPingColor} opacity-75`}></span>

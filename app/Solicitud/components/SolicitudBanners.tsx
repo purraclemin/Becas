@@ -4,14 +4,14 @@ import { Lock, AlertCircle, FileSearch, ShieldAlert } from "lucide-react"
 
 interface SolicitudBannersProps {
   estatus: string;
-  estaBloqueadoTotalmente: boolean;
+  // Se elimina 'estaBloqueadoTotalmente' por ser código basura no utilizado.
 }
 
-export function SolicitudBanners({ estatus, estaBloqueadoTotalmente }: SolicitudBannersProps) {
-  // 🟢 Determinamos si se debe mostrar el banner para los estados de trámite activos
+export function SolicitudBanners({ estatus }: SolicitudBannersProps) {
+  // 🟢 Solo mostramos banners para estados de trámite activos en esta página.
   const mostrarBanner = ['Pendiente', 'En Revisión', 'Revisión Especial'].includes(estatus);
 
-  // 🟢 CONFIGURACIÓN DE ESTILOS Y CONTENIDO SEGÚN ESTATUS
+  // 🟢 CONFIGURACIÓN DE ESTILOS Y CONTENIDO
   const getConfig = () => {
     switch (estatus) {
       case 'En Revisión':
@@ -55,7 +55,6 @@ export function SolicitudBanners({ estatus, estaBloqueadoTotalmente }: Solicitud
 
   return (
     <>
-      {/* 🟢 BANNER DINÁMICO: Adaptado para el flujo de solicitudes de UNIMAR */}
       {mostrarBanner && (
         <div className={`mb-6 p-6 border-2 border-dashed rounded-3xl flex flex-col items-center justify-center text-center shadow-sm animate-in fade-in duration-500 ${config.borde} ${config.fondo}`}>
           
@@ -64,7 +63,7 @@ export function SolicitudBanners({ estatus, estaBloqueadoTotalmente }: Solicitud
             <config.Icono className={`h-5 w-5 ${config.iconoColor}`} />
           </div>
 
-          {/* Textos informativos del estatus de la solicitud */}
+          {/* Textos informativos */}
           <h3 className={`text-sm font-black uppercase tracking-widest ${config.textoTitulo}`}>
             {config.titulo}
           </h3>

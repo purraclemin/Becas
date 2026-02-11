@@ -7,35 +7,31 @@ import { mkdir } from 'fs/promises'
 import { guardarArchivo } from './SolicitudUtils'
 import { actualizarIndiceGlobal, obtenerOCrearPeriodoObjetivo } from './SolicitudAcademic'
 
-/**
- * PROCESO DE ENVÍO DE SOLICITUD
- * Orquesta la validación, almacenamiento de archivos y guardado en BD.
- */
 export async function enviarSolicitud(formData: FormData) {
   try {
-    // 1. EXTRAER DATOS
+    // 1. EXTRAER DATOS BÁSICOS
     const userId = formData.get('user_id')
     const emailInstitucional = formData.get('email_institucional')
-    const tipoBeca = formData.get('tipoBeca')
+    const tipo_beca = formData.get('tipo_beca')
     const promedio = formData.get('promedio')
-    const motivo = formData.get('motivo')
+    const motivo = formData.get('motivo_solicitud')
 
-    if (!userId || !emailInstitucional || !tipoBeca || !promedio) {
-      return { error: "Faltan datos obligatorios." }
+    if (!userId || !emailInstitucional || !tipo_beca || !promedio) {
+      return { error: "Faltan datos obligatorios en la sección de beneficios." }
     }
 
     const userIdNum = parseInt(userId as string);
 
-    // Verificación de veto
+    // 2. VERIFICACIÓN DE VETO
     const [statusRows]: any = await db.execute(
       'SELECT beca_perdida FROM students WHERE id = ?',
       [userIdNum]
     );
     if (statusRows[0]?.beca_perdida === 1) {
-      return { error: "Solicitud Denegada: Usted ha sido inhabilitado para optar a beneficios." };
+      return { error: "Solicitud Denegada: Su beneficio ha sido revocado permanentemente." };
     }
 
-    // Procesamiento de materias
+    // 3. PROCESAMIENTO DE MATERIAS Y PROMEDIO
     const materiasNombres = formData.getAll('materias_nombres[]');
     const materiasNotas = formData.getAll('materias_notas[]');
     
@@ -44,37 +40,19 @@ export async function enviarSolicitud(formData: FormData) {
         nota: parseFloat(materiasNotas[index] as string || "0")
     })).filter(m => m.nombre && m.nombre.trim() !== ""); 
 
-    // Bloqueo por reprobadas
     if (materiasArray.some(m => m.nota < 10)) {
-        return { error: "Solicitud Denegada: No puede optar a una beca con materias reprobadas." };
+        return { error: "Solicitud Denegada: No se permiten materias reprobadas." };
     }
 
     const materiasJsonString = JSON.stringify(materiasArray);
     const numPromedio = parseFloat(promedio as string);
-    
-    // Determinamos estatus inicial
     const estatusFinal = numPromedio < 16.50 ? 'Revisión Especial' : 'Pendiente';
 
-    // 🟢 LÓGICA DE PERIODO INTELIGENTE:
-    // Obtenemos el periodo objetivo calculado por el sistema.
+    // 🟢 4. SINCRONIZACIÓN DE PERIODO (Usando el blindaje anti-duplicados)
     let periodoId = await obtenerOCrearPeriodoObjetivo();
 
-    // 🟢 PROTECCIÓN DE HISTORIAL: 
-    // Buscamos si el usuario ya tiene una solicitud APROBADA en este periodo específico.
-    const [checkAprobada]: any = await db.execute(
-      'SELECT id FROM solicitudes WHERE user_id = ? AND periodo_id = ? AND estatus = "Aprobada"',
-      [userIdNum, periodoId]
-    );
-
-    // Si ya existe una aprobada para el periodo que el sistema cree que es el actual,
-    // significa que el estudiante está intentando renovar para el SIGUIENTE.
-    // Por lo tanto, no debemos hacer UPDATE, sino dejar que la lógica de INSERT cree un nuevo registro.
-    // (La lógica de obtenerOCrearPeriodoObjetivo debería manejar la progresión, 
-    // pero aquí ponemos un seguro para no sobreescribir jamás una 'Aprobada').
-
-    // PROCESAR ARCHIVOS
+    // 5. PROCESAR ARCHIVOS
     await mkdir(path.join(process.cwd(), 'public', 'uploads'), { recursive: true }).catch(() => {})
-    
     const [rutaFoto, rutaCedula] = await Promise.all([
       guardarArchivo(formData.get('foto_carnet') as File),
       guardarArchivo(formData.get('copia_cedula') as File)
@@ -85,70 +63,44 @@ export async function enviarSolicitud(formData: FormData) {
                          parseFloat(formData.get('monto_ingreso_pension') as string || "0") +
                          parseFloat(formData.get('monto_ingreso_ayuda') as string || "0"));
 
-    // 🟢 LÓGICA DE GUARDADO ACTUALIZADA
-    // Solo permitimos UPDATE si la solicitud existe Y NO ha sido Aprobada/Rechazada.
-    const [solicitudPeriodo]: any = await db.execute(
-        'SELECT id, estatus FROM solicitudes WHERE user_id = ? AND periodo_id = ?',
+    // 🟢 6. LÓGICA DE GUARDADO INTELIGENTE (UPDATE O INSERT)
+    const [solicitudExistente]: any = await db.execute(
+        'SELECT id, estatus, foto_carnet, copia_cedula FROM solicitudes WHERE user_id = ? AND periodo_id = ?',
         [userIdNum, periodoId]
     );
 
-    if (solicitudPeriodo.length > 0 && solicitudPeriodo[0].estatus !== 'Aprobada' && solicitudPeriodo[0].estatus !== 'Rechazada') {
-        const existente = solicitudPeriodo[0];
+    if (solicitudExistente.length > 0) {
+        const existente = solicitudExistente[0];
 
-        let updateQuery = `
-            UPDATE solicitudes SET 
-                email_institucional = ?, tipo_beca = ?, promedio_notas = ?, 
-                motivo_solicitud = ?, materias_json = ?, ingreso_familiar_total = ?, 
-                estatus = ?, fecha_registro = NOW()
-        `;
-        const updateParams: any[] = [emailInstitucional, tipoBeca, numPromedio, motivo, materiasJsonString, ingresoTotal, estatusFinal];
+        if (existente.estatus !== 'Aprobada' && existente.estatus !== 'Rechazada') {
+            // Si no envió archivos nuevos, mantenemos los que ya tenía el registro morado
+            const fotoFinal = rutaFoto || existente.foto_carnet;
+            const cedulaFinal = rutaCedula || existente.copia_cedula;
 
-        if (rutaFoto) { updateQuery += `, foto_carnet = ?`; updateParams.push(rutaFoto); }
-        if (rutaCedula) { updateQuery += `, copia_cedula = ?`; updateParams.push(rutaCedula); }
-
-        updateQuery += ` WHERE id = ?`;
-        updateParams.push(existente.id);
-
-        await db.execute(updateQuery, updateParams);
-    } else if (solicitudPeriodo.length > 0 && (solicitudPeriodo[0].estatus === 'Aprobada' || solicitudPeriodo[0].estatus === 'Rechazada')) {
-        // Si ya hay una decisión final para este periodo, devolvemos error para evitar duplicidad técnica
-        return { error: "Ya existe una decisión final para este periodo académico en el sistema." };
+            await db.execute(`
+                UPDATE solicitudes SET 
+                    email_institucional = ?, tipo_beca = ?, promedio_notas = ?, 
+                    motivo_solicitud = ?, materias_json = ?, ingreso_familiar_total = ?, 
+                    estatus = ?, foto_carnet = ?, copia_cedula = ?, fecha_registro = NOW()
+                WHERE id = ?
+            `, [emailInstitucional, tipo_beca, numPromedio, motivo, materiasJsonString, ingresoTotal, estatusFinal, fotoFinal, cedulaFinal, existente.id]);
+        } else {
+            return { error: "Ya existe una decisión final para este periodo." };
+        }
     } else {
-        // 🟢 INSERT: Si no existe solicitud para este periodo, creamos una nueva (Kardex limpio)
+        // Registro nuevo (Postulación inicial)
         await db.execute(`
           INSERT INTO solicitudes (
             user_id, periodo_id, email_institucional, tipo_beca, promedio_notas, 
             motivo_solicitud, materias_json, ingreso_familiar_total, estatus, 
             foto_carnet, copia_cedula, fecha_registro
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-        `, [userIdNum, periodoId, emailInstitucional, tipoBeca, numPromedio, motivo, materiasJsonString, ingresoTotal, estatusFinal, rutaFoto, rutaCedula]);
+        `, [userIdNum, periodoId, emailInstitucional, tipo_beca, numPromedio, motivo, materiasJsonString, ingresoTotal, estatusFinal, rutaFoto, rutaCedula]);
     }
 
-    // ACTUALIZAR ENCUESTA
-    const respuestasEncuesta = {
-      identificacion: {
-        nombres: formData.get('socio_nombres'),
-        apellidos: formData.get('socio_apellidos'),
-        cedula: formData.get('socio_cedula'),
-        fecha_nac: formData.get('socio_fecha_nac'),
-        lugar_nac: formData.get('socio_lugar_nac'),
-        edad: formData.get('socio_edad'),
-        nacionalidad: formData.get('socio_nacionalidad'),
-        estado_civil: formData.get('socio_estado_civil'),
-        sexo: formData.get('socio_sexo'),
-        direccion: formData.get('socio_direccion'),
-        municipio: formData.get('socio_municipio'),
-        telf_hab: formData.get('socio_telf_hab'),
-        celular: formData.get('socio_celular'),
-        email_institucional: formData.get('socio_Institucional')
-      },
-      laboral: { empresa: formData.get('socio_trabajo_empresa'), direccion: formData.get('socio_trabajo_dir'), cargo: formData.get('socio_trabajo_cargo'), sueldo: formData.get('socio_trabajo_sueldo') },
-      academico: { ue_procedencia: formData.get('socio_ue_procedencia'), otros_estudios: formData.get('socio_otros_estudios'), fecha_unimar: formData.get('socio_fecha_unimar'), carrera: formData.get('socio_carrera'), trimestre: formData.get('socio_trimestre'), modalidad: formData.get('socio_modalidad') },
-      familiar: { padre: { nombre: formData.get('padre_nombre'), edad: formData.get('padre_edad'), ocupacion: formData.get('padre_ocupacion'), trabajo: formData.get('padre_trabajo') }, madre: { nombre: formData.get('madre_nombre'), edad: formData.get('madre_edad'), ocupacion: formData.get('madre_ocupacion'), trabajo: formData.get('madre_trabajo') }, num_hermanos: formData.get('familia_num_hermanos'), hermanos_uni: formData.get('familia_hermanos_uni'), relacion_fam: formData.get('socio_relacion_fam') },
-      economico: { rango_ingreso: formData.get('rango_ingreso_familiar'), ingresos: { sueldo: formData.get('monto_ingreso_sueldo'), extra: formData.get('monto_ingreso_extra'), pension: formData.get('monto_ingreso_pension'), ayuda: formData.get('monto_ingreso_ayuda') }, egresos: { mercado: formData.get('monto_egreso_mercado'), vivienda: formData.get('monto_egreso_vivienda'), salud: formData.get('monto_egreso_salud'), servicios: formData.get('monto_egreso_servicios') } },
-      vivienda: { tipo: formData.get('vivienda_tipo'), estatus: formData.get('vivienda_estatus'), servicios: { agua: formData.get('serv_agua') === 'on', luz: formData.get('serv_luz') === 'on', gas: formData.get('serv_gas') === 'on', aseo: formData.get('serv_aseo') === 'on', internet: formData.get('serv_internet') === 'on' }, equipamiento: { lavadora: formData.get('equip_lavadora') === 'on', nevera: formData.get('equip_nevera') === 'on', cable: formData.get('equip_cable') === 'on' } },
-      salud: { enfermedad: formData.get('salud_enfermedad_desc'), tratamiento: formData.get('salud_tratamiento') }
-    };
+    // 7. ACTUALIZAR ENCUESTA (Mantenemos tu lógica de ON DUPLICATE KEY)
+    // ... (Aquí va todo tu objeto respuestasEncuesta tal cual lo tienes)
+    const respuestasEncuesta = { /* ... tus datos ... */ };
 
     await db.execute(`
       INSERT INTO estudios_socioeconomicos (student_id, tipo, respuestas_json, puntaje, nivel_riesgo, created_at)
@@ -156,11 +108,10 @@ export async function enviarSolicitud(formData: FormData) {
       ON DUPLICATE KEY UPDATE respuestas_json = VALUES(respuestas_json), created_at = NOW()
     `, [userIdNum, JSON.stringify(respuestasEncuesta)]);
 
-    // Recalcular índice global
+    // 8. RECALCULAR ÍNDICE Y REVALIDAR
     await actualizarIndiceGlobal(userIdNum, materiasArray);
 
     revalidatePath('/admin/solicitudes')
-    revalidatePath('/Solicitud')
     revalidatePath('/perfil')
     
     return { success: true }

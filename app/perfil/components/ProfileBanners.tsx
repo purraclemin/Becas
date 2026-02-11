@@ -21,7 +21,7 @@ import {
 } from "lucide-react"
 
 /**
- * BANNER 1: POSTULACIÓN INICIAL (Estático)
+ * BANNER 1: POSTULACIÓN INICIAL (Para nuevos aspirantes)
  */
 export function ActionBanner() {
   return (
@@ -45,8 +45,8 @@ export function ActionBanner() {
 }
 
 /**
- * BANNER 2: RENOVACIÓN ACADÉMICA INTERACTIVA
- * Permite cargar notas y renovar sin salir del perfil.
+ * BANNER 2: RENOVACIÓN ACADÉMICA INTERACTIVA (VERSIÓN ACTUALIZADA)
+ * Sincronizado para actualizar el registro físico de estatus 'Renovacion'.
  */
 export function RenovationBanner({ 
   materias, 
@@ -64,7 +64,6 @@ export function RenovationBanner({
   const { toast } = useToast()
   const router = useRouter()
 
-  // Estado para la carga académica minimalista
   const [nuevasMaterias, setNuevasMaterias] = useState([
     { id: "1", nombre: "", nota: "" },
     { id: "2", nombre: "", nota: "" },
@@ -74,7 +73,6 @@ export function RenovationBanner({
 
   const manejarCambio = (id: string, campo: 'nombre' | 'nota', valor: string) => {
     if (campo === 'nota') {
-      // Bloqueo de letras: solo números y punto
       const valorLimpio = valor.replace(/[^0-9.]/g, '');
       if (valorLimpio !== "") {
         const num = parseFloat(valorLimpio);
@@ -101,31 +99,38 @@ export function RenovationBanner({
     const formData = new FormData()
     formData.append('user_id', userId.toString())
     
-    nuevasMaterias.forEach(m => {
-      if (m.nombre.trim() !== "") {
+    // Filtrado de materias válidas
+    const materiasFiltradas = nuevasMaterias.filter(m => m.nombre.trim() !== "");
+
+    if (materiasFiltradas.length < 4) {
+      toast({ variant: "destructive", title: "Datos insuficientes", description: "Debe registrar al menos 4 materias para renovar." });
+      setIsPending(false);
+      return;
+    }
+
+    materiasFiltradas.forEach(m => {
         formData.append('materias_nombres[]', m.nombre)
-        // Si el campo está vacío, enviamos "0"
         formData.append('materias_notas[]', m.nota === "" ? "0" : m.nota)
-      }
     })
 
     try {
+      // 🟢 Llamada a la acción corregida de UPDATE
       const result = await renovarBeca(formData)
+      
       if (result.error) {
-        toast({ variant: "destructive", title: "Error", description: result.error })
+        toast({ variant: "destructive", title: "Error en proceso", description: result.error })
       } else {
-        toast({ title: "Éxito", description: "Renovación procesada correctamente." })
+        toast({ title: "Renovación Enviada", description: "Tus calificaciones se han actualizado correctamente." })
         setIsRenovating(false)
         router.refresh()
       }
     } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: "Error de conexión." })
+      toast({ variant: "destructive", title: "Fallo de conexión", description: "No se pudo contactar con el servidor." })
     } finally {
       setIsPending(false)
     }
   }
 
-  // VISTA 1: BANNER DE AVISO
   if (!isRenovating) {
     return (
       <div className="p-6 md:p-8 rounded-2xl border border-violet-200 bg-gradient-to-br from-violet-50 to-white shadow-sm flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-2">
@@ -152,7 +157,7 @@ export function RenovationBanner({
             <div className="flex items-center justify-between mb-4 border-b border-violet-50 pb-2">
               <div className="flex items-center gap-2">
                   <BookCheck className="h-4 w-4 text-violet-500" />
-                  <span className="text-[10px] font-black text-violet-400 uppercase tracking-widest">Calificaciones Anteriores</span>
+                  <span className="text-[10px] font-black text-violet-400 uppercase tracking-widest">Calificaciones Pasadas</span>
               </div>
               {periodoNotas && (
                   <span className="text-[9px] font-bold text-violet-400 uppercase bg-violet-50 px-2 py-0.5 rounded-full border border-violet-100">
@@ -174,7 +179,6 @@ export function RenovationBanner({
     )
   }
 
-  // VISTA 2: FORMULARIO MINIMALISTA DE CARGA ACADÉMICA
   return (
     <div className="p-8 rounded-[2.5rem] bg-white border-2 border-violet-100 shadow-2xl animate-in zoom-in-95 duration-500 relative overflow-hidden">
       <div className="absolute top-0 left-0 w-full h-1.5 bg-violet-600"></div>
@@ -188,7 +192,7 @@ export function RenovationBanner({
             Carga Académica {periodo}
           </h3>
           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">
-            Ingrese sus nuevas calificaciones finales
+            Complete sus calificaciones para continuar con el beneficio
           </p>
         </div>
         <Button 
@@ -250,7 +254,7 @@ export function RenovationBanner({
         <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 flex items-start gap-3">
           <AlertTriangle className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
           <p className="text-[9px] text-emerald-800 leading-relaxed font-bold uppercase tracking-tight">
-            Al confirmar, se utilizará su expediente socioeconómico anterior para procesar la renovación.
+            La renovación utiliza su información socioeconómica previamente validada en el sistema.
           </p>
         </div>
 

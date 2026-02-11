@@ -38,6 +38,7 @@ export function mapSolicitudData(user: any, studentRaw: any, infoSolicitud: any,
       materiasArray = [];
   }
 
+  // 1. Mapeo de la Encuesta (si existe)
   const encuestaPlana = encuestaData ? {
     socio_nombres: encuestaData.identificacion?.nombres || "",
     socio_apellidos: encuestaData.identificacion?.apellidos || "",
@@ -79,7 +80,7 @@ export function mapSolicitudData(user: any, studentRaw: any, infoSolicitud: any,
     monto_ingreso_extra: encuestaData.economico?.ingresos?.extra || "",
     monto_ingreso_pension: encuestaData.economico?.ingresos?.pension || "",
     monto_ingreso_ayuda: encuestaData.economico?.ingresos?.ayuda || "",
-    monto_egreso_mercado: encuestaData.economico?.egresos?.mercado || "",
+    monto_egreso_mercado: encuestaData.economico?.egresos?.market || "",
     monto_egreso_vivienda: encuestaData.economico?.egresos?.vivienda || "",
     monto_egreso_salud: encuestaData.economico?.egresos?.salud || "",
     monto_egreso_servicios: encuestaData.economico?.egresos?.servicios || "",
@@ -97,19 +98,34 @@ export function mapSolicitudData(user: any, studentRaw: any, infoSolicitud: any,
     salud_tratamiento: encuestaData.salud?.tratamiento || ""
   } : {};
 
+  // 2. Combinación con Datos Maestros (Registro de Estudiante)
   return {
     ...user,
+    // Datos base del estudiante (Maestros)
     nombre: studentRaw?.nombre || "",
     apellido: studentRaw?.apellido || "",
     cedula: studentRaw?.cedula || "",
     sexo: studentRaw?.sexo || "",
-    fecha_nac: formatearFechaParaInput(studentRaw?.fecha_nacimiento), 
-    edad: calcularEdad(studentRaw?.fecha_nacimiento),
-    municipio: studentRaw?.municipio_residencia || "",
+    fecha_nacimiento: studentRaw?.fecha_nacimiento ? formatearFechaParaInput(studentRaw.fecha_nacimiento) : "",
+    municipio_residencia: studentRaw?.municipio_residencia || "",
     telefono: studentRaw?.telefono || "",
     carrera: studentRaw?.carrera || "",
-    trimestre: studentRaw?.semestre || "",
-    email_institucional: studentRaw?.email || user.email || "",
+    semestre: studentRaw?.semestre || "",
+    
+    // 🟢 SINCRONIZACIÓN CRÍTICA:
+    // Si la encuestaPlana no tiene datos (es nueva), inyectamos los del registro
+    // en las llaves que usa la encuesta (socio_...)
+    socio_nombres: encuestaPlana.socio_nombres || studentRaw?.nombre || "",
+    socio_apellidos: encuestaPlana.socio_apellidos || studentRaw?.apellido || "",
+    socio_cedula: encuestaPlana.socio_cedula || studentRaw?.cedula || "",
+    socio_sexo: encuestaPlana.socio_sexo || (studentRaw?.sexo === 'M' ? 'Masculino' : studentRaw?.sexo === 'F' ? 'Femenino' : studentRaw?.sexo) || "",
+    socio_fecha_nac: encuestaPlana.socio_fecha_nac || (studentRaw?.fecha_nacimiento ? formatearFechaParaInput(studentRaw.fecha_nacimiento) : ""),
+    socio_municipio: encuestaPlana.socio_municipio || studentRaw?.municipio_residencia || "",
+    socio_celular: encuestaPlana.socio_celular || studentRaw?.telefono || "",
+    socio_edad: encuestaPlana.socio_edad || (studentRaw?.fecha_nacimiento ? calcularEdad(studentRaw.fecha_nacimiento) : ""),
+    socio_Institucional: encuestaPlana.socio_Institucional || studentRaw?.email || user.email || "",
+
+    // Datos de la solicitud de beca
     tieneDatosRegistro: !!studentRaw,
     estatusBeca: infoSolicitud?.estatus || 'ninguna',
     observaciones_admin: infoSolicitud?.observaciones_admin || null,
@@ -120,6 +136,7 @@ export function mapSolicitudData(user: any, studentRaw: any, infoSolicitud: any,
     cedula_url: infoSolicitud?.copia_cedula || null,
     planilla_url: infoSolicitud?.planilla_inscripcion || null,
     materias_registradas: materiasArray,
-    ...encuestaPlana
+    
+    ...encuestaPlana // Sobrescribe con lo que ya esté en la encuesta si existe
   };
 }

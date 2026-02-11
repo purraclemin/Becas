@@ -2,11 +2,13 @@
 
 import { db } from './db'
 import { revalidatePath } from 'next/cache'
-import { actualizarIndiceGlobal, obtenerOCrearPeriodoObjetivo } from './SolicitudAcademic'
+import { obtenerOCrearPeriodoObjetivo, actualizarIndiceGlobal } from './SolicitudAcademic'
 
 /**
- * ACCIÓN DE SERVIDOR: RENOVAR BECA DESDE EL PERFIL
- * Crea una nueva solicitud basada en la anterior pero con notas actualizadas.
+ * 🟢 ACCIÓN ACTUALIZADA: RENOVAR BECA (PASO 4)
+ * Esta función ya no crea periodos ni registros nuevos desde cero.
+ * Busca la solicitud física en estatus 'Renovacion' generada por el sistema
+ * y la actualiza con las nuevas notas cargadas por el estudiante.
  */
 export async function renovarBeca(formData: FormData) {
   try {
@@ -15,102 +17,69 @@ export async function renovarBeca(formData: FormData) {
 
     const userIdNum = parseInt(userId as string);
 
-    // 1. OBTENER LA ÚLTIMA SOLICITUD APROBADA (Para clonar sus datos)
-    const [solicitudRows]: any = await db.execute(
-      `SELECT * FROM solicitudes 
-       WHERE user_id = ? AND estatus = 'Aprobada' 
-       ORDER BY fecha_registro DESC LIMIT 1`,
-      [userIdNum]
-    );
+    // 1. Sincronización de Periodo (Asegura el Paso 2: limpieza de duplicados)
+    // Esto garantiza que trabajemos siempre sobre el ID del periodo vigente.
+    const periodoIdActual = await obtenerOCrearPeriodoObjetivo();
 
-    if (solicitudRows.length === 0) {
-      return { error: "No se encontró una beca previa aprobada para renovar." };
-    }
-
-    const anterior = solicitudRows[0];
-
-    // 2. PROCESAR LAS NUEVAS MATERIAS Y CALCULAR PROMEDIO
+    // 2. Procesar las nuevas materias enviadas desde el Banner del Perfil
     const materiasNombres = formData.getAll('materias_nombres[]');
     const materiasNotas = formData.getAll('materias_notas[]');
     
     const nuevasMaterias = materiasNombres.map((nombre, index) => ({
         nombre: nombre as string,
-        // Si la nota está vacía o no es número, asumimos 0 por seguridad
         nota: parseFloat(materiasNotas[index] as string || "0")
     })).filter(m => m.nombre && m.nombre.trim() !== ""); 
 
+    // Validación de carga mínima
     if (nuevasMaterias.length < 4) {
-        return { error: "Debe registrar al menos 4 materias para la renovación." };
+        return { error: "Debe registrar al menos 4 materias para procesar la renovación académica." };
     }
 
-    // Validación de reprobadas (Regla: Todas deben estar aprobadas)
+    // Validación de reprobadas: Mantenemos tu regla de no permitir notas < 10
     if (nuevasMaterias.some(m => m.nota < 10)) {
-        return { error: "No puede renovar el beneficio si tiene materias reprobadas." };
+        return { error: "No se puede procesar la renovación con asignaturas reprobadas." };
     }
 
     const suma = nuevasMaterias.reduce((acc, curr) => acc + curr.nota, 0);
     const nuevoPromedio = parseFloat((suma / nuevasMaterias.length).toFixed(2));
     const materiasJson = JSON.stringify(nuevasMaterias);
 
-    // 3. DETERMINAR EL NUEVO PERIODO OBJETIVO
-    const periodoId = await obtenerOCrearPeriodoObjetivo();
-
-    // 4. VERIFICAR QUE NO EXISTA YA UNA SOLICITUD PARA ESTE NUEVO PERIODO
-    const [checkExistente]: any = await db.execute(
-        'SELECT id FROM solicitudes WHERE user_id = ? AND periodo_id = ?',
-        [userIdNum, periodoId]
+    // 🟢 3. ACTUALIZACIÓN INTELIGENTE: BUSCAR EL REGISTRO 'RENOVACION' EXISTENTE
+    // En lugar de hacer un INSERT (que crearía duplicados), buscamos la fila morada
+    // que el sistema creó automáticamente en el Paso 3.
+    const [checkRenovacion]: any = await db.execute(
+        'SELECT id FROM solicitudes WHERE user_id = ? AND periodo_id = ? AND estatus = "Renovacion"',
+        [userIdNum, periodoIdActual]
     );
 
-    if (checkExistente.length > 0) {
-        return { error: "Ya existe un proceso de solicitud o renovación en curso para este periodo." };
+    if (checkRenovacion.length === 0) {
+        return { error: "No se encontró un registro de renovación disponible para este periodo. El sistema debe generar el estatus morado primero." };
     }
 
-    // 5. INSERTAR NUEVA SOLICITUD (CLONACIÓN + ACTUALIZACIÓN)
-    // Copiamos email, tipo de beca, motivo, ingresos y archivos de la anterior.
-    // Insertamos el nuevo periodo, nuevo promedio y las nuevas materias.
-    const estatusInicial = nuevoPromedio < 16.50 ? 'Revisión Especial' : 'Pendiente';
+    const solicitudId = checkRenovacion[0].id;
+    const estatusFinal = nuevoPromedio < 16.50 ? 'Revisión Especial' : 'Pendiente';
 
+    // 4. UPDATE: Guardamos las notas y cambiamos el estatus de 'Renovacion' a 'Pendiente/Especial'
+    // Esto hace que el administrador vea físicamente el cambio en su panel.
     await db.execute(`
-      INSERT INTO solicitudes (
-        user_id, 
-        periodo_id, 
-        email_institucional, 
-        tipo_beca, 
-        promedio_notas, 
-        motivo_solicitud, 
-        materias_json, 
-        ingreso_familiar_total, 
-        estatus, 
-        foto_carnet, 
-        copia_cedula, 
-        fecha_registro
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-    `, [
-        userIdNum, 
-        periodoId, 
-        anterior.email_institucional, 
-        anterior.tipo_beca, 
-        nuevoPromedio, 
-        anterior.motivo_solicitud, 
-        materiasJson, 
-        anterior.ingreso_familiar_total, 
-        estatusInicial, 
-        anterior.foto_carnet, 
-        anterior.copia_cedula
-    ]);
+      UPDATE solicitudes SET 
+        materias_json = ?, 
+        promedio_notas = ?, 
+        estatus = ?, 
+        fecha_registro = NOW() 
+      WHERE id = ?
+    `, [materiasJson, nuevoPromedio, estatusFinal, solicitudId]);
 
-    // 6. ACTUALIZAR EL ÍNDICE GLOBAL DEL ESTUDIANTE
-    // Esto suma las notas de todas las solicitudes aprobadas + la que acabamos de crear
+    // 5. Actualizamos el índice global maestro en la ficha del estudiante (Tabla students)
     await actualizarIndiceGlobal(userIdNum, nuevasMaterias);
 
-    // 7. REVALIDAR RUTAS PARA ACTUALIZAR LA UI
+    // Revalidamos la ruta para que el perfil cambie de Violeta a Amarillo/Naranja al instante
     revalidatePath('/perfil');
-    revalidatePath('/Solicitud');
     
-    return { success: true, message: "Renovación procesada exitosamente." };
+    return { success: true };
 
   } catch (error: any) {
-    console.error("❌ Error en ActionsRenovacion:", error);
-    return { error: "Error interno al procesar la renovación." };
+    console.error("❌ Error en Proceso de Renovación:", error);
+    return { error: "Error de sistema al actualizar el registro de renovación académica." };
   }
 }

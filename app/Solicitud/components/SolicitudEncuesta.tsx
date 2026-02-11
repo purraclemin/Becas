@@ -11,7 +11,11 @@ import {
   SeccionSalud 
 } from "./SeccionesEncuesta"
 
-// 🟢 ACTUALIZACIÓN: Props simplificadas, ya no necesita la lógica de edición
+/**
+ * 🟢 COMPONENTE: INVESTIGACIÓN SOCIOECONÓMICA (LIMPIO)
+ * Optimizado para nuevos aspirantes. Se eliminó la lógica de estados pendientes
+ * ya que este flujo ahora es exclusivo para registros iniciales.
+ */
 export function SolicitudEncuesta({ 
   disabled, 
   user
@@ -19,91 +23,87 @@ export function SolicitudEncuesta({
   disabled: boolean, 
   user: any
 }) {
-  // 🟢 LÓGICA DE VISUALIZACIÓN: Si ya existe una solicitud pendiente, forzamos la vista completa
-  const esPendiente = user?.estatusBeca === 'Pendiente';
-  
-  // Estado para controlar qué sección está abierta (solo activo si no hay solicitud previa)
+  // Estado para controlar qué sección está expandida. 
+  // Por defecto, iniciamos con la identificación abierta para guiar al usuario.
   const [activeSection, setActiveSection] = useState<string | null>("identificacion");
 
   const toggle = (section: string) => {
-    // Si la solicitud está pendiente, impedimos cerrar las secciones para mantener la visibilidad total
-    if (esPendiente) return;
+    if (disabled) return;
     setActiveSection(activeSection === section ? null : section);
   }
 
   return (
     <div className="space-y-8 pt-10 border-t-2 border-slate-100 animate-in fade-in duration-700">
       
-      {/* SECCIÓN DE INSTRUCCIONES */}
+      {/* BLOQUE INFORMATIVO Y REGLAMENTARIO */}
       <div className="bg-blue-50 border border-blue-200 p-5 rounded-2xl flex gap-4 shadow-sm">
         <Info className="h-6 w-6 text-blue-600 shrink-0" />
         <div className="space-y-1">
-          <p className="text-[11px] font-black uppercase text-blue-900 tracking-tight">Instrucciones Importantes</p>
+          <p className="text-[11px] font-black uppercase text-blue-900 tracking-tight">Instrucciones de Veracidad</p>
           <p className="text-[10px] text-blue-800 leading-relaxed italic">
-            Esta encuesta es para uso exclusivo de la Unidad de Becas y Ayudas Estudiantiles. 
-            <b> Cualquier falsificación o adulteración en los datos anula la gestión de la solicitud.</b>
+            Esta encuesta tiene carácter de declaración jurada. 
+            <b> La omisión o falsedad en los datos socioeconómicos resultará en la invalidación inmediata del proceso.</b>
           </p>
         </div>
       </div>
 
+      {/* RENDERIZADO DE SECCIONES MODULARES */}
       <div className="w-full space-y-4">
         
-        {/* Renderizado de Secciones Modulares con inyección de datos del usuario */}
-        
-        {/* 3. Identificación del Solicitante */}
+        {/* 1. Identificación del Solicitante */}
         <div className="relative">
           <SeccionIdentificacion 
-            isOpen={esPendiente || activeSection === "identificacion"} 
+            isOpen={activeSection === "identificacion"} 
             onToggle={() => toggle("identificacion")} 
             disabled={disabled} 
             user={user} 
           />
         </div>
 
-        {/* 4. Información Académica */}
+        {/* 2. Información Académica */}
         <div className="relative">
           <SeccionAcademica 
-            isOpen={esPendiente || activeSection === "academica"} 
+            isOpen={activeSection === "academica"} 
             onToggle={() => toggle("academica")} 
             disabled={disabled} 
             user={user} 
           />
         </div>
 
-        {/* 5. Entorno Familiar */}
+        {/* 3. Composición y Entorno Familiar */}
         <div className="relative">
           <SeccionFamiliar 
-            isOpen={esPendiente || activeSection === "familiar"} 
+            isOpen={activeSection === "familiar"} 
             onToggle={() => toggle("familiar")} 
             disabled={disabled} 
             user={user} 
           />
         </div>
 
-        {/* 6. Situación Económica */}
+        {/* 4. Situación Económica y Cargas Familiares */}
         <div className="relative">
           <SeccionEconomica 
-            isOpen={esPendiente || activeSection === "economica"} 
+            isOpen={activeSection === "economica"} 
             onToggle={() => toggle("economica")} 
             disabled={disabled} 
             user={user} 
           />
         </div>
 
-        {/* 7. Condiciones de Vivienda */}
+        {/* 5. Condiciones y Tenencia de Vivienda */}
         <div className="relative">
           <SeccionVivienda 
-            isOpen={esPendiente || activeSection === "vivienda"} 
+            isOpen={activeSection === "vivienda"} 
             onToggle={() => toggle("vivienda")} 
             disabled={disabled} 
             user={user} 
           />
         </div>
 
-        {/* 8. Salud y Entorno Familiar */}
+        {/* 6. Cuadro de Salud y Observaciones Generales */}
         <div className="relative">
           <SeccionSalud 
-            isOpen={esPendiente || activeSection === "salud"} 
+            isOpen={activeSection === "salud"} 
             onToggle={() => toggle("salud")} 
             disabled={disabled} 
             user={user} 
@@ -112,10 +112,12 @@ export function SolicitudEncuesta({
 
       </div>
 
-      {/* DECLARACIÓN JURADA */}
-      <div className="p-6 bg-slate-900 rounded-2xl text-center shadow-xl">
-        <p className="text-[9px] text-slate-400 font-medium leading-relaxed italic uppercase tracking-wider">
-            El solicitante da fe de que todos los datos suministrados son reales y pueden ser verificados cuando la universidad así lo requiera.
+      
+
+      {/* PIE DE DECLARACIÓN */}
+      <div className="p-6 bg-slate-900 rounded-2xl text-center shadow-xl border-b-4 border-[#d4a843]">
+        <p className="text-[9px] text-slate-400 font-black leading-relaxed italic uppercase tracking-[0.2em]">
+            Certifico que la información suministrada es fiel a la realidad.
         </p>
       </div>
 
