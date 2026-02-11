@@ -2,12 +2,14 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { ArrowLeft, UserPlus, AlertCircle, Loader2 } from "lucide-react"
 import { register, checkExistence } from "@/lib/actions-registro"
 import { StepIndicator } from "@/components/registro/StepIndicator"
 import { StepContent } from "@/components/registro/StepContent"
 
 export default function RegistroPage() {
+  const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [step, setStep] = useState(1)
@@ -18,9 +20,9 @@ export default function RegistroPage() {
     nombre: "",
     apellido: "",
     cedula: "",
-    sexo: "", // 🟢 Nuevo campo
-    fecha_nacimiento: "", // 🟢 Nuevo campo
-    municipio: "", // 🟢 Nuevo campo
+    sexo: "",
+    fecha_nacimiento: "",
+    municipio: "",
     telefono: "",
     email: "",
     password: "",
@@ -45,7 +47,6 @@ export default function RegistroPage() {
     setError(null)
     
     if (currentStep === 1) {
-      // 🟢 Validación extendida para los nuevos campos demográficos
       if (!form.nombre || !form.apellido || !form.cedula || !form.telefono || !form.email || !form.sexo || !form.fecha_nacimiento || !form.municipio) {
         setError("Por favor completa todos los datos personales y demográficos")
         return false
@@ -98,8 +99,12 @@ export default function RegistroPage() {
     setIsPending(true)
     setError(null)
 
+    // 🟢 SOLUCIÓN: Construir FormData manualmente desde el estado 'form'
+    // Esto asegura que todos los datos (paso 1, 2 y 3) se envíen juntos
     const formData = new FormData()
-    Object.entries(form).forEach(([key, value]) => formData.append(key, value.toString()))
+    Object.entries(form).forEach(([key, value]) => {
+      formData.append(key, value.toString())
+    })
 
     try {
       const result = await register(formData)
@@ -107,7 +112,8 @@ export default function RegistroPage() {
         setError(result.error)
         setIsPending(false)
       } else if (result?.success) {
-        setTimeout(() => window.location.replace("/"), 500)
+        router.push("/")
+        router.refresh()
       }
     } catch (e) {
       setError("Error de conexión con el servidor")

@@ -23,10 +23,12 @@ export const Step3Security = ({
           <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#9ca3af]" />
           <input
             type={showPassword ? "text" : "password"}
+            name="password"
             value={form.password}
             onChange={(e) => updateField("password", e.target.value)}
             className="w-full rounded-lg border border-[#e2e8f0] bg-[#fcfdfe] py-3 pl-10 pr-10 text-sm outline-none focus:border-[#d4a843]"
             placeholder="Mínimo 8 caracteres"
+            required
           />
           <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9ca3af]">
             {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -43,11 +45,13 @@ export const Step3Security = ({
           <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#9ca3af]" />
           <input
             type={showConfirm ? "text" : "password"}
+            name="confirmPassword"
             value={form.confirmPassword}
             onChange={(e) => updateField("confirmPassword", e.target.value)}
             className={`w-full rounded-lg border py-3 pl-10 pr-10 text-sm outline-none transition-all ${
               form.confirmPassword && form.password === form.confirmPassword ? "border-emerald-200" : "border-[#e2e8f0]"
             }`}
+            required
           />
           <button type="button" onClick={() => setShowConfirm(!showConfirm)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9ca3af]">
             {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -58,6 +62,7 @@ export const Step3Security = ({
       <label className="flex items-start gap-3 p-4 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] cursor-pointer mt-4 hover:bg-slate-50 transition-colors">
         <input
           type="checkbox"
+          name="aceptaTerminos"
           checked={form.aceptaTerminos}
           onChange={(e) => updateField("aceptaTerminos", e.target.checked)}
           className="mt-1 h-4 w-4 rounded border-gray-300 text-[#1e3a5f]"

@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
-import { Plus, Trash2, BookOpen, GraduationCap } from "lucide-react"
+import { Plus, Trash2, BookOpen } from "lucide-react"
 
 export function SolicitudMaterias({ 
   disabled, 
@@ -15,7 +15,6 @@ export function SolicitudMaterias({
   materiasGuardadas?: any[],
   onChangeNotas?: (notas: string[]) => void 
 }) {
-  // 🟢 Array de sugerencias para los primeros 4 placeholders
   const sugerenciasNombres = [
     "Ej: Matemática I",
     "Ej: Programación II",
@@ -23,7 +22,6 @@ export function SolicitudMaterias({
     "Ej: Ética y Valores"
   ];
 
-  // Estado inicial con 4 filas vacías
   const [materias, setMaterias] = useState<{ id: string; nombre: string; nota: string }[]>([
     { id: "1", nombre: "", nota: "" },
     { id: "2", nombre: "", nota: "" },
@@ -31,7 +29,6 @@ export function SolicitudMaterias({
     { id: "4", nombre: "", nota: "" },
   ])
 
-  // 🟢 CORRECCIÓN CRÍTICA: Carga de datos desde la BD (JSON)
   useEffect(() => {
     if (materiasGuardadas && materiasGuardadas.length > 0) {
       setMaterias(materiasGuardadas.map((m, index) => ({
@@ -42,19 +39,27 @@ export function SolicitudMaterias({
     }
   }, [materiasGuardadas])
 
-  // 🟢 LÓGICA DE NOTIFICACIÓN AL PADRE
+  // 🟢 LÓGICA DE NOTIFICACIÓN: Si la nota está vacía, se envía como "0"
   useEffect(() => {
     if (!onChangeNotas) return;
-    const notasValidas = materias.map(m => m.nota).filter(n => n !== "");
-    onChangeNotas(notasValidas);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [materias]); 
+    const notasProcesadas = materias.map(m => m.nota === "" ? "0" : m.nota);
+    onChangeNotas(notasProcesadas);
+  }, [materias, onChangeNotas]); 
 
   const manejarCambio = (id: string, campo: 'nombre' | 'nota', valor: string) => {
-    // Validación estricta: Notas entre 1 y 20
-    if (campo === 'nota' && valor !== "") {
-      const num = parseFloat(valor);
-      if (isNaN(num) || num < 0 || num > 20) return; 
+    if (campo === 'nota') {
+      // 🟢 BLOQUEO DE LETRAS: Solo permite números y un punto decimal
+      const valorLimpio = valor.replace(/[^0-9.]/g, '');
+      
+      if (valorLimpio !== "") {
+        const num = parseFloat(valorLimpio);
+        if (isNaN(num) || num < 0 || num > 20) return; 
+      }
+      
+      setMaterias(prev => prev.map(m => 
+        m.id === id ? { ...m, nota: valorLimpio } : m
+      ))
+      return;
     }
 
     setMaterias(prev => prev.map(m => 
@@ -73,89 +78,96 @@ export function SolicitudMaterias({
   }
 
   return (
-    <div className="pt-6 border-t border-gray-100">
-      {/* 🟢 AJUSTE: Se cambia justify-between por gap-4 para desplazar el botón a la izquierda */}
-      <div className="flex items-center gap-4 mb-4">
-        <h3 className="text-xs font-black text-[#d4a843] uppercase tracking-widest flex items-center gap-2">
-          <BookOpen className="h-4 w-4" /> 1. Carga Académica del Trimestre
-        </h3>
+    <div className="pt-2">
+      {/* Encabezado Minimalista */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+        <div>
+            <h3 className="text-sm font-black text-[#1e3a5f] uppercase tracking-[0.15em] flex items-center gap-3">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#1e3a5f]/5 text-[#d4a843]">
+                <BookOpen className="h-4 w-4" />
+            </span>
+            Carga Académica
+            </h3>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1 ml-10">
+                Trimestre en curso
+            </p>
+        </div>
+
         {!disabled && (
           <Button 
             type="button" 
             onClick={agregarMateria} 
-            size="sm" 
             variant="outline" 
-            className="text-[10px] font-bold uppercase text-[#1e3a5f] border-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white h-7 transition-all"
+            className="group h-9 px-4 border-dashed border-2 border-slate-200 hover:border-[#1e3a5f] hover:bg-slate-50 text-[#1e3a5f] transition-all rounded-xl"
           >
-            <Plus className="h-3 w-3 mr-1" /> Agregar Materia
+            <Plus className="h-3.5 w-3.5 mr-2 text-[#d4a843] group-hover:rotate-90 transition-transform" />
+            <span className="text-[10px] font-black uppercase tracking-widest">Añadir Asignatura</span>
           </Button>
         )}
       </div>
 
+      {/* Lista de Materias */}
       <div className="space-y-3">
         {materias.map((materia, index) => (
-          <div key={materia.id} className="flex gap-3 items-start animate-in slide-in-from-left-2 duration-300">
-            {/* Input Nombre Materia */}
+          <div 
+            key={materia.id} 
+            className="group flex gap-4 items-center p-2 rounded-2xl border border-transparent hover:border-slate-100 hover:bg-slate-50/50 transition-all duration-300"
+          >
+            {/* Indicador Numérico */}
+            <div className="hidden md:flex h-8 w-8 items-center justify-center rounded-full bg-white text-[10px] font-black text-slate-300 border border-slate-100 group-hover:text-[#d4a843] group-hover:border-[#d4a843]/20 transition-colors">
+                {index + 1}
+            </div>
+
+            {/* Nombre de la Materia */}
             <div className="flex-1">
-              {index === 0 && <Label className="text-[9px] font-black uppercase text-gray-400 mb-1.5 block ml-1">Nombre de la Asignatura</Label>}
-              <div className="relative">
-                <BookOpen className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
-                <Input 
-                  name="materias_nombres[]" 
-                  // 🟢 LÓGICA DE PLACEHOLDER: Solo los 4 primeros tienen sugerencia, el resto vacío.
-                  placeholder={index < 4 ? sugerenciasNombres[index] : ""} 
-                  value={materia.nombre}
-                  onChange={(e) => manejarCambio(materia.id, 'nombre', e.target.value)}
-                  // 🟢 CORRECCIÓN VISUAL: Estilos condicionales para bloqueo oscuro
-                  className={`pl-8 text-xs transition-colors font-medium ${
-                    disabled 
-                      ? "bg-slate-200/60 border-slate-300 text-slate-500 cursor-not-allowed select-none opacity-100 pointer-events-none shadow-none" 
-                      : "bg-white border-gray-200 text-[#1e3a5f] focus-visible:ring-[#1e3a5f]"
-                  }`}
-                  required 
-                  // 🟢 IMPORTANTE: Usamos readOnly para que el valor viaje en el submit
-                  readOnly={disabled}
-                />
-              </div>
+              <Input 
+                name="materias_nombres[]" 
+                placeholder={index < 4 ? sugerenciasNombres[index] : "Nombre de la materia..."} 
+                value={materia.nombre}
+                onChange={(e) => manejarCambio(materia.id, 'nombre', e.target.value)}
+                className={`h-11 border-none bg-white shadow-sm rounded-xl text-xs font-bold text-[#1e3a5f] placeholder:text-slate-300 focus-visible:ring-2 focus-visible:ring-[#1e3a5f]/5 transition-all ${
+                  disabled 
+                    ? "bg-slate-100/50 text-slate-400 cursor-not-allowed opacity-100 shadow-none" 
+                    : "group-hover:shadow-md"
+                }`}
+                required 
+                readOnly={disabled}
+              />
             </div>
 
-            {/* Input Calificación */}
-            <div className="w-28">
-              {index === 0 && <Label className="text-[9px] font-black uppercase text-gray-400 mb-1.5 block ml-1">Nota (1-20)</Label>}
-              <div className="relative">
-                <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
-                <Input 
-                  name="materias_notas[]" 
-                  type="number" 
-                  placeholder="1-20" 
-                  min="1" 
-                  max="20" 
-                  step="0.01"
-                  value={materia.nota}
-                  onChange={(e) => manejarCambio(materia.id, 'nota', e.target.value)}
-                  // 🟢 CORRECCIÓN VISUAL: Estilos condicionales para bloqueo oscuro
-                  className={`pl-8 text-xs transition-colors font-bold text-center ${
-                    disabled 
-                      ? "bg-slate-200/60 border-slate-300 text-slate-500 cursor-not-allowed select-none opacity-100 pointer-events-none shadow-none" 
-                      : "bg-white border-gray-200 text-[#1e3a5f]"
-                  }`}
-                  required 
-                  // 🟢 IMPORTANTE: Usamos readOnly para que el valor viaje en el submit
-                  readOnly={disabled}
-                />
-              </div>
+            {/* Calificación */}
+            <div className="w-24 md:w-32 relative">
+              <Input 
+                name="materias_notas[]" 
+                type="text" 
+                inputMode="decimal"
+                placeholder="00.0" 
+                value={materia.nota}
+                onChange={(e) => manejarCambio(materia.id, 'nota', e.target.value)}
+                className={`h-11 border-none bg-white shadow-sm rounded-xl text-xs font-black text-center pr-8 text-[#1e3a5f] focus-visible:ring-2 focus-visible:ring-[#1e3a5f]/5 transition-all ${
+                  disabled 
+                    ? "bg-slate-100/50 text-slate-400 opacity-100 shadow-none" 
+                    : "group-hover:shadow-md"
+                }`}
+                required 
+                readOnly={disabled}
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-black text-slate-300 uppercase pointer-events-none group-hover:text-[#d4a843] transition-colors">
+                pts
+              </span>
             </div>
 
-            {/* Botón Eliminar */}
+            {/* Eliminar */}
             {!disabled && (
-              <div className={`pt-${index === 0 ? '6' : '0'} flex items-center`}>
+              <div className="flex items-center">
                 <Button 
                   type="button" 
                   onClick={() => eliminarMateria(materia.id)}
                   disabled={materias.length <= 4}
                   size="icon"
                   variant="ghost"
-                  className={`h-9 w-9 text-rose-400 hover:text-rose-600 hover:bg-rose-50 transition-colors ${materias.length <= 4 ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+                  // 🟢 ICONO SIEMPRE ROJO: Clases text-red-500 y hover:text-red-700 corregidas
+                  className={`h-9 w-9 rounded-xl text-red-500 hover:text-red-700 hover:bg-red-50 transition-all ${materias.length <= 4 ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -165,9 +177,18 @@ export function SolicitudMaterias({
         ))}
       </div>
       
-      <p className="text-[9px] text-gray-400 mt-2 italic text-right">
-        * Mínimo 4 asignaturas por trimestre. Rango de notas permitido: 1 a 20.
-      </p>
+      {/* Footer Informativo */}
+      <div className="mt-8 flex items-center justify-between px-2">
+        <div className="flex items-center gap-2">
+            <div className="h-1 w-8 rounded-full bg-[#d4a843]/20"></div>
+            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest italic">
+                Validación de escala 01-20
+            </p>
+        </div>
+        <p className="text-[9px] text-slate-300 font-medium">
+            Mínimo 4 materias obligatorias
+        </p>
+      </div>
     </div>
   )
 }

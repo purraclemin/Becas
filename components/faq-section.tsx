@@ -104,7 +104,7 @@ export function FaqSection() {
 
             <div className="mt-4 overflow-hidden rounded-lg">
               <img
-                src="/images/graduation.jpg"
+                src="/images/ourinstitution.jpg"
                 alt="Estudiantes de UNIMAR"
                 className="h-48 w-full object-cover"
               />

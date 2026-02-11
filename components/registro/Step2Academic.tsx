@@ -8,6 +8,7 @@ export const Step2Academic = ({ form, updateField }: any) => (
       <div className="relative">
         <BookOpen className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#9ca3af]" />
         <select
+          name="carrera"
           value={form.carrera}
           onChange={(e) => updateField("carrera", e.target.value)}
           className="w-full rounded-lg border border-[#e2e8f0] bg-[#fcfdfe] py-3 pl-10 pr-10 text-sm focus:border-[#d4a843] outline-none appearance-none cursor-pointer"
@@ -38,6 +39,7 @@ export const Step2Academic = ({ form, updateField }: any) => (
       <div className="relative">
         <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#9ca3af]" />
         <select
+          name="semestre"
           value={form.semestre}
           onChange={(e) => updateField("semestre", e.target.value)}
           className="w-full rounded-lg border border-[#e2e8f0] bg-[#fcfdfe] py-3 pl-10 pr-10 text-sm focus:border-[#d4a843] outline-none appearance-none cursor-pointer"

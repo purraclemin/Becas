@@ -2,6 +2,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { GraduationCap, Mail, IdCard, CalendarDays, BookOpen, Clock, User2, Trophy } from "lucide-react"
 
 export function AcademicInfo({ user }: { user: any }) {
+  // 🟢 Formateo seguro para el Índice Global:
+  // Evitamos que un valor de 0 sea tratado como "falso" y aseguramos la conversión a decimal.
+  const displayIndice = (user.indiceGlobal !== undefined && user.indiceGlobal !== null) 
+    ? parseFloat(user.indiceGlobal.toString()).toFixed(2) 
+    : "0.00";
+
   return (
     <Card className="border-none shadow-2xl bg-white overflow-hidden">
       <CardHeader className="bg-[#fcfdfe] border-b border-gray-100 p-6 md:p-8">
@@ -23,26 +29,26 @@ export function AcademicInfo({ user }: { user: any }) {
           <InfoItem 
             icon={CalendarDays} 
             label="Nivel Académico" 
-            value={`${user.trimestre}° Trimestre`} 
+            value={`${user.trimestre || user.semestre || "0"}° Trimestre`} 
           />
           
           <InfoItem 
             icon={Clock} 
             label="Periodo Actual" 
-            value={user.periodoActual} 
+            value={user.periodoActual && user.periodoActual !== "N/A" ? user.periodoActual : "Sin Periodo Activo"} 
             isUppercase 
           />
 
           <InfoItem 
             icon={Trophy} 
             label="Índice Global" 
-            value={user.indiceGlobal ? parseFloat(user.indiceGlobal).toFixed(2) : "0.00"} 
+            value={displayIndice} 
           />
 
           <InfoItem 
             icon={User2} 
             label="Expediente" 
-            value={user.id?.slice(0, 8).toUpperCase()} 
+            value={user.id ? user.id.toString().slice(0, 8).toUpperCase() : "---"} 
             isUppercase 
           />
         </div>

@@ -62,6 +62,7 @@ export async function register(formData: FormData) {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // 1. Crear el usuario en la tabla de autenticación
     const [userResult]: any = await connection.execute(
       'INSERT INTO users (email, password, role) VALUES (?, ?, ?)',
       [email, hashedPassword, 'estudiante']
@@ -69,15 +70,17 @@ export async function register(formData: FormData) {
 
     const userId = userResult.insertId;
 
-    // 🟢 Guardar datos extendidos en la tabla students
+    // 2. 🟢 Crear el expediente académico en la tabla students
+    // Inicializamos indice_global en 0.00 para asegurar que el perfil 
+    // pueda leer el registro aunque aún no haya enviado solicitudes.
     await connection.execute(
       `INSERT INTO students (
         id, nombre, apellido, cedula, sexo, fecha_nacimiento, 
-        telefono, carrera, semestre, email, municipio_residencia
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        telefono, carrera, semestre, email, municipio_residencia, indice_global
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         userId, nombre, apellido, cedula, sexo, fecha_nacimiento, 
-        telefono, carrera, semestre, email, municipio
+        telefono, carrera, semestre, email, municipio, 0.00
       ]
     );
 
