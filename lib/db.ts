@@ -1,7 +1,6 @@
 import mysql from 'mysql2/promise';
 
 // Intentar usar el link de Railway primero; si no existe, usa localhost
-const connectionString = process.env.DATABASE_URL || 'mysql://root:@localhost:3306/unimar_becas';
 const connectionString = process.env.DATABASE_URL || 'mysql://root:lhxoryeZLaellbhVjcchPUgQcuRVXfmk@tramway.proxy.rlwy.net:19425/railway';
 
 // Singleton para evitar múltiples conexiones en desarrollo (Next.js)
