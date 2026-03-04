@@ -9,51 +9,76 @@ import { SolicitudMaterias } from "./SolicitudMaterias"
 import { SolicitudEncuesta } from "./SolicitudEncuesta"
 import { DetallesBeca } from "./DetallesBeca" 
 import { SolicitudBanners } from "./SolicitudBanners"
-import { SolicitudSectionAction } from "./SolicitudSectionAction"
 import { SolicitudEmailField } from "./SolicitudEmailField"
 import { SeccionFormulario } from "./EncuestaUI"
-import { 
-  ClipboardList, 
-  Edit3, 
-  Lock, 
-  Loader2, 
-  Send, 
-  AlertTriangle, 
-  PlayCircle, 
-  FileText 
-} from "lucide-react"
+import { ClipboardList, Loader2, Send } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
-export function SolicitudForm({ user }: { user: any }) {
+// Importamos los módulos de apoyo
+import { SolicitudFormWelcome } from "./SolicitudFormFieldsWelcome"
+import { SolicitudPromedioAlert, SolicitudEditButton } from "./SolicitudFormFieldsAlerts"
+
+/**
+ * 🛠️ TYPE GUARD: Verifica si un elemento es un control de formulario válido.
+ */
+function isFormControl(el: unknown): el is HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement {
+  return el instanceof HTMLInputElement || el instanceof HTMLSelectElement || el instanceof HTMLTextAreaElement;
+}
+
+export function SolicitudForm({ 
+  user, 
+  materiasDelPensum, 
+  trimestreActual 
+}: { 
+  user: any, 
+  materiasDelPensum?: any[], 
+  trimestreActual?: any 
+}) {
   const [isPending, setIsPending] = useState(false)
   const [promedio, setPromedio] = useState(user?.promedio_notas?.toString() || "0.00")
   const [isClient, setIsClient] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   
-  // 🟢 ESTATUS PARA SOLICITUD NUEVA
   const estatus = user?.estatus || 'ninguna';
   const esPendiente = estatus === 'Pendiente';
-  
-  // Pantalla de bienvenida
   const [hasStarted, setHasStarted] = useState(esPendiente);
 
-  useEffect(() => {
-    setIsClient(true)
-  }, [])
+  useEffect(() => { setIsClient(true) }, [])
   
   const estaBloqueadoTotalmente = estatus === 'En Revisión' || estatus === 'Aprobada';
   const isFormDisabled = estaBloqueadoTotalmente || (esPendiente && !isEditing);
-  const esPromedioBajo = parseFloat(promedio) < 16.50 && parseFloat(promedio) > 0;
+  const esPromedioBajo = parseFloat(promedio) < 16 && parseFloat(promedio) > 0;
 
-  // 🟢 SINCRONIZACIÓN: Iniciamos con la Sección 1 (materias) abierta por defecto
   const [seccionAbierta, setSeccionAbierta] = useState<string | null>(esPendiente ? "full" : "materias")
 
   const { toast } = useToast()
   const router = useRouter()
 
+  const handleTrimestreChange = (trimestre: string) => {
+    router.push(`/Solicitud?trimestre=${trimestre}`, { scroll: false });
+  };
+
+  /**
+   * 🟢 LÓGICA DE SCROLL PARA SECCIONES PRINCIPALES
+   */
   const toggleSeccion = (seccion: string) => {
     if (esPendiente && !isEditing) return;
-    setSeccionAbierta(seccionAbierta === seccion ? null : seccion)
+    
+    const nuevaSeccion = seccionAbierta === seccion ? null : seccion;
+    setSeccionAbierta(nuevaSeccion);
+
+    if (nuevaSeccion) {
+      setTimeout(() => {
+        const element = document.getElementById(`main-section-${seccion}`);
+        if (element) {
+          const offsetTop = element.getBoundingClientRect().top + window.pageYOffset;
+          window.scrollTo({
+            top: offsetTop - 20, 
+            behavior: "smooth"
+          });
+        }
+      }, 150);
+    }
   }
 
   const handleMateriasChange = useCallback((notas: string[]) => {
@@ -63,99 +88,149 @@ export function SolicitudForm({ user }: { user: any }) {
       : "0.00");
   }, []);
 
+  /**
+   * 🟢 VALIDACIÓN SELECCIONADA Y CORRECCIÓN DE CAMPOS OBLIGATORIOS
+   */
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    setIsPending(true)
-    const formData = new FormData(e.currentTarget)
-    formData.set('promedio', promedio) 
-    if (user?.id) formData.append('user_id', user.id)
+    e.preventDefault();
+    
+    const form = e.currentTarget;
+    
+    // Capturamos todos los elementos requeridos (incluyendo los hidden de Shadcn Select)
+    const elements = Array.from(form.querySelectorAll('input[required], textarea[required], select[required], input[type="hidden"][required]'));
+    
+    // Filtramos para ignorar los de la encuesta socioeconómica en esta validación inicial
+    const inputsParaValidar = elements.filter((el): el is HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement => {
+      if (!isFormControl(el)) return false;
+      const prefijosEncuesta = ['socio_', 'familia_', 'vivienda_', 'monto_', 'padre_', 'madre_', 'salud_'];
+      return !prefijosEncuesta.some(prefijo => el.name.startsWith(prefijo));
+    });
+
+    console.log("🔍 --- INICIANDO REVISIÓN DE FORMULARIO ---");
+    let primerCampoInvalido: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | null = null;
+
+    // Limpiar marcas rojas previas
+    inputsParaValidar.forEach((el) => {
+      const parent = el.closest('.space-y-2') || el.parentElement;
+      if (parent) parent.classList.remove('animate-shake');
+      el.classList.remove('border-red-500', 'bg-red-50', 'ring-1', 'ring-red-200');
+      
+      const trigger = el.parentElement?.querySelector('button[role="combobox"]');
+      if (trigger) trigger.classList.remove('border-red-500', 'bg-red-50', 'ring-1', 'ring-red-200');
+    });
+
+    // Validar valores e imprimir logs
+    for (const el of inputsParaValidar) {
+      const value = el.value?.trim();
+      const isDetalleBeca = el.closest('#main-section-detalles-beca');
+      
+      if (isDetalleBeca) {
+        console.log(`[LOG DETALLES BECA] Campo: ${el.name} | Valor capturado: "${value}"`);
+      }
+
+      // Corrección crítica: Considerar "undefined" o vacío como inválido
+      if (!value || value === "" || value === "undefined") {
+        console.warn(`[VALIDACIÓN] Campo faltante detectado: ${el.name}`);
+        if (!primerCampoInvalido) primerCampoInvalido = el;
+        
+        el.classList.add('border-red-500', 'bg-red-50', 'ring-1', 'ring-red-200');
+
+        const trigger = el.parentElement?.querySelector('button[role="combobox"]');
+        if (trigger) trigger.classList.add('border-red-500', 'bg-red-50', 'ring-1', 'ring-red-200');
+      }
+    }
+
+    if (primerCampoInvalido) {
+      console.error("❌ VALIDACIÓN FALLIDA: Deteniendo envío por campos incompletos.");
+      const esDeMaterias = primerCampoInvalido.closest('#main-section-materias');
+      const esDeDetalles = primerCampoInvalido.closest('#main-section-detalles-beca');
+
+      if (esDeMaterias) setSeccionAbierta("materias");
+      else if (esDeDetalles) setSeccionAbierta("detalles-beca");
+
+      toast({
+        variant: "destructive",
+        title: "Información Incompleta",
+        description: "Existen campos vacíos en la sección de beneficios o materias. Revise las marcas en rojo.",
+      });
+
+      setTimeout(() => {
+        if (primerCampoInvalido) {
+          const rect = primerCampoInvalido.getBoundingClientRect();
+          window.scrollTo({
+            top: rect.top + window.pageYOffset - 150,
+            behavior: "smooth"
+          });
+
+          const targetToFocus = (primerCampoInvalido instanceof HTMLInputElement && primerCampoInvalido.type === 'hidden') 
+            ? (primerCampoInvalido.parentElement?.querySelector('button[role="combobox"]') as HTMLElement)
+            : primerCampoInvalido;
+          
+          if (targetToFocus) targetToFocus.focus();
+        }
+      }, 300);
+      return;
+    }
+
+    console.log("✅ VALIDACIÓN EXITOSA. Enviando al servidor...");
+    setIsPending(true);
+    const formData = new FormData(form);
+    formData.set('promedio', promedio); 
+    formData.set('trimestre_seleccionado', trimestreActual?.toString() || "");
+    if (user?.id) formData.append('user_id', user.id);
 
     try {
-      const result = await enviarSolicitud(formData)
+      const result = await enviarSolicitud(formData);
       if (result?.error) {
-        toast({ variant: "destructive", title: "Error", description: result.error })
+        console.error("❌ ERROR DEL SERVIDOR:", result.error);
+        toast({ variant: "destructive", title: "Error", description: result.error });
       } else {
-        toast({ title: "Éxito", description: "Solicitud enviada correctamente." })
-        setIsEditing(false) 
-        router.refresh()
-        router.push("/perfil") 
+        toast({ title: "Éxito", description: "Solicitud enviada correctamente." });
+        setIsEditing(false);
+        router.refresh();
+        router.push("/perfil"); 
       }
     } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: "Error de comunicación con el servidor." })
+      console.error("❌ ERROR DE RED:", error);
+      toast({ variant: "destructive", title: "Error", description: "Error de comunicación con el servidor." });
     } finally {
-      setIsPending(false)
+      setIsPending(false);
     }
   }
 
-  // 🟢 PANTALLA DE BIENVENIDA
   if (isClient && !hasStarted) {
-    return (
-      <div className="py-12 px-6 text-center animate-in fade-in zoom-in-95 duration-500">
-        <div className="mb-8 max-w-sm mx-auto p-8 rounded-3xl bg-slate-50 border border-slate-100 shadow-inner">
-          <div className="h-20 w-20 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center mx-auto mb-6">
-             <FileText className="h-10 w-10 text-[#1e3a5f]" />
-          </div>
-          <h3 className="text-base font-black text-[#1e3a5f] uppercase tracking-tight">
-            Nueva Postulación
-          </h3>
-          <p className="text-[11px] text-gray-500 mt-3 leading-relaxed italic">
-            Bienvenido. Por favor complete los 4 pasos obligatorios del formulario para procesar su solicitud de beca.
-          </p>
-        </div>
-        
-        <Button 
-          onClick={() => setHasStarted(true)}
-          className="group px-12 py-8 bg-[#1e3a5f] text-[#d4a843] rounded-2xl font-black uppercase tracking-[0.2em] text-xs shadow-2xl transition-all hover:scale-105 active:scale-95"
-        >
-          <PlayCircle className="mr-3 h-5 w-5 animate-pulse" /> Comenzar Solicitud
-        </Button>
-      </div>
-    )
+    return <SolicitudFormWelcome onStart={() => setHasStarted(true)} />;
   }
 
   return (
     <>
       <SolicitudBanners estatus={estatus} />
 
-      <div className="flex justify-end items-center gap-3 mb-6">
-          {esPendiente && !estaBloqueadoTotalmente && !isEditing && (
-              <Button 
-                  type="button" 
-                  onClick={() => setIsEditing(true)}
-                  className="bg-white text-[#1e3a5f] border border-[#1e3a5f]/20 hover:border-[#1e3a5f] gap-2 font-black uppercase tracking-widest text-[10px] h-10 px-6"
-              >
-                  <Edit3 className="h-4 w-4" /> Habilitar Edición
-              </Button>
-          )}
-      </div>
-
-      {isEditing && (
-        <div className="flex justify-end mb-6">
-            <div className="bg-amber-100 text-amber-800 border border-amber-200 px-4 py-2 rounded-lg flex items-center gap-2 text-xs font-bold uppercase tracking-wide animate-pulse">
-                <Lock className="h-3 w-3" /> Modo Edición Activo
-            </div>
-        </div>
-      )}
+      <SolicitudEditButton 
+        isPending={esPendiente} 
+        isEditing={isEditing} 
+        onEdit={() => setIsEditing(true)} 
+      />
 
       <form onSubmit={handleSubmit} noValidate className={`space-y-8 relative animate-in fade-in slide-in-from-top-4 duration-700 ${estaBloqueadoTotalmente ? "opacity-75 pointer-events-none" : ""}`}>
         
-        {/* PASO 0: Email Institucional */}
         <SolicitudEmailField user={user} />
         
         <div className="w-full space-y-6">
-            {/* 🟢 SECCIÓN 1: CARGA ACADÉMICA (Ahora en acordeón) */}
-            <SolicitudSectionAction>
+            <div id="main-section-materias">
                 <SolicitudMaterias 
                     disabled={isFormDisabled} 
                     materiasGuardadas={user?.materias_registradas} 
+                    materiasDelPensum={materiasDelPensum} 
+                    onChangeTrimestre={handleTrimestreChange}
+                    trimestreActual={trimestreActual}
                     onChangeNotas={handleMateriasChange} 
                     isOpen={seccionAbierta === "materias" || esPendiente}
                     onToggle={() => toggleSeccion("materias")}
                 />
-            </SolicitudSectionAction>
+            </div>
 
-            {/* SECCIÓN 2: DETALLES DE BECA */}
-            <SolicitudSectionAction>
+            <div id="main-section-detalles-beca">
                 <DetallesBeca 
                     disabled={isFormDisabled} 
                     promedio={promedio} 
@@ -163,37 +238,26 @@ export function SolicitudForm({ user }: { user: any }) {
                     isOpen={seccionAbierta === "detalles-beca" || esPendiente} 
                     onToggle={() => toggleSeccion("detalles-beca")}
                 />
-            </SolicitudSectionAction>
+            </div>
 
-            {/* SECCIÓN 3: ENCUESTA SOCIOECONÓMICA */}
-            <SeccionFormulario
-                titulo="3. Investigación Socioeconómica"
-                icono={ClipboardList}
-                iconoBg="bg-[#1e3a5f]" // Unificado al azul institucional
-                iconoColor="text-[#d4a843]"
-                estaAbierto={seccionAbierta === "encuesta" || esPendiente}
-                alAlternar={() => toggleSeccion("encuesta")}
-            >
-                <SolicitudEncuesta disabled={isFormDisabled} user={user} />
-            </SeccionFormulario>
+            <div id="main-section-encuesta">
+              <SeccionFormulario
+                  titulo="3. Investigación Socioeconómica"
+                  icono={ClipboardList}
+                  iconoBg="bg-[#1e3a5f]" 
+                  iconoColor="text-[#d4a843]"
+                  estaAbierto={seccionAbierta === "encuesta" || esPendiente}
+                  alAlternar={() => toggleSeccion("encuesta")}
+              >
+                  <SolicitudEncuesta disabled={isFormDisabled} user={user} />
+              </SeccionFormulario>
+            </div>
 
-            {/* SECCIÓN 4: RECAUDOS DIGITALES */}
             <SolicitudArchivos disabled={isFormDisabled} user={user} />
         </div>
 
-        {/* Notificaciones de Promedio y Botón de Envío */}
         <div className="sticky bottom-6 z-30 space-y-4">
-            {isClient && esPromedioBajo && (
-                <div className="bg-amber-50/90 backdrop-blur-sm border border-amber-200 p-5 rounded-[1.5rem] flex gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500 shadow-xl">
-                    <AlertTriangle className="h-6 w-6 text-amber-600 shrink-0" />
-                    <div className="space-y-1">
-                        <p className="text-[10px] font-black uppercase text-amber-900 tracking-tight">Análisis de Índice Académico</p>
-                        <p className="text-[9px] text-amber-800 leading-relaxed font-medium">
-                            Promedio inferior a 16.50: Su solicitud será sometida a una revisión especial por el comité de bienestar.
-                        </p>
-                    </div>
-                </div>
-            )}
+            <SolicitudPromedioAlert isVisible={isClient && esPromedioBajo} />
 
             <Button 
                 type="submit" 
@@ -204,11 +268,7 @@ export function SolicitudForm({ user }: { user: any }) {
                     : "bg-[#1e3a5f] text-[#d4a843] shadow-[0_20px_50px_rgba(30,58,95,0.3)] hover:bg-[#254674] border-[#d4a843]"
                 }`}
             >
-                {isPending ? (
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                ) : (
-                    <Send className={`mr-2 h-5 w-5 ${isFormDisabled ? "text-slate-200" : ""}`} />
-                )}
+                {isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Send className={`mr-2 h-5 w-5 ${isFormDisabled ? "text-slate-200" : ""}`} />}
                 {isPending ? "Procesando..." : isFormDisabled ? "Solicitud Protegida" : esPendiente ? "Actualizar Registro" : "Enviar Postulación"}
             </Button>
         </div>

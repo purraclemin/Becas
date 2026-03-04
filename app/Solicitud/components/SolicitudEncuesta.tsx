@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { Info } from "lucide-react"
+// Se corrige la ruta de importación para apuntar al archivo de subcomponentes modularizado
 import { 
   SeccionIdentificacion, 
   SeccionAcademica, 
@@ -9,7 +10,7 @@ import {
   SeccionEconomica, 
   SeccionVivienda, 
   SeccionSalud 
-} from "./SeccionesEncuesta"
+} from "./SeccionesEncuestaSub"
 
 /**
  * 🟢 COMPONENTE: INVESTIGACIÓN SOCIOECONÓMICA (LIMPIO)
@@ -111,8 +112,6 @@ export function SolicitudEncuesta({
         </div>
 
       </div>
-
-      
 
       {/* PIE DE DECLARACIÓN */}
       <div className="p-6 bg-slate-900 rounded-2xl text-center shadow-xl border-b-4 border-[#d4a843]">

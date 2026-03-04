@@ -18,9 +18,9 @@ export default function middleware(request: NextRequest) {
     }
   }
 
-  // --- 2. ZONA DE USUARIO AUTENTICADO (/Solicitud) ---
+  // --- 2. ZONA DE USUARIO AUTENTICADO (/postulacion) ---
   // Solo accesible si existe una sesión activa (independiente del rol)
-  if (pathname.startsWith('/Solicitud')) {
+  if (pathname.startsWith('/postulacion')) {
     if (!session) {
       return NextResponse.redirect(new URL('/login', request.url))
     }
@@ -31,7 +31,7 @@ export default function middleware(request: NextRequest) {
   const isPublicAuthPage = pathname === '/login' || pathname.startsWith('/registro')
   
   if (isPublicAuthPage && session) {
-    const homeRedirect = role === 'admin' ? '/admin/dashboard' : '/Solicitud'
+    const homeRedirect = role === 'admin' ? '/admin/dashboard' : '/postulacion'
     return NextResponse.redirect(new URL(homeRedirect, request.url))
   }
 
@@ -45,7 +45,7 @@ export default function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     '/admin/:path*',    // Cubre tus 8 archivos y más
-    '/Solicitud/:path*', // Protege la página de solicitudes y sus subrutas
+    '/postulacion/:path*', // Protege la página de solicitudes y sus subrutas
     '/login',
     '/registro/:path*',
   ],

@@ -6,18 +6,18 @@ import { ChevronLeft, ChevronRight } from "lucide-react"
 const slides = [
   {
     image: "/images/ourinstitution.jpg",
-    title: "Sistema de Gestion de Becas",
-    subtitle: "Plataforma digital para estudiantes de pregrado de la Universidad de Margarita",
+    title: "Gestión de Becas y Ayudas",
+    subtitle: "Procesamiento y seguimiento de subvenciones estudiantiles de la Universidad de Margarita conforme a la normativa vigente.",
   },
   {
     image: "/images/ourinstitution.jpg",
-    title: "Convocatoria Abierta 2026",
-    subtitle: "Solicita tu beca academica, socioeconomica, deportiva o de excelencia",
+    title: "Modalidades de Beneficio",
+    subtitle: "Programas de Aprendizaje, Social Aprendizaje, Discapacidad y Excelencia Académica para estudiantes regulares.",
   },
   {
     image: "/images/ourinstitution.jpg",
-    title: "Tu futuro comienza aqui",
-    subtitle: "Mas de 500 becas otorgadas apoyando el talento y esfuerzo de nuestros estudiantes",
+    title: "Compromiso con la Excelencia",
+    subtitle: "Apoyamos el desarrollo de destrezas y habilidades que complementen el aprendizaje académico de nuestros becarios.",
   },
 ]
 
@@ -52,10 +52,10 @@ export function HeroSection() {
           <div className="absolute inset-0 bg-[#0a1628]/60" />
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="mx-auto max-w-4xl px-6 text-center">
-              <h2 className="text-2xl font-extrabold text-[#ffffff] font-serif sm:text-3xl md:text-5xl lg:text-6xl text-balance drop-shadow-lg">
+              <h2 className="text-2xl font-extrabold text-[#ffffff] font-serif sm:text-3xl md:text-5xl lg:text-6xl text-balance drop-shadow-lg uppercase tracking-tight">
                 {slide.title}
               </h2>
-              <p className="mx-auto mt-4 max-w-2xl text-base text-[#d1d9e6] sm:text-lg md:text-xl leading-relaxed text-pretty">
+              <p className="mx-auto mt-4 max-w-2xl text-base text-[#d1d9e6] sm:text-lg md:text-xl leading-relaxed text-pretty font-medium">
                 {slide.subtitle}
               </p>
             </div>

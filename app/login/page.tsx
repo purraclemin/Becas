@@ -33,7 +33,7 @@ export default function LoginPage() {
            window.location.href = "/admin/dashboard"
         } else {
            // Asumimos que el estudiante va a su perfil o solicitud
-           window.location.href = "/Solicitud" 
+           window.location.href = "/perfil" 
         }
       }
     } catch (e) {

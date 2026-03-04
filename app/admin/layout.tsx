@@ -13,7 +13,6 @@ export default function AdminLayout({
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
 
-  // Solo para asegurar que el cliente esté montado
   useEffect(() => {
     setMounted(true)
   }, [])
@@ -21,30 +20,24 @@ export default function AdminLayout({
   if (!mounted) return null
 
   return (
-    /* BLOQUEO DE ANCHO:
-       - w-full y max-w-full junto con overflow-x-hidden evitan que la página 
-         "baile" o permita zoom negativo si hay contenido ancho dentro.
-    */
-    <div className="flex min-h-screen bg-[#eff6ff] w-full max-w-full overflow-x-hidden selection:bg-[#d4a843]/30">
-      
-      <div className="flex-1 flex min-h-screen relative w-full max-w-full">
+    <div className="min-h-screen w-full bg-[#eff6ff] selection:bg-[#d4a843]/30 overflow-x-hidden">
+      <div className="flex min-h-screen">
         
-        {/* 1. SIDEBAR: Mantener lógica original */}
+        {/* SIDEBAR FIJA */}
         <AdminSidebar 
           isOpen={isSidebarOpen} 
           onClose={() => setIsSidebarOpen(false)} 
           onLogout={logout} 
         />
 
-        {/* 2. CONTENIDO PRINCIPAL: 
-            - md:ml-56 para respetar tu diseño de escritorio.
-            - min-w-0 es VITAL: permite que el contenedor sepa que puede ser más pequeño 
-              que su contenido interno (obligando a las tablas a scrollear).
+        {/* CONTENEDOR MAESTRO DE CONTENIDO
+            - overflow-hidden: Evita que componentes hijos con anchos fijos rompan el layout.
+            - md:ml-48: Respeta el ancho de la sidebar.
         */}
-        <div className="flex-1 flex flex-col relative z-0 md:ml-56 min-w-0 max-w-full transition-all duration-300">
+        <div className="flex-1 flex flex-col min-w-0 transition-all duration-300 md:ml-48 overflow-hidden">
           
-          {/* HEADER MÓVIL (Solo visible < 768px) */}
-          <header className="md:hidden bg-white px-4 py-3 shadow-sm flex items-center sticky top-0 z-40 border-b border-slate-200 shrink-0">
+          {/* HEADER MÓVIL */}
+          <header className="lg:hidden bg-white px-4 py-3 shadow-sm flex items-center sticky top-0 z-40 border-b border-slate-200 shrink-0">
               <button 
                 onClick={() => setIsSidebarOpen(true)} 
                 className="text-[#1a2744] p-2 rounded-md hover:bg-slate-100 transition-colors"
@@ -52,19 +45,18 @@ export default function AdminLayout({
                   <Menu className="w-6 h-6" />
               </button>
               <span className="ml-3 font-black text-[#1a2744] uppercase text-[10px] tracking-widest">
-                Menú de Navegación
+                Panel Administrativo
               </span>
           </header>
 
-          {/* 3. ÁREA DE TRABAJO:
-              - max-w-full y overflow-x-hidden aquí también para asegurar 
-                que el 'children' no rompa el contenedor.
+          {/* ÁREA DE TRABAJO UNIFICADA
+              - max-w-[1400px]: Establece el límite de ancho para TODAS las páginas.
+              - mx-auto: Centra el contenido si la pantalla es muy ancha.
+              - p-4 md:p-8: Margen constante para evitar que las páginas se vean de distintos tamaños.
           */}
-          <main className="flex-1 w-full max-w-[1440px] mx-auto p-4 md:p-8 lg:px-12 overflow-x-hidden md:overflow-x-visible">
+          <main className="w-full max-w-[1400px] mx-auto p-4 md:p-8 flex flex-col">
             {children}
           </main>
-
-          {/* ELIMINADO: Botón flotante de Modo Oscuro */}
 
         </div>
       </div>

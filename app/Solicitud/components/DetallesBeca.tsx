@@ -8,8 +8,8 @@ import { BookOpen, GraduationCap, FileText, LayoutDashboard } from "lucide-react
 import { SeccionFormulario } from "./EncuestaUI" 
 
 /**
- * 🟢 COMPONENTE: DETALLES DEL BENEFICIO (LIMPIO)
- * Ahora funciona como una sección colapsable sincronizada con el formulario.
+ * 🟢 COMPONENTE: DETALLES DEL BENEFICIO (CORREGIDO)
+ * Se asegura la presencia de atributos required y name para la validación del FormData.
  */
 export function DetallesBeca({ 
   disabled, 
@@ -42,7 +42,8 @@ export function DetallesBeca({
               <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2 ml-1">
                 <BookOpen className="h-3 w-3 text-[#d4a843]" /> Modalidad de Beca
               </Label>
-              <Select name="tipo_beca" disabled={disabled} defaultValue={user?.tipo_beca}>
+              {/* Se añade required explícito para que el validador lo detecte */}
+              <Select name="tipo_beca" disabled={disabled} defaultValue={user?.tipo_beca} required>
                 <SelectTrigger className={`h-11 border-slate-200 text-xs font-bold transition-all rounded-xl ${
                   disabled 
                     ? "bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed opacity-100 shadow-none" 
@@ -51,10 +52,11 @@ export function DetallesBeca({
                   <SelectValue placeholder="Seleccionar beneficio..." />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl border-slate-200">
-                  <SelectItem value="Academica" className="text-xs font-bold uppercase">Beca Académica</SelectItem>
-                  <SelectItem value="Socioeconomica" className="text-xs font-bold uppercase">Beca Socioeconómica</SelectItem>
-                  <SelectItem value="Deportiva" className="text-xs font-bold uppercase">Beca Deportiva</SelectItem>
-                  <SelectItem value="Excelencia" className="text-xs font-bold uppercase">Beca a la Excelencia</SelectItem>
+                  <SelectItem value="BECA SOCIAL" className="text-xs font-bold uppercase">BECA SOCIAL</SelectItem>
+                  <SelectItem value="BECA APRENDIZAJE" className="text-xs font-bold uppercase">BECA APRENDIZAJE</SelectItem>
+                  <SelectItem value="BECA POR DISCAPACIDAD" className="text-xs font-bold uppercase">BECA POR DISCAPACIDAD</SelectItem>
+                  <SelectItem value="BECA A LA EXCELENCIA" className="text-xs font-bold uppercase">BECA A LA EXCELENCIA</SelectItem>
+                  <SelectItem value="OTRAS BECAS" className="text-xs font-bold uppercase">OTRAS BECAS</SelectItem>
                 </SelectContent>
               </Select>
             </div>

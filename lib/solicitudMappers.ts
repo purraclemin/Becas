@@ -22,7 +22,8 @@ export const calcularEdad = (fechaNac: string) => {
 }
 
 export function mapSolicitudData(user: any, studentRaw: any, infoSolicitud: any, infoEncuesta: any) {
-  const encuestaData = (typeof infoEncuesta === 'string') ? JSON.parse(infoEncuesta) : infoEncuesta;
+  // 🟢 IMPORTANTE: infoEncuesta ya no es un JSON string, es el objeto de la fila SQL
+  const data = infoEncuesta || {};
   
   let materiasArray = [];
   try {
@@ -30,7 +31,9 @@ export function mapSolicitudData(user: any, studentRaw: any, infoSolicitud: any,
       if (Array.isArray(rawMaterias)) {
           materiasArray = rawMaterias;
       } else if (typeof rawMaterias === 'string') {
-          materiasArray = JSON.parse(rawMaterias);
+          const parsed = JSON.parse(rawMaterias);
+          // Soportamos ambos formatos: array directo o { materias: [] }
+          materiasArray = Array.isArray(parsed) ? parsed : (parsed.materias || []);
       }
       if (!Array.isArray(materiasArray)) materiasArray = [];
   } catch (error) {
@@ -38,105 +41,96 @@ export function mapSolicitudData(user: any, studentRaw: any, infoSolicitud: any,
       materiasArray = [];
   }
 
-  // 1. Mapeo de la Encuesta (si existe)
-  const encuestaPlana = encuestaData ? {
-    socio_nombres: encuestaData.identificacion?.nombres || "",
-    socio_apellidos: encuestaData.identificacion?.apellidos || "",
-    socio_cedula: encuestaData.identificacion?.cedula || "",
-    socio_fecha_nac: encuestaData.identificacion?.fecha_nac || "",
-    socio_lugar_nac: encuestaData.identificacion?.lugar_nac || "",
-    socio_edad: encuestaData.identificacion?.edad || "",
-    socio_nacionalidad: encuestaData.identificacion?.nacionalidad || "",
-    socio_estado_civil: encuestaData.identificacion?.estado_civil || "",
-    socio_sexo: encuestaData.identificacion?.sexo || "",
-    socio_direccion: encuestaData.identificacion?.direccion || "",
-    socio_municipio: encuestaData.identificacion?.municipio || "",
-    socio_telf_hab: encuestaData.identificacion?.telf_hab || "",
-    socio_celular: encuestaData.identificacion?.celular || "",
-    socio_Institucional: encuestaData.identificacion?.email_institucional || "",
-    socio_trabajo_empresa: encuestaData.laboral?.empresa || "",
-    socio_trabajo_dir: encuestaData.laboral?.direccion || "",
-    socio_trabajo_cargo: encuestaData.laboral?.cargo || "",
-    socio_trabajo_sueldo: encuestaData.laboral?.sueldo || "",
-    socio_ue_procedencia: encuestaData.academico?.ue_procedencia || "",
-    socio_otros_estudios: encuestaData.academico?.otros_estudios || "",
-    socio_fecha_unimar: encuestaData.academico?.fecha_unimar || "",
-    socio_carrera: encuestaData.academico?.carrera || "",
-    socio_trimestre: encuestaData.academico?.trimestre || "",
-    socio_modalidad: encuestaData.academico?.modalidad || "",
-    padre_nombre: encuestaData.familiar?.padre?.nombre || "",
-    padre_edad: encuestaData.familiar?.padre?.edad || "",
-    padre_ocupacion: encuestaData.familiar?.padre?.ocupacion || "",
-    padre_trabajo: encuestaData.familiar?.padre?.trabajo || "",
-    madre_nombre: encuestaData.familiar?.madre?.nombre || "",
-    madre_edad: encuestaData.familiar?.madre?.edad || "",
-    madre_ocupacion: encuestaData.familiar?.madre?.ocupacion || "",
-    madre_trabajo: encuestaData.familiar?.madre?.trabajo || "",
-    familia_num_hermanos: encuestaData.familiar?.num_hermanos || "",
-    familia_hermanos_uni: encuestaData.familiar?.hermanos_uni || "",
-    socio_relacion_fam: encuestaData.familiar?.relacion_fam || "",
-    rango_ingreso_familiar: encuestaData.economico?.rango_ingreso || "",
-    monto_ingreso_sueldo: encuestaData.economico?.ingresos?.sueldo || "",
-    monto_ingreso_extra: encuestaData.economico?.ingresos?.extra || "",
-    monto_ingreso_pension: encuestaData.economico?.ingresos?.pension || "",
-    monto_ingreso_ayuda: encuestaData.economico?.ingresos?.ayuda || "",
-    monto_egreso_mercado: encuestaData.economico?.egresos?.market || "",
-    monto_egreso_vivienda: encuestaData.economico?.egresos?.vivienda || "",
-    monto_egreso_salud: encuestaData.economico?.egresos?.salud || "",
-    monto_egreso_servicios: encuestaData.economico?.egresos?.servicios || "",
-    vivienda_tipo: encuestaData.vivienda?.tipo || "",
-    vivienda_estatus: encuestaData.vivienda?.estatus || "",
-    serv_agua: encuestaData.vivienda?.servicios?.agua ? "on" : "",
-    serv_luz: encuestaData.vivienda?.servicios?.luz ? "on" : "",
-    serv_gas: encuestaData.vivienda?.servicios?.gas ? "on" : "",
-    serv_aseo: encuestaData.vivienda?.servicios?.aseo ? "on" : "",
-    serv_internet: encuestaData.vivienda?.servicios?.internet ? "on" : "",
-    equip_lavadora: encuestaData.vivienda?.equipamiento?.lavadora ? "on" : "",
-    equip_nevera: encuestaData.vivienda?.equipamiento?.nevera ? "on" : "",
-    equip_cable: encuestaData.vivienda?.equipamiento?.cable ? "on" : "",
-    salud_enfermedad_desc: encuestaData.salud?.enfermedad || "",
-    salud_tratamiento: encuestaData.salud?.tratamiento || ""
-  } : {};
+  // Normalización de Sexo base
+  const sexoNormalizado = (
+    studentRaw?.sexo === 'M' || studentRaw?.sexo === 'Masculino' ? 'Masculino' : 
+    studentRaw?.sexo === 'F' || studentRaw?.sexo === 'Femenino' ? 'Femenino' : 
+    studentRaw?.sexo || ""
+  );
 
-  // 2. Combinación con Datos Maestros (Registro de Estudiante)
+  // 1. Mapeo de la Encuesta Existente usando las nuevas columnas de la tabla
+  const datosEncuesta = {
+    // Identificación y Laboral
+    socio_lugar_nac: data.socio_lugar_nac || "",
+    socio_nacionalidad: data.socio_nacionalidad || "Venezolano/a",
+    socio_estado_civil: data.socio_estado_civil || "",
+    socio_telf_hab: data.socio_telf_hab || "",
+    socio_trabajo_empresa: data.socio_trabajo_empresa || "",
+    socio_trabajo_cargo: data.socio_trabajo_cargo || "",
+    monto_ingreso_sueldo: data.monto_ingreso_sueldo || "",
+    
+    // Académico
+    socio_ue_procedencia: data.socio_ue_procedencia || "",
+    socio_otros_estudios: data.socio_otros_estudios || "",
+    socio_fecha_unimar: data.socio_fecha_unimar ? formatearFechaParaInput(data.socio_fecha_unimar) : "",
+    socio_modalidad: data.socio_modalidad || "P",
+    
+    // Familiar
+    padre_nombre: data.padre_nombre || "",
+    padre_edad: data.padre_edad || "",
+    padre_ocupacion: data.padre_ocupacion || "",
+    padre_trabajo: data.padre_trabajo || "",
+    madre_nombre: data.madre_nombre || "",
+    madre_edad: data.madre_edad || "",
+    madre_ocupacion: data.madre_ocupacion || "",
+    madre_trabajo: data.madre_trabajo || "",
+    familia_num_hermanos: data.familia_num_hermanos || "",
+    familia_hermanos_uni: data.familia_hermanos_uni || "",
+    socio_relacion_fam: data.familia_relacion || "",
+    
+    // Económico
+    rango_ingreso_familiar: data.rango_ingreso_familiar || "",
+    monto_ingreso_familiar: data.monto_ingreso_familiar || "",
+    monto_ingreso_extra: data.monto_ingreso_extra || "",
+    monto_ingreso_pension: data.monto_ingreso_pension || "",
+    monto_ingreso_ayuda: data.monto_ingreso_ayuda || "",
+    monto_egreso_mercado: data.monto_egreso_mercado || "",
+    monto_egreso_vivienda: data.monto_egreso_vivienda || "",
+    monto_egreso_salud: data.monto_egreso_salud || "",
+    monto_egreso_servicios: data.monto_egreso_servicios || "",
+    
+    // Vivienda
+    vivienda_tipo: data.vivienda_tipo || "",
+    vivienda_estatus: data.vivienda_estatus || "",
+    serv_agua: data.serv_agua || "off",
+    serv_luz: data.serv_luz || "off",
+    serv_gas: data.serv_gas || "off",
+    serv_aseo: data.serv_aseo || "off",
+    serv_internet: data.serv_internet || "off",
+    equip_lavadora: data.equip_lavadora || "off",
+    equip_nevera: data.equip_nevera || "off",
+    equip_cable: data.equip_cable || "off",
+    
+    // Salud y Empleo (Sincronización de Radios)
+    salud_enfermedad_desc: data.salud_enfermedad_desc || "",
+    salud_tratamiento: data.salud_tratamiento || "",
+    posee_enfermedad_aspirante: data.salud_condicion_especial || "No",
+    posee_empleo_aspirante: data.situacion_laboral_jefe || "No"
+  };
+
+  // 2. Combinación final
   return {
     ...user,
-    // Datos base del estudiante (Maestros)
-    nombre: studentRaw?.nombre || "",
-    apellido: studentRaw?.apellido || "",
-    cedula: studentRaw?.cedula || "",
-    sexo: studentRaw?.sexo || "",
-    fecha_nacimiento: studentRaw?.fecha_nacimiento ? formatearFechaParaInput(studentRaw.fecha_nacimiento) : "",
-    municipio_residencia: studentRaw?.municipio_residencia || "",
-    telefono: studentRaw?.telefono || "",
-    carrera: studentRaw?.carrera || "",
-    semestre: studentRaw?.semestre || "",
-    
-    // 🟢 SINCRONIZACIÓN CRÍTICA:
-    // Si la encuestaPlana no tiene datos (es nueva), inyectamos los del registro
-    // en las llaves que usa la encuesta (socio_...)
-    socio_nombres: encuestaPlana.socio_nombres || studentRaw?.nombre || "",
-    socio_apellidos: encuestaPlana.socio_apellidos || studentRaw?.apellido || "",
-    socio_cedula: encuestaPlana.socio_cedula || studentRaw?.cedula || "",
-    socio_sexo: encuestaPlana.socio_sexo || (studentRaw?.sexo === 'M' ? 'Masculino' : studentRaw?.sexo === 'F' ? 'Femenino' : studentRaw?.sexo) || "",
-    socio_fecha_nac: encuestaPlana.socio_fecha_nac || (studentRaw?.fecha_nacimiento ? formatearFechaParaInput(studentRaw.fecha_nacimiento) : ""),
-    socio_municipio: encuestaPlana.socio_municipio || studentRaw?.municipio_residencia || "",
-    socio_celular: encuestaPlana.socio_celular || studentRaw?.telefono || "",
-    socio_edad: encuestaPlana.socio_edad || (studentRaw?.fecha_nacimiento ? calcularEdad(studentRaw.fecha_nacimiento) : ""),
-    socio_Institucional: encuestaPlana.socio_Institucional || studentRaw?.email || user.email || "",
+    // Sincronización con Datos Maestros (Students)
+    socio_nombres: studentRaw?.nombre || "",
+    socio_apellidos: studentRaw?.apellido || "",
+    socio_cedula: studentRaw?.cedula || "",
+    socio_sexo: sexoNormalizado,
+    socio_carrera: studentRaw?.carrera || "",
+    socio_trimestre: studentRaw?.semestre?.toString() || "",
+    socio_fecha_nac: studentRaw?.fecha_nacimiento ? formatearFechaParaInput(studentRaw.fecha_nacimiento) : "",
+    socio_municipio: studentRaw?.municipio_residencia || "",
+    socio_celular: studentRaw?.telefono || "",
+    socio_edad: studentRaw?.fecha_nacimiento ? calcularEdad(studentRaw.fecha_nacimiento) : "",
+    socio_Institucional: studentRaw?.email || user?.email || "",
 
-    // Datos de la solicitud de beca
+    // Estatus e Info de la solicitud
     tieneDatosRegistro: !!studentRaw,
     estatusBeca: infoSolicitud?.estatus || 'ninguna',
-    observaciones_admin: infoSolicitud?.observaciones_admin || null,
     tipo_beca: infoSolicitud?.tipo_beca || "",
     promedio_notas: infoSolicitud?.promedio_notas || "",
-    motivo_solicitud: infoSolicitud?.motivo_solicitud || "",
-    foto_url: infoSolicitud?.foto_carnet || null,
-    cedula_url: infoSolicitud?.copia_cedula || null,
-    planilla_url: infoSolicitud?.planilla_inscripcion || null,
     materias_registradas: materiasArray,
-    
-    ...encuestaPlana // Sobrescribe con lo que ya esté en la encuesta si existe
+
+    ...datosEncuesta // Inyecta todos los valores cargados de la tabla socioeconómica
   };
 }

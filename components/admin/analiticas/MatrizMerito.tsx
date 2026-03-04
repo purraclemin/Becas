@@ -70,9 +70,10 @@ export function MatrizMerito({ data, onPointClick }: MatrizMeritoProps) {
 
             <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3' }} />
 
-            <ReferenceArea x1={16} x2={20} y1={50} y2={100} fill="#10b981" fillOpacity={0.05} />
+            {/* Sincronización con Nivel Crítico (>= 70) y Promedio Excelente (>= 16) */}
+            <ReferenceArea x1={16} x2={20} y1={60} y2={100} fill="#10b981" fillOpacity={0.05} />
             <ReferenceLine x={16} stroke="#ef4444" strokeDasharray="3 3" />
-            <ReferenceLine y={50} stroke="#d4a843" strokeDasharray="3 3" />
+            <ReferenceLine y={60} stroke="#d4a843" strokeDasharray="3 3" />
 
             <Scatter 
               data={data} 
@@ -80,10 +81,16 @@ export function MatrizMerito({ data, onPointClick }: MatrizMeritoProps) {
               style={{ cursor: 'pointer' }} // <--- Cambia el cursor a mano
             >
               {data.map((entry, index) => {
-                let color = '#64748b'
-                if (entry.promedio_notas >= 16 && entry.vulnerabilidad_puntos >= 50) color = '#10b981'
-                else if (entry.vulnerabilidad_puntos >= 50) color = '#3b82f6'
-                else if (entry.promedio_notas >= 16) color = '#f59e0b'
+                let color = '#64748b' // Por defecto: Gris (Bajo Riesgo / Promedio Medio)
+                
+                // Lógica de color basada en nuevos umbrales
+                if (entry.promedio_notas >= 16 && entry.vulnerabilidad_puntos >= 60) {
+                  color = '#10b981' // Verde: Prioridad Máxima (Mérito + Vulnerabilidad Crítica)
+                } else if (entry.vulnerabilidad_puntos >= 60) {
+                  color = '#3b82f6' // Azul: Vulnerabilidad Crítica
+                } else if (entry.promedio_notas >= 16) {
+                  color = '#f59e0b' // Naranja: Mérito Alto
+                }
 
                 return <Cell key={`cell-${index}`} fill={color} stroke="white" strokeWidth={1} />
               })}

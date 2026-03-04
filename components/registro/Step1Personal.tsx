@@ -19,7 +19,7 @@ export const Step1Personal = ({ form, updateField }: any) => (
             placeholder="Ej: Juan"
             required
           />
-        </div>
+        </div>  
       </div>
 
       {/* APELLIDO */}
@@ -77,7 +77,7 @@ export const Step1Personal = ({ form, updateField }: any) => (
     </div>
 
     <div className="grid gap-4 sm:grid-cols-2">
-      {/* SEXO */}
+      {/* SEXO - CRÍTICO: Asegura que el 'value' sea M o F */}
       <div className="space-y-1.5">
         <label className="text-[10px] font-black uppercase text-[#6b7280] ml-1">Sexo</label>
         <div className="relative">
@@ -86,13 +86,16 @@ export const Step1Personal = ({ form, updateField }: any) => (
             name="sexo"
             value={form.sexo}
             onChange={(e) => updateField("sexo", e.target.value)}
-            className="w-full rounded-lg border border-[#e2e8f0] bg-[#fcfdfe] py-3 pl-10 pr-4 text-sm outline-none focus:border-[#d4a843] appearance-none"
+            className="w-full rounded-lg border border-[#e2e8f0] bg-[#fcfdfe] py-3 pl-10 pr-4 text-sm outline-none focus:border-[#d4a843] appearance-none font-bold text-[#1e3a5f]"
             required
           >
             <option value="">Selecciona</option>
             <option value="M">Masculino</option>
             <option value="F">Femenino</option>
           </select>
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-[#9ca3af]">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          </div>
         </div>
       </div>
 
@@ -106,7 +109,7 @@ export const Step1Personal = ({ form, updateField }: any) => (
             name="fecha_nacimiento"
             value={form.fecha_nacimiento}
             onChange={(e) => updateField("fecha_nacimiento", e.target.value)}
-            className="w-full rounded-lg border border-[#e2e8f0] bg-[#fcfdfe] py-3 pl-10 pr-4 text-sm outline-none focus:border-[#d4a843]"
+            className="w-full rounded-lg border border-[#e2e8f0] bg-[#fcfdfe] py-3 pl-10 pr-4 text-sm outline-none focus:border-[#d4a843] font-bold text-[#1e3a5f]"
             required
           />
         </div>
@@ -122,7 +125,7 @@ export const Step1Personal = ({ form, updateField }: any) => (
           name="municipio"
           value={form.municipio}
           onChange={(e) => updateField("municipio", e.target.value)}
-          className="w-full rounded-lg border border-[#e2e8f0] bg-[#fcfdfe] py-3 pl-10 pr-4 text-sm outline-none focus:border-[#d4a843] appearance-none"
+          className="w-full rounded-lg border border-[#e2e8f0] bg-[#fcfdfe] py-3 pl-10 pr-4 text-sm outline-none focus:border-[#d4a843] appearance-none font-bold text-[#1e3a5f]"
           required
         >
           <option value="">Selecciona tu municipio</option>
@@ -138,6 +141,9 @@ export const Step1Personal = ({ form, updateField }: any) => (
           <option value="Tubores">Tubores</option>
           <option value="Villalba">Villalba</option>
         </select>
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-[#9ca3af]">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </div>
       </div>
     </div>
 
@@ -145,9 +151,7 @@ export const Step1Personal = ({ form, updateField }: any) => (
     <div className="space-y-1.5">
       <label className="text-[10px] font-black uppercase text-[#6b7280] ml-1">Email Institucional</label>
       <div className="relative flex">
-        {/* Input oculto para asegurar que el FormData capture el email completo */}
         <input type="hidden" name="email" value={form.email} />
-        
         <div className="relative flex-1">
           <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#9ca3af] z-10" />
           <input
@@ -155,7 +159,7 @@ export const Step1Personal = ({ form, updateField }: any) => (
             value={form.email.replace("@unimar.edu.ve", "")}
             onChange={(e) => updateField("email", e.target.value.split("@")[0] + "@unimar.edu.ve")}
             placeholder="ej: juan.perez"
-            className="w-full rounded-l-lg border border-[#e2e8f0] bg-[#fcfdfe] py-3 pl-10 pr-4 text-sm outline-none focus:border-[#d4a843]"
+            className="w-full rounded-l-lg border border-[#e2e8f0] bg-[#fcfdfe] py-3 pl-10 pr-4 text-sm outline-none focus:border-[#d4a843] font-bold text-[#1e3a5f]"
             required
           />
         </div>

@@ -102,7 +102,7 @@ export const PlanillaSolicitud = ({ user, promedio }: { user: any, promedio: str
           <View style={tw('bg-slate-50 p-2 rounded mb-4 flex flex-row flex-wrap')}>
             <DataRow width="50%" label="Empresa" value={user?.socio_trabajo_empresa} />
             <DataRow width="25%" label="Cargo" value={user?.socio_trabajo_cargo} />
-            <DataRow width="25%" label="Sueldo" value={`$ ${user?.socio_trabajo_sueldo}`} />
+            <DataRow width="25%" label="Sueldo" value={`$ ${user?.monto_ingreso_sueldo}`} />
           </View>
         )}
 

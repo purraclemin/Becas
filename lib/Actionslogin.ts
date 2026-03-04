@@ -42,7 +42,7 @@ export async function login(formData: FormData) {
     })
 
     // 2. Determinamos la ruta según el rol
-    let targetPath = '/Solicitud'
+    let targetPath = '/postulacion'
     if (userFound.role === 'admin') {
       targetPath = '/admin/dashboard'
     }

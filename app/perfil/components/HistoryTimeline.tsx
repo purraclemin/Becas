@@ -1,8 +1,10 @@
-import { History, CalendarDays } from "lucide-react"
+"use client"
+
+import { History, CalendarDays, GraduationCap } from "lucide-react"
 
 /**
  * COMPONENTE: HISTORIAL DE NOTAS (KARDEX TIMELINE)
- * Nueva visualización cronológica para la pestaña de Historial.
+ * Visualización cronológica que ahora incluye la ubicación del trimestre por periodo.
  */
 export function HistoryTimeline({ history, stats }: { history: any[], stats: any }) {
     if (!history || history.length === 0) {
@@ -43,9 +45,19 @@ export function HistoryTimeline({ history, stats }: { history: any[], stats: any
                         {/* Tarjeta del Periodo */}
                         <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300">
                             <div className="bg-[#f8fafc] border-b border-gray-100 p-5 flex flex-wrap items-center justify-between gap-4">
-                                <div>
-                                    <h4 className="text-[#1e3a5f] font-black text-lg uppercase tracking-tight">{item.periodoNombre || item.periodoCodigo}</h4>
-                                    <p className="text-xs text-gray-400 font-medium flex items-center gap-1 mt-1">
+                                <div className="space-y-1">
+                                    <div className="flex items-center gap-2">
+                                        <h4 className="text-[#1e3a5f] font-black text-lg uppercase tracking-tight">
+                                            {item.periodoNombre || item.periodoCodigo}
+                                        </h4>
+                                        {/* 🟢 INFORMACIÓN DEL TRIMESTRE */}
+                                        {item.trimestre && (
+                                            <span className="bg-[#1e3a5f]/5 text-[#1e3a5f] px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-tighter border border-[#1e3a5f]/10 flex items-center gap-1">
+                                                <GraduationCap className="h-2.5 w-2.5" /> T-{item.trimestre}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="text-xs text-gray-400 font-medium flex items-center gap-1">
                                         <CalendarDays className="h-3 w-3" /> Procesado: {item.fechaRegistro}
                                     </p>
                                 </div>

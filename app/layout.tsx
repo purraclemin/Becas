@@ -1,28 +1,45 @@
+"use client"
+
 import React from "react"
-import type { Metadata } from 'next'
+import { usePathname } from "next/navigation"
 import { Inter, Montserrat } from 'next/font/google'
-import { Toaster } from "@/components/ui/toaster" // 🟢 Importación del Toaster
+import { Toaster } from "@/components/ui/toaster"
 
 import './globals.css'
 
 const _inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 const _montserrat = Montserrat({ subsets: ['latin'], variable: '--font-montserrat' })
 
-export const metadata: Metadata = {
-  title: 'UNIMAR Becas - Sistema de Gestion de Becas',
-  description: 'Plataforma web para la gestion de becas para los estudiantes regulares de pregrado de la Universidad de Margarita (UNIMAR)',
-}
-
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const pathname = usePathname();
+  
+  // Detectamos si la ruta actual debe excluirse del escalado (Admin o Postulación)
+  const isExcluded = pathname?.startsWith('/admin') || pathname?.startsWith('/postulacion');
+
   return (
-    <html lang="es">
-      <body className={`${_inter.variable} ${_montserrat.variable} font-sans antialiased`}>
-        {children}
-        {/* 🟢 El Toaster actúa como el "contenedor" que muestra los anuncios */}
+    <html lang="es" className="overflow-x-hidden">
+      <body className={`${_inter.variable} ${_montserrat.variable} font-sans antialiased bg-slate-50`}>
+        
+        {isExcluded ? (
+          /* SI ES ADMIN O POSTULACIÓN: 
+             Renderizamos los children directamente al 100%. 
+             Esto evita que el escalado global rompa estos diseños de pantalla completa.
+          */
+          <>{children}</>
+        ) : (
+          /* SI ES OTRA VISTA DEL ESTUDIANTE: 
+             Aplicamos el escalado del 85% solicitado.
+             Se compensa tanto el ancho (117.65%) como el alto (117.65vh).
+          */
+          <div className="origin-top scale-[0.85] w-[117.65%] h-[117.65vh] -ml-[8.82%]">
+              {children}
+          </div>
+        )}
+
         <Toaster /> 
       </body>
     </html>

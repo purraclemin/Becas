@@ -47,14 +47,15 @@ export default function RegistroPage() {
     setError(null)
     
     if (currentStep === 1) {
+      // Validación estricta de campos demográficos
       if (!form.nombre || !form.apellido || !form.cedula || !form.telefono || !form.email || !form.sexo || !form.fecha_nacimiento || !form.municipio) {
-        setError("Por favor completa todos los datos personales y demográficos")
-        return false
+        setError("Por favor completa todos los datos personales y demográficos");
+        return false;
       }
       
       if (!form.email.includes("@unimar.edu.ve")) {
-        setError("Debe usar su correo institucional @unimar.edu.ve")
-        return false
+        setError("Debe usar su correo institucional @unimar.edu.ve");
+        return false;
       }
 
       setIsPending(true)
@@ -84,12 +85,14 @@ export default function RegistroPage() {
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     
+    // Si no estamos en el último paso, avanzamos
     if (step < 3) {
       const isValid = await validateStep(step)
       if (isValid) setStep(step + 1)
       return
     }
     
+    // Validaciones finales del paso 3
     const passwordError = validatePassword(form.password);
     if (passwordError) return setError(passwordError);
 
@@ -99,12 +102,21 @@ export default function RegistroPage() {
     setIsPending(true)
     setError(null)
 
-    // 🟢 SOLUCIÓN: Construir FormData manualmente desde el estado 'form'
-    // Esto asegura que todos los datos (paso 1, 2 y 3) se envíen juntos
+    // 🟢 SOLUCIÓN AL PROBLEMA DEL SEXO VACÍO:
+    // Creamos un nuevo FormData y añadimos manualmente cada campo del estado 'form'.
+    // Esto asegura que el sexo (capturado en el paso 1) se incluya aunque el input esté desmontado.
     const formData = new FormData()
-    Object.entries(form).forEach(([key, value]) => {
-      formData.append(key, value.toString())
-    })
+    formData.append("nombre", form.nombre.trim())
+    formData.append("apellido", form.apellido.trim())
+    formData.append("cedula", form.cedula.trim())
+    formData.append("sexo", form.sexo) // <--- Aquí forzamos el envío de 'M' o 'F'
+    formData.append("fecha_nacimiento", form.fecha_nacimiento)
+    formData.append("municipio", form.municipio)
+    formData.append("telefono", form.telefono.trim())
+    formData.append("email", form.email.trim())
+    formData.append("password", form.password)
+    formData.append("carrera", form.carrera)
+    formData.append("semestre", form.semestre)
 
     try {
       const result = await register(formData)
@@ -112,11 +124,12 @@ export default function RegistroPage() {
         setError(result.error)
         setIsPending(false)
       } else if (result?.success) {
+        // Redirección al login tras registro exitoso
         router.push("/")
         router.refresh()
       }
     } catch (e) {
-      setError("Error de conexión con el servidor")
+      setError("Error crítico de conexión con el servidor")
       setIsPending(false)
     }
   }

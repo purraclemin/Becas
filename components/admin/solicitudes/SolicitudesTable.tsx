@@ -4,7 +4,8 @@ import React, { useState } from "react"
 import { MoreHorizontal, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
 import { SolicitudesTableRow } from "./SolicitudesTableRow"
 
-export function SolicitudesTable({ data, loading, onView, onStatusChange }: any) {
+// 🟢 Recibe onViewHistorial para servir de puente entre la fila y la vista principal
+export function SolicitudesTable({ data, loading, onView, onViewHistorial, onStatusChange, periodoActualId }: any) {
   
   // --- ESTADO PARA EL ORDENAMIENTO ---
   const [sortConfig, setSortConfig] = useState<{ key: string | null; direction: 'asc' | 'desc' }>({
@@ -40,6 +41,9 @@ export function SolicitudesTable({ data, loading, onView, onStatusChange }: any)
       } else if (sortConfig.key === 'promedio') {
         aValue = Number(a.promedio_notas || 0)
         bValue = Number(b.promedio_notas || 0)
+      } else if (sortConfig.key === 'trimestre') {
+        aValue = Number(a.semestre || a.trimestre || 0)
+        bValue = Number(b.semestre || b.trimestre || 0)
       } else if (typeof aValue === 'string') {
         aValue = aValue.toLowerCase()
         bValue = bValue.toLowerCase()
@@ -66,21 +70,21 @@ export function SolicitudesTable({ data, loading, onView, onStatusChange }: any)
   }
 
   if (loading) return (
-    <div className="w-full bg-white rounded-xl shadow-sm border border-slate-200 p-12 text-center animate-pulse">
-      <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Sincronizando registros...</p>
+    <div className="w-full bg-white rounded-xl shadow-sm border border-slate-200 p-8 text-center animate-pulse">
+      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sincronizando registros...</p>
     </div>
   )
 
   if (data.length === 0) return (
-    <div className="w-full bg-white rounded-xl shadow-sm border border-slate-200 p-12 text-center flex flex-col items-center">
-      <MoreHorizontal className="h-6 w-6 text-slate-300 mb-2" />
-      <h3 className="text-slate-800 font-bold uppercase text-xs tracking-widest">Sin resultados</h3>
-      <p className="text-slate-500 text-[10px] uppercase">No hay solicitudes que coincidan con la búsqueda</p>
+    <div className="w-full bg-white rounded-xl shadow-sm border border-slate-200 p-8 text-center flex flex-col items-center">
+      <MoreHorizontal className="h-5 w-5 text-slate-300 mb-2" />
+      <h3 className="text-slate-800 font-bold uppercase text-[10px] tracking-widest">Sin resultados</h3>
+      <p className="text-slate-500 text-[9px] uppercase">No hay solicitudes que coincidan con la búsqueda</p>
     </div>
   )
 
-  // Clase base para uniformidad en los encabezados
-  const thClass = "px-6 py-4 text-[10px] font-black uppercase tracking-widest cursor-pointer hover:bg-[#23355b] transition-colors group"
+  // Clase base optimizada para mayor densidad
+  const thClass = "px-4 py-3 text-[9px] font-black uppercase tracking-widest cursor-pointer hover:bg-[#23355b] transition-colors group"
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
@@ -89,7 +93,7 @@ export function SolicitudesTable({ data, loading, onView, onStatusChange }: any)
           <thead className="bg-[#1a2744] text-white">
             <tr>
               {/* ID */}
-              <th className={`${thClass} text-left w-20`} onClick={() => handleSort('id')}>
+              <th className={`${thClass} text-left w-16`} onClick={() => handleSort('id')}>
                 <div className="flex items-center gap-1">ID {getSortIcon('id')}</div>
               </th>
 
@@ -98,9 +102,19 @@ export function SolicitudesTable({ data, loading, onView, onStatusChange }: any)
                 <div className="flex items-center gap-1">Estudiante {getSortIcon('estudiante')}</div>
               </th>
 
+              {/* Municipio */}
+              <th className={`${thClass} text-left hidden lg:table-cell`} onClick={() => handleSort('municipio_residencia')}>
+                <div className="flex items-center gap-1">Municipio {getSortIcon('municipio_residencia')}</div>
+              </th>
+
               {/* Carrera */}
               <th className={`${thClass} text-left hidden md:table-cell`} onClick={() => handleSort('carrera')}>
                 <div className="flex items-center gap-1">Carrera / Becas {getSortIcon('carrera')}</div>
+              </th>
+
+              {/* Trimestre */}
+              <th className={`${thClass} text-center hidden lg:table-cell`} onClick={() => handleSort('trimestre')}>
+                <div className="flex items-center justify-center gap-1">Trim. {getSortIcon('trimestre')}</div>
               </th>
 
               {/* Vulnerabilidad */}
@@ -110,27 +124,29 @@ export function SolicitudesTable({ data, loading, onView, onStatusChange }: any)
 
               {/* Promedio */}
               <th className={`${thClass} text-center hidden lg:table-cell`} onClick={() => handleSort('promedio')}>
-                <div className="flex items-center justify-center gap-1">Promedio {getSortIcon('promedio')}</div>
+                <div className="flex items-center justify-center gap-1">Prom/Global {getSortIcon('promedio')}</div>
               </th>
 
-              {/* Estatus (AHORA CENTRADO) */}
+              {/* Estatus */}
               <th className={`${thClass} text-center hidden sm:table-cell`} onClick={() => handleSort('estatus')}>
                 <div className="flex items-center justify-center gap-1">Estatus {getSortIcon('estatus')}</div>
               </th>
 
-              {/* Acciones (FONDO CONTINUO) */}
-              <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-right bg-[#1a2744] text-white">
+              {/* Acciones */}
+              <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-right bg-[#1a2744] text-white">
                 Acciones
               </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {sortedData.map((s: any) => (
+            {sortedData.map((s: any, index: number) => (
               <SolicitudesTableRow 
-                key={s.id} 
+                key={`${s.id}-${index}`} 
                 s={s} 
                 onView={onView} 
+                onViewHistorial={onViewHistorial} // 🟢 Pasamos la función de historial a la fila
                 onStatusChange={onStatusChange} 
+                periodoActualId={periodoActualId}
               />
             ))}
           </tbody>

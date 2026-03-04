@@ -1,19 +1,24 @@
 "use client"
 
-import React, { useState, useEffect, useRef } from "react"
+import React, { useState, useEffect, useRef, useCallback } from "react"
 import { obtenerTodasLasSolicitudes } from "@/lib/ActionsTodasSolicitudes"
 import { actualizarEstatusBeca } from "@/lib/ActionsEstatusBeca" 
+import { obtenerOCrearPeriodoObjetivo } from "@/lib/SolicitudAcademic"
+import { getStudentHistory } from "@/lib/ActionsHistoryMaterias" 
 import { SolicitudesFilters } from "./SolicitudesFilters"
-import { SolicitudesTable } from "./SolicitudesTable"
 import { SolicitudesHeader } from "./SolicitudHeader" 
-import { SolicitudModal } from "./SolicitudModal" 
-import { Loader2 } from "lucide-react"
 
-// Interfaz para asegurar tipado estricto y evitar error de 'any' implícito
+// Importación de submódulos
+import { SolicitudesViewTable } from "./SolicitudesViewTable"
+import { SolicitudesViewAuditoria } from "./SolicitudesViewAuditoria"
+import { SolicitudesViewAcademic } from "./SolicitudesViewAcademic"
+
 interface FiltrosSolicitud {
   search: string;
   status: string;
+  municipio: string;
   carrera: string;
+  trimestre: string;
   tipoBeca: string;
   fecha: string;
   vulnerabilidad: string;
@@ -21,27 +26,42 @@ interface FiltrosSolicitud {
   estadoEstudio: string;
   filtroPromedio: string;
   limit: number;
+  // 🟢 NUEVOS: Campos para la integración con Analytics (Embudo)
+  es_renovacion?: string;
+  promedioMin?: string;
+  vulnerabilidadMin?: string;
+  tendencia?: string;
+  scope?: string; // 📊 Parámetro para la Barra 5
 }
 
 export function SolicitudesView({ initialFilters }: { initialFilters: any }) {
   const [solicitudes, setSolicitudes] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [periodoActualId, setPeriodoActualId] = useState<number | null>(null)
+  const [viewMode, setViewMode] = useState<'list' | 'auditoria' | 'academic'>('list')
   const [selectedSolicitud, setSelectedSolicitud] = useState<any>(null)
+  const [dataHistorial, setDataHistorial] = useState<any>(null) 
+  const [loadingHistorial, setLoadingHistorial] = useState(false)
   
-  // 🟢 ÚNICA FUENTE DE VERDAD: El estado se inicializa una vez.
-  // Gracias a la 'key' en el Padre, este componente se reinicia solo cuando la URL cambia.
   const [filtros, setFiltros] = useState<FiltrosSolicitud>({
     search: initialFilters?.search || "",
     status: initialFilters?.status || "",
+    municipio: initialFilters?.municipio || "",
     carrera: initialFilters?.carrera || "",
+    trimestre: initialFilters?.trimestre || "",
     tipoBeca: initialFilters?.tipoBeca || "",
     fecha: initialFilters?.fecha || "",
     vulnerabilidad: initialFilters?.vulnerabilidad || "",
     rankingElite: !!initialFilters?.rankingElite,
     estadoEstudio: initialFilters?.estadoEstudio || "",
     filtroPromedio: initialFilters?.filtroPromedio || "",
-    limit: initialFilters?.limit || 7 
+    limit: initialFilters?.limit || 7,
+    // 🟢 Inicialización de filtros provenientes del Embudo
+    es_renovacion: initialFilters?.es_renovacion || "",
+    promedioMin: initialFilters?.promedioMin || "",
+    vulnerabilidadMin: initialFilters?.vulnerabilidadMin || "",
+    tendencia: initialFilters?.tendencia || "",
+    scope: initialFilters?.scope || "" // 📊 Inicialización del scope
   })
   
   const [paginaActual, setPaginaActual] = useState(1)
@@ -49,120 +69,120 @@ export function SolicitudesView({ initialFilters }: { initialFilters: any }) {
   const [totalRegistros, setTotalRegistros] = useState(0)
 
   const abortControllerRef = useRef<AbortController | null>(null);
+  const isFirstRender = useRef(true); 
+  const lastFiltersRef = useRef<string>(""); 
 
-  const cargarDatos = async (actualFiltros: FiltrosSolicitud, pagina: number) => {
+  useEffect(() => {
+    const cargarPeriodo = async () => {
+      try {
+        const res = await obtenerOCrearPeriodoObjetivo();
+        const idFinal = (res && typeof res === 'object') ? (res.id || res.periodo_id) : res;
+        if (idFinal) setPeriodoActualId(Number(idFinal));
+      } catch (error) {
+        console.error("Error obteniendo periodo actual:", error);
+      }
+    };
+    cargarPeriodo();
+  }, []);
+
+  const cargarDatos = useCallback(async (actualFiltros: FiltrosSolicitud, pagina: number) => {
+    const currentFiltersKey = JSON.stringify({ ...actualFiltros, pagina });
+    if (currentFiltersKey === lastFiltersRef.current && !isFirstRender.current) return;
     if (abortControllerRef.current) abortControllerRef.current.abort();
-    
     const controller = new AbortController();
     abortControllerRef.current = controller;
-
     setLoading(true)
 
     try {
+      // Los nuevos filtros se propagan a la Server Action automáticamente
       const res: any = await obtenerTodasLasSolicitudes({ 
         ...actualFiltros, 
-        page: pagina,
+        page: pagina, 
         limit: actualFiltros.limit 
       })
-
       if (controller.signal.aborted) return;
-
       if (res && res.data) {
-        setSolicitudes(res.data)
-        setTotalPaginas(res.totalPaginas || 1)
-        setTotalRegistros(res.totalRegistros || 0)
-      } else {
-        setSolicitudes([])
-        setTotalPaginas(1)
+        setSolicitudes(res.data);
+        setTotalPaginas(res.totalPaginas || 1);
+        setTotalRegistros(res.totalRegistros || 0);
+        lastFiltersRef.current = currentFiltersKey; 
       }
     } catch (error) {
-      if (!controller.signal.aborted) {
-          console.error("Error cargando solicitudes:", error)
-          setSolicitudes([]) 
-      }
+      console.error("Error cargando solicitudes:", error)
     } finally {
       if (!controller.signal.aborted) setLoading(false);
     }
-  }
+  }, []);
 
-  const handleFilterChange = (nuevosFiltros: FiltrosSolicitud) => {
-    setFiltros(nuevosFiltros)
-    setPaginaActual(1) 
-  }
+  useEffect(() => {
+    if (viewMode !== 'list') return;
+    const timeout = setTimeout(() => {
+      cargarDatos(filtros, paginaActual);
+      isFirstRender.current = false;
+    }, isFirstRender.current ? 50 : 0);
+    return () => clearTimeout(timeout);
+  }, [filtros, paginaActual, cargarDatos, viewMode]);
 
-  const handleHeaderChange = (e: { status: string }) => {
-    const statusValue = e.status === "Todas" ? "" : e.status
-    handleFilterChange({ ...filtros, status: statusValue })
-  }
-
-  const handleView = (solicitud: any) => {
-    setSelectedSolicitud(solicitud)
-    setIsModalOpen(true)
-  }
-
-  // 🟢 ACTUALIZADO: Ahora recibe y envía las observaciones al servidor
-  const handleStatusChange = async (id: number, newStatus: string, observaciones?: string) => {
+  const handleStatusChange = async (id: number, newStatus: string, observaciones?: string, confirmacionEspecial: boolean = false) => {
     try {
-      const resultado = await actualizarEstatusBeca(id, newStatus, observaciones);
-      if (resultado.error) {
-        alert("No se pudo actualizar: " + resultado.error);
-        return;
-      }
+      const resultado = await actualizarEstatusBeca(id, newStatus, observaciones, confirmacionEspecial);
+      if (resultado.error === "REGLAMENTO_INCUMPLIDO") return resultado; 
+      lastFiltersRef.current = ""; 
       await cargarDatos(filtros, paginaActual);
+      return resultado;
     } catch (error) {
-      console.error("Error al procesar el cambio de estatus:", error);
+      return { error: "Error de conexión." };
     }
   }
 
-  // Único efecto que dispara la carga. Se ejecuta al montar y cuando cambian filtros.
-  useEffect(() => {
-    cargarDatos(filtros, paginaActual)
-    return () => abortControllerRef.current?.abort();
-  }, [filtros, paginaActual])
+  if (viewMode === 'academic') return (
+    <SolicitudesViewAcademic 
+      selectedSolicitud={selectedSolicitud} 
+      dataHistorial={dataHistorial} 
+      loadingHistorial={loadingHistorial} 
+      onClose={() => setViewMode('list')} 
+    />
+  );
+
+  if (viewMode === 'auditoria') return (
+    <SolicitudesViewAuditoria 
+      selectedSolicitud={selectedSolicitud} 
+      onStatusChange={handleStatusChange} 
+      onClose={() => setViewMode('list')} 
+      periodoActualId={periodoActualId} 
+    />
+  );
 
   return (
-    <div className="space-y-6">
-      <SolicitudesHeader
+    <div className="space-y-6 animate-in fade-in duration-500 w-full max-w-[1600px] mx-auto px-4 md:px-8">
+      <SolicitudesHeader 
         currentStatus={filtros.status || "Todas"} 
-        onStatusChange={handleHeaderChange} 
+        onStatusChange={(e:any) => setFiltros({...filtros, status: e.status === "Todas" ? "" : e.status, limit: 7})} 
       />
-
       <SolicitudesFilters 
         initialFilters={filtros} 
-        onFilterChange={handleFilterChange}
-        paginaActual={paginaActual}
-        setPaginaActual={setPaginaActual}
-        totalPaginas={totalPaginas}
-        loading={loading}
-        hasData={solicitudes.length > 0}
-        registrosPorPagina={filtros.limit}
-        setRegistrosPorPagina={(val: number) => handleFilterChange({ ...filtros, limit: val })}
+        onFilterChange={(f:any) => { setFiltros(f); setPaginaActual(1); }}
+        paginaActual={paginaActual} 
+        setPaginaActual={setPaginaActual} 
+        totalPaginas={totalPaginas} 
+        loading={loading} 
+        hasData={solicitudes.length > 0} 
+        registrosPorPagina={filtros.limit} 
+        setRegistrosPorPagina={(val:number) => setFiltros({...filtros, limit: val})} 
       />
-
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden min-h-[400px] relative">
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-32 text-slate-400 animate-in fade-in duration-300">
-            <Loader2 className="h-8 w-8 animate-spin mb-4 text-[#d4a843]" />
-            <span className="text-[10px] font-black uppercase tracking-[0.2em]">
-              Sincronizando MariaDB...
-            </span>
-          </div>
-        ) : (
-          <SolicitudesTable 
-            data={solicitudes} 
-            onView={handleView} 
-            onStatusChange={handleStatusChange} 
-          />
-        )}
-      </div>
-
-      {isModalOpen && selectedSolicitud && (
-        <SolicitudModal
-          solicitud={selectedSolicitud}
-          onClose={() => setIsModalOpen(false)}
-          onStatusChange={handleStatusChange} 
-        />
-      )}
+      <SolicitudesViewTable 
+        loading={loading} 
+        solicitudes={solicitudes} 
+        periodoActualId={periodoActualId}
+        handleStatusChange={handleStatusChange}
+        onViewAuditoria={(s:any) => { setSelectedSolicitud(s); setViewMode('auditoria'); }}
+        onViewAcademic={async (s:any) => {
+          setSelectedSolicitud(s); setViewMode('academic'); setLoadingHistorial(true);
+          const res = await getStudentHistory(Number(s.user_id), false);
+          if (res.success) setDataHistorial(res);
+          setLoadingHistorial(false);
+        }}
+      />
     </div>
   )
 }

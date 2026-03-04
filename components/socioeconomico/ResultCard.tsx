@@ -1,210 +1,174 @@
 "use client"
 
 import React from "react"
-import { CheckCircle2, Info, Printer, HelpCircle, AlertTriangle, BadgeCheck, Activity, Landmark } from "lucide-react"
-
-const LABELS: Record<string, string> = {
-  tipo_vivienda: "Tipo de Vivienda",
-  tenencia_vivienda: "Tenencia",
-  numero_habitaciones: "N° Habitaciones",
-  material_vivienda: "Material Predominante",
-  num_personas_hogar: "Personas en el Hogar",
-  num_personas_trabajan: "Personas que Trabajan",
-  dependencia_economica: "Dependencia Económica",
-  carga_familiar_discapacidad: "Discapacidad en Familia",
-  ingreso_mensual_familiar: "Ingreso Familiar Mensual",
-  egreso_mensual_aproximado: "Egreso Mensual Aprox.",
-  empleo_jefe_hogar: "Ocupación Jefe Hogar",
-  ayuda_otros_familiares: "Ayuda de Terceros",
-  acceso_internet: "Acceso a Internet",
-  equipo_computacion: "Equipo de Computación",
-  servicio_agua_luz: "Servicios Básicos",
-  transporte_university: "Transporte a Universidad",
-  gastos_medicos_mensuales: "Gastos Médicos",
-  pago_alquiler_residencia: "Pago de Alquiler",
-  hermanos_estudiando: "Hermanos Estudiando",
-  beca_otra_institucion: "Beca Externa"
-}
-
-const CAMPOS_MONETARIOS = [
-  "ingreso_mensual_familiar",
-  "egreso_mensual_aproximado",
-  "gastos_medicos_mensuales"
-];
+import { 
+  CheckCircle2, Info, HelpCircle, AlertTriangle, BadgeCheck, Activity, Landmark, ShieldAlert, Mail 
+} from "lucide-react"
+import { SECCIONES_REPORTE, CAMPOS_MONETARIOS } from "./ResultCardData"
+import { RiskIndicator, getColorByScore } from "./ResultCardUI"
 
 export function ResultCard({ student, formData }: any) {
+  const displayData = { ...student, ...formData };
   
+  // Prioridad total a los datos del administrador para el reporte final
+  const puntajeFinal = student?.puntaje_admin ?? student?.puntaje ?? 0;
+  const puntajeAlumno = student?.puntaje_estudiante ?? 0;
+  const nivelFinal = student?.nivel_admin ?? student?.nivel_riesgo ?? "Pendiente";
+
   const getNivelConfig = (nivel: string) => {
     switch (nivel) {
+      case 'Crítico':
+        return {
+          bgHeader: "bg-slate-950",
+          bgLight: "bg-rose-50/50",
+          text: "text-rose-900",
+          icon: ShieldAlert,
+          desc: "ESTADO CRÍTICO: Vulnerabilidad extrema detectada."
+        };
       case 'Alto':
         return {
           bgHeader: "bg-rose-600",
           bgLight: "bg-rose-50/80",
           text: "text-rose-800",
-          border: "border-rose-200",
-          icon: <AlertTriangle className="h-6 w-6 text-rose-600" />,
-          desc: "CRÍTICO: Vulnerabilidad alta detectada. Requiere asignación prioritaria de beneficio."
+          icon: AlertTriangle,
+          desc: "RIESGO ALTO: Carencias socioeconómicas severas verificadas."
         };
       case 'Medio':
         return {
           bgHeader: "bg-amber-500",
           bgLight: "bg-amber-50/80",
           text: "text-amber-800",
-          border: "border-amber-200",
-          icon: <Info className="h-6 w-6 text-amber-600" />,
-          desc: "MODERADO: Se detectan carencias importantes. Evaluación de apoyo recomendada."
+          icon: Info,
+          desc: "RIESGO MEDIO: Situación vulnerable evaluada."
         };
       case 'Bajo':
         return {
           bgHeader: "bg-emerald-600",
           bgLight: "bg-emerald-50/80",
           text: "text-emerald-800",
-          border: "border-emerald-200",
-          icon: <CheckCircle2 className="h-6 w-6 text-emerald-600" />,
-          desc: "ESTABLE: Condiciones socioeconómicas básicas cubiertas. Riesgo de deserción bajo."
+          icon: CheckCircle2,
+          desc: "RIESGO BAJO: Condiciones socioeconómicas estables."
         };
       default:
         return {
           bgHeader: "bg-slate-700",
           bgLight: "bg-slate-50",
           text: "text-slate-800",
-          border: "border-slate-200",
-          icon: <HelpCircle className="h-6 w-6 text-slate-600" />,
-          desc: "PENDIENTE: El expediente requiere validación técnica adicional."
+          icon: HelpCircle,
+          desc: "PENDIENTE: Requiere validación técnica."
         };
     }
   };
 
-  const config = getNivelConfig(student?.nivel_riesgo);
+  // La configuración visual ahora depende del nivel determinado por la institución
+  const config = getNivelConfig(nivelFinal);
+  const IconoNivel = config.icon;
+
+  const formatValue = (key: string, value: any) => {
+    if (value instanceof Date) return value.toLocaleDateString();
+    if (value === "on" || value === "Posee" || value === "Si") return "Sí / Posee";
+    if (value === "off" || value === "No posee" || value === "No") return "No / No posee";
+    if (value === "S") return "Semipresencial";
+    if (value === "P") return "Presencial";
+    if (value === "V") return "Virtual";
+    if (CAMPOS_MONETARIOS.includes(key) && value !== undefined) return `$ ${parseFloat(value).toFixed(2)}`;
+    if (key === "indice_global" && value) return `${value} pts`;
+    return value || "---";
+  };
 
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 space-y-6 max-w-5xl mx-auto pb-10">
-      
-      {/* TARJETA PRINCIPAL: ESTILO REPORTE OFICIAL */}
-      <div className="bg-white rounded-[1.5rem] shadow-2xl border border-slate-200 overflow-hidden print:shadow-none print:border-2">
+    <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 space-y-6 max-w-5xl mx-auto pb-20">
+      <div className="bg-white rounded-[2rem] shadow-2xl border border-slate-200 overflow-hidden print:shadow-none print:border-2">
         
-        {/* Encabezado Institucional */}
-        <div className={`p-8 text-white flex flex-col md:flex-row justify-between items-center gap-6 ${config.bgHeader} relative overflow-hidden`}>
-          {/* Sutil decorado de fondo */}
+        {/* CABECERA: El color predominante es el del Administrador (config.bgHeader) */}
+        <div className={`p-8 text-white flex flex-col lg:flex-row justify-between items-center gap-6 ${config.bgHeader} relative overflow-hidden`}>
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl pointer-events-none"></div>
           
-          <div className="relative z-10 flex flex-col items-center md:items-start text-center md:text-left">
-            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] opacity-90 mb-2">
-              <Landmark className="h-4 w-4" /> Dirección de Bienestar Estudiantil
+          <div className="relative z-10 text-center lg:text-left">
+            <div className="flex items-center justify-center lg:justify-start gap-2 mb-4 bg-white/10 w-fit px-3 py-1.5 rounded-lg border border-white/10 backdrop-blur-sm">
+               <Activity className="h-3.5 w-3.5 text-[#d4a843]" />
+               <span className="text-[9px] font-black uppercase tracking-[0.2em]">Reporte de Auditoría Digital</span>
             </div>
-            <h3 className="text-3xl font-black uppercase italic tracking-tighter leading-none">
-              Nivel de Riesgo: {student?.nivel_riesgo || "---"}
-            </h3>
-            <div className="mt-4 flex items-center gap-3">
-               <span className="px-3 py-1 bg-black/20 rounded-full text-[9px] font-bold uppercase tracking-widest flex items-center gap-2">
-                  <BadgeCheck className="h-3 w-3" /> Expediente Validado
+
+            <div className="flex items-center justify-center lg:justify-start gap-2 text-[9px] font-black uppercase tracking-[0.3em] opacity-70 mb-3">
+              <Landmark className="h-3.5 w-3.5" /> Dirección de Bienestar Estudiantil
+            </div>
+
+            <h2 className="text-3xl font-black uppercase italic tracking-tighter mb-4 leading-tight">
+              Expediente: {student?.nombre} {student?.apellido}
+            </h2>
+
+            <div className="flex flex-wrap justify-center lg:justify-start gap-2">
+               <span className="px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-[9px] font-bold uppercase tracking-widest border border-white/20">
+                  V-{student?.cedula}
                </span>
-               <span className="text-[9px] font-bold opacity-60 uppercase tracking-widest">{new Date().getFullYear()}</span>
+               <span className="px-3 py-1 bg-white/10 rounded-full text-[9px] font-bold flex items-center gap-2 border border-white/10">
+                  <Mail className="h-3 w-3 text-[#d4a843]" /> {student?.email}
+               </span>
+               <span className="px-3 py-1 bg-black/20 rounded-full text-[9px] font-bold uppercase tracking-widest flex items-center gap-1.5">
+                  <BadgeCheck className="h-3 w-3 text-[#d4a843]" /> Auditoría: {student?.id ? `ID-${student.id}` : '---'}
+               </span>
             </div>
           </div>
 
-          <div className="relative z-10 bg-white/10 backdrop-blur-md p-5 rounded-2xl border border-white/20 text-center min-w-[140px] shadow-lg">
-            <p className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-1">Score Total</p>
-            <p className="text-5xl font-black tabular-nums tracking-tighter">
-              {student?.puntaje || 0}
-              <span className="text-xs ml-1 opacity-70 font-bold align-top">PTS</span>
-            </p>
+          <div className="flex gap-4 relative z-10">
+            {/* Tarjeta del Alumno: Muestra su puntaje pero no domina el color del reporte */}
+            <div className={`p-4 rounded-2xl border border-white/10 text-center min-w-[140px] shadow-xl ${getColorByScore(puntajeAlumno)}`}>
+              <p className="text-[8px] font-black uppercase tracking-widest text-white/80 mb-1">Alumno</p>
+              <div className="flex items-baseline justify-center gap-0.5">
+                <span className="text-4xl font-black tabular-nums tracking-tighter">{puntajeAlumno}</span>
+                <span className="text-[10px] font-bold opacity-70">PTS</span>
+              </div>
+            </div>
+
+            {/* Tarjeta de la Institución: Refleja el puntaje validado que controla el reporte */}
+            <div className={`p-4 rounded-2xl border border-white/10 text-center min-w-[140px] shadow-xl ${getColorByScore(puntajeFinal)}`}>
+              <p className="text-[8px] font-black uppercase tracking-widest text-white/80 mb-1">Institución</p>
+              <div className="flex items-baseline justify-center gap-0.5">
+                <span className="text-4xl font-black tabular-nums tracking-tighter">{puntajeFinal}</span>
+                <span className="text-[10px] font-bold opacity-70">PTS</span>
+              </div>
+            </div>
           </div>
         </div>
-        
-        {/* Sección de Diagnóstico Técnico */}
-        <div className={`p-6 border-b flex items-center gap-5 ${config.bgLight} ${config.text} border-x-0`}>
-          <div className="p-3 bg-white rounded-xl shadow-md shrink-0 border border-white">
-             {config.icon}
+
+        {/* BARRA DE RIESGO: Basada en la validación oficial */}
+        <div className={`px-8 py-4 border-b flex items-center gap-4 ${config.bgLight} ${config.text} border-x-0`}>
+          <div className="p-2 bg-white rounded-xl shadow-md shrink-0 border border-white/50">
+             <IconoNivel className="h-5 w-5" />
           </div>
-          <p className="text-sm font-black leading-tight uppercase tracking-tight italic">
+          <p className="text-xs font-black uppercase tracking-tight italic">
             {config.desc}
           </p>
         </div>
 
-        {/* Grilla de Datos Principal: Tamaño Optimizado */}
-        <div className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 bg-white">
-            {Object.entries(formData || {})
-              .filter(([key]) => LABELS[key])
-              .map(([key, value]: any) => {
-                const esMonetario = CAMPOS_MONETARIOS.includes(key);
-                return (
-                  <div key={key} className="flex flex-col justify-between p-4 bg-slate-50/50 rounded-xl border border-slate-100 hover:bg-slate-50 hover:border-[#d4a843]/30 transition-all group">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 group-hover:text-[#d4a843] transition-colors">
-                      {LABELS[key]}
+        {/* CUERPO DEL REPORTE */}
+        <div className="p-10 space-y-12 bg-white">
+          {Object.entries(SECCIONES_REPORTE).map(([secKey, seccion]: any) => (
+            <div key={secKey} className="space-y-6">
+              <div className="flex items-center gap-3 pb-2 border-b border-slate-100">
+                <seccion.icon className="h-4 w-4 text-[#d4a843]" />
+                <h3 className="text-[10px] font-black text-[#1a2744] uppercase tracking-[0.2em]">
+                  {seccion.titulo}
+                </h3>
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {Object.entries(seccion.campos).map(([campoKey, label]: any) => (
+                  <div key={campoKey} className="flex flex-col p-3.5 bg-slate-50/50 rounded-xl border border-slate-100 hover:border-[#d4a843]/20 hover:bg-slate-50 transition-all group">
+                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 group-hover:text-[#d4a843]">
+                      {label}
                     </span>
-                    <span className="text-xs font-black text-[#1a2744] uppercase truncate" title={value}>
-                      {esMonetario && value ? `$ ${value}` : value || "---"}
+                    <span className="text-[11px] font-black text-[#1a2744] uppercase truncate">
+                      {formatValue(campoKey, displayData[campoKey])}
                     </span>
                   </div>
-                );
-              })}
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
-
-      {/* BAREMO E INFORMACIÓN TÉCNICA */}
-      <div className="bg-white p-8 rounded-[1.5rem] shadow-xl border border-slate-200 print:hidden">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-6 border-b border-slate-100 pb-6">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-[#d4a843]/10 rounded-xl border border-[#d4a843]/20">
-               <Activity className="h-6 w-6 text-[#d4a843]" />
-            </div>
-            <div>
-              <h3 className="font-black text-[#1a2744] uppercase tracking-widest text-sm">Criterios de Puntuación Acumulada</h3>
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Metodología de Valoración Institucional Unimar</p>
-            </div>
-          </div>
-          <button 
-            onClick={() => window.print()} 
-            className="w-full md:w-auto bg-[#1a2744] hover:bg-[#253659] text-[#d4a843] px-8 py-4 rounded-xl font-black uppercase text-xs flex items-center justify-center gap-3 shadow-lg active:scale-95 transition-all"
-          >
-            <Printer className="h-4 w-4" /> Imprimir Reporte PDF
-          </button>
-        </div>
-
-        {/* Grilla detallada del Baremo */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <LegendItem label="Ingreso < $100" pts="+20 pts" desc="Vulnerabilidad económica severa" />
-          <LegendItem label="Vivienda Precaria" pts="+15 pts" desc="Residencia en rancho o anexo" />
-          <LegendItem label="Jefe Desempleado" pts="+15 pts" desc="Ausencia de ingreso fijo familiar" />
-          <LegendItem label="Hacinamiento" pts="+10 pts" desc="Más de 5 personas en el hogar" />
-          <LegendItem label="Brecha Digital" pts="+10 pts" desc="Sin equipo de computación" />
-          <LegendItem label="Carga Inmobiliaria" pts="+10 pts" desc="Vivienda en estado de alquiler" />
-          <LegendItem label="Discapacidad" pts="+10 pts" desc="Carga familiar por salud" />
-          <LegendItem label="Conectividad" pts="+10 pts" desc="Acceso deficiente a internet" />
-        </div>
-        
-        {/* Leyenda de Riesgos Inferior */}
-        <div className="mt-8 pt-8 border-t border-slate-100 flex flex-col md:flex-row gap-8 justify-between items-center">
-            <div className="flex flex-wrap justify-center gap-6 bg-slate-50 px-8 py-3 rounded-2xl border border-slate-200">
-              <RiskBadge color="bg-rose-600" label="60+ ALTO" />
-              <RiskBadge color="bg-amber-500" label="30-59 MEDIO" />
-              <RiskBadge color="bg-emerald-600" label="0-29 BAJO" />
-            </div>
-            <p className="text-[9px] font-bold text-slate-300 uppercase tracking-[0.3em]">Bienestar Estudiantil &bull; 2026</p>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function LegendItem({ label, pts, desc }: {label: string, pts: string, desc: string}) {
-  return (
-    <div className="flex flex-col p-4 bg-slate-50/50 rounded-xl border border-slate-100 transition-all hover:border-[#d4a843]/30 hover:shadow-md group">
-      <div className="flex justify-between items-start mb-2">
-        <span className="text-[10px] font-black text-slate-700 uppercase tracking-tight leading-tight pr-2">{label}</span>
-        <span className="text-[10px] font-black text-[#d4a843] whitespace-nowrap bg-[#d4a843]/5 px-2 py-0.5 rounded-lg border border-[#d4a843]/10">{pts}</span>
-      </div>
-      <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter leading-tight">{desc}</p>
-    </div>
-  )
-}
-
-function RiskBadge({ color, label }: { color: string, label: string }) {
-  return (
-    <div className="flex items-center gap-2.5">
-      <div className={`w-3 h-3 rounded-full ${color} shadow-sm ring-2 ring-white`}></div> 
-      <span className="text-[10px] font-black text-slate-500 tracking-widest uppercase">{label}</span>
     </div>
   )
 }

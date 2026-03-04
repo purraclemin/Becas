@@ -7,7 +7,7 @@ import { AlertCircle, ArrowLeft, LayoutDashboard, History } from "lucide-react"
 import { ProfileIdentity } from "./components/ProfileIdentity"
 import { ProfileStatus } from "./components/ProfileStatus"
 import { AcademicInfo } from "./components/AcademicInfo"
-import { ActionBanner, RenovationBanner } from "./components/ProfileBanners"
+import { ActionBanner, RenovationBanner, FinalistBanner } from "./components/ProfileBanners"
 import { GradesHistory } from "./components/GradesHistory"
 import { HistoryTimeline } from "./components/HistoryTimeline"
 
@@ -15,8 +15,9 @@ import { HistoryTimeline } from "./components/HistoryTimeline"
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export default async function PerfilPage(props: { searchParams: Promise<{ view?: string }> }) {
+export default async function PerfilPage(props: { searchParams: Promise<{ view?: string, trimestre_renovacion?: string }> }) {
   const sessionUser = await getSession() as any;
+  const searchParams = await props.searchParams;
 
   if (!sessionUser?.isLoggedIn) {
     return (
@@ -35,15 +36,17 @@ export default async function PerfilPage(props: { searchParams: Promise<{ view?:
     )
   }
 
-  // Carga de datos fresca del servidor
-  const [searchParams, statusData, historyDataResult] = await Promise.all([
-    props.searchParams,
-    getStudentAcademicStatus(sessionUser.id),
+  // 🟢 CARGA DINÁMICA: Enviamos el trimestre de renovación si existe en la URL
+  const [statusData, historyDataResult] = await Promise.all([
+    getStudentAcademicStatus(sessionUser.id, searchParams.trimestre_renovacion),
     getStudentHistory(sessionUser.id)
   ]);
 
   const currentView = searchParams.view || 'status'; 
 
+  // 🟢 SEPARACIÓN ESTRATÉGICA DE DATOS:
+  // semestre: Es el valor REAL (ej. 5) para el Expediente y Ficha.
+  // trimestreEvaluado: Es el valor SUGERIDO (ej. 4) solo para la carga de notas.
   const academicStatus = {
     estatus: statusData.estatus,
     materias: statusData.materias,
@@ -52,15 +55,19 @@ export default async function PerfilPage(props: { searchParams: Promise<{ view?:
     periodoNotas: statusData.periodoNotas || "",
     indiceGlobal: statusData.indiceGlobal,
     carrera: statusData.carrera,
-    trimestre: statusData.semestre, 
-    semestre: statusData.semestre
+    semestre: statusData.semestre, // Ficha real
+    trimestreEvaluado: statusData.trimestreSugerido // Evaluación
   };
 
   const historyData = historyDataResult.success 
     ? historyDataResult 
     : { data: [], stats: { promedioHistorico: "0.00", totalMaterias: 0, totalPeriodos: 0 } };
 
+  // El objeto 'user' para los componentes de Expediente ahora tiene el semestre real
   const user = { ...sessionUser, ...academicStatus };
+
+  // 🟢 LÓGICA DE FINALIZACIÓN: Basada en el semestre real
+  const esUltimoTrimestre = user.semestre === 12;
 
   return (
     <div className="min-h-screen bg-[#f0f4f8] py-8 md:py-16">
@@ -77,13 +84,13 @@ export default async function PerfilPage(props: { searchParams: Promise<{ view?:
 
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 lg:gap-10">
           
-          {/* COLUMNA IZQUIERDA */}
+          {/* COLUMNA IZQUIERDA: Muestra nivel real */}
           <div className="md:col-span-4 space-y-6">
             <ProfileIdentity user={user} />
             <ProfileStatus estatus={user.estatus} />
           </div>
 
-          {/* COLUMNA DERECHA */}
+          {/* COLUMNA DERECHA: Muestra nivel real en AcademicInfo */}
           <div className="md:col-span-8 space-y-6">
             <AcademicInfo user={user} />
             
@@ -100,17 +107,22 @@ export default async function PerfilPage(props: { searchParams: Promise<{ view?:
                   scroll={false} 
                   className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${currentView === 'history' ? 'bg-[#1e3a5f] text-white shadow-lg' : 'text-gray-400 hover:bg-gray-50'}`}
                 >
-                    <History className="h-4 w-4" /> Kardex Histórico
+                    <History className="h-4 w-4" /> Materias Cursadas
                 </Link>
             </div>
 
             {currentView === 'status' ? (
                 <div className="space-y-6 animate-in fade-in duration-500">
+                    {esUltimoTrimestre && <FinalistBanner />}
+
                     {user.estatus === 'ninguna' && <ActionBanner />}
                     
                     {user.estatus === 'Renovacion' && (
                         <RenovationBanner 
                             materias={user.materias} 
+                            materiasSugeridas={statusData.materiasSugeridas}
+                            // 🟢 PASAMOS ÚNICAMENTE AQUÍ EL TRIMESTRE EVALUADO (semestre - 1)
+                            trimestreActual={academicStatus.trimestreEvaluado}
                             periodo={user.periodoActual} 
                             periodoNotas={user.periodoNotas}
                             userId={sessionUser.id}

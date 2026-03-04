@@ -1,9 +1,11 @@
 'use server'
 
 import { db } from './db'
+import { getModoPruebaStatus } from './ModoPrueba'
 
 /**
  * 🟢 LÓGICA DE CÁLCULO DE ÍNDICE GLOBAL
+ * Corregido para soportar la nueva estructura del JSON de materias
  */
 export async function actualizarIndiceGlobal(userId: number, materiasActuales: any[]) {
   try {
@@ -18,8 +20,18 @@ export async function actualizarIndiceGlobal(userId: number, materiasActuales: a
     solicitudes.forEach((sol: any) => {
       if (sol.materias_json) {
         try {
-          const materiasHistorial = JSON.parse(sol.materias_json);
-          materiasHistorial.forEach((m: any) => {
+          const parsedData = JSON.parse(sol.materias_json);
+          
+          /**
+           * 🟢 CORRECCIÓN:
+           * Verificamos si los datos vienen en el nuevo formato (parsedData.materias)
+           * o en el formato antiguo (si parsedData es un array directamente).
+           */
+          const listaMaterias = Array.isArray(parsedData) 
+            ? parsedData 
+            : (parsedData.materias || []);
+
+          listaMaterias.forEach((m: any) => {
             const nota = parseFloat(m.nota);
             if (!isNaN(nota)) {
               sumaNotas += nota;
@@ -32,6 +44,7 @@ export async function actualizarIndiceGlobal(userId: number, materiasActuales: a
       }
     });
 
+    // Sumar las materias que el usuario está enviando en la solicitud actual
     if (materiasActuales && materiasActuales.length > 0) {
       materiasActuales.forEach((m: any) => {
         const nota = parseFloat(m.nota);
@@ -55,12 +68,14 @@ export async function actualizarIndiceGlobal(userId: number, materiasActuales: a
 }
 
 /**
- * 🟢 LÓGICA DE PERIODO AUTOMÁTICO (PROTECCIÓN ANTI-DUPLICADOS)
- * Calcula la fecha límite como exactamente 15 días después del inicio.
+ * 🟢 LÓGICA DE PERIODO AUTOMÁTICO (CON SOPORTE PARA MODO PRUEBA)
+ * Restaurada y optimizada para no romper la renovación.
  */
 export async function obtenerOCrearPeriodoObjetivo() {
+  const { activo, mesSimulado } = await getModoPruebaStatus();
   const fecha = new Date();
-  const mes = fecha.getMonth() + 1; 
+  
+  const mes = (activo && mesSimulado) ? parseInt(mesSimulado) : (fecha.getMonth() + 1);
   const anio = fecha.getFullYear();
 
   let codigo = "";
@@ -68,7 +83,7 @@ export async function obtenerOCrearPeriodoObjetivo() {
   let f_inicio = "";
   let f_fin = "";
 
-  // 1. Definición de lapsos académicos
+  // Determinamos cuál debería ser el periodo actual según el calendario
   if (mes === 12 || mes <= 3) {
     const targetAnio = (mes === 12) ? anio + 1 : anio;
     codigo = `${targetAnio}-I`;
@@ -87,16 +102,14 @@ export async function obtenerOCrearPeriodoObjetivo() {
     f_fin = `${anio}-12-31`;
   }
 
-  // 🟢 2. CÁLCULO DE LA FECHA LÍMITE (Paso 15 de enero/mayo/septiembre)
-  // Sumamos 14 días a la fecha de inicio para obtener el día 15
   const fechaInicioObj = new Date(f_inicio + "T00:00:00");
   const fechaLimiteObj = new Date(fechaInicioObj);
   fechaLimiteObj.setDate(fechaInicioObj.getDate() + 14); 
   const f_limite = fechaLimiteObj.toISOString().split('T')[0];
 
-  // 3. BUSQUEDA ESTRICTA POR CÓDIGO
+  // Buscamos si el periodo calculado ya existe
   const [rows]: any = await db.execute(
-    'SELECT id FROM periodos_academicos WHERE codigo = ? LIMIT 1',
+    'SELECT id, es_actual FROM periodos_academicos WHERE codigo = ? LIMIT 1',
     [codigo]
   );
 
@@ -104,13 +117,17 @@ export async function obtenerOCrearPeriodoObjetivo() {
 
   if (rows.length > 0) {
     periodId = rows[0].id;
-    // Opcional: Actualizamos la fecha límite por si el admin la borró
-    await db.execute(
-        'UPDATE periodos_academicos SET fecha_limite_solicitud = ? WHERE id = ?',
-        [f_limite, periodId]
-    );
+    // Si existe pero no está marcado como actual, o si queremos asegurar la fecha límite
+    if (rows[0].es_actual === 0) {
+        await db.execute('UPDATE periodos_academicos SET es_actual = 0');
+        await db.execute(
+            'UPDATE periodos_academicos SET fecha_limite_solicitud = ?, es_actual = 1 WHERE id = ?',
+            [f_limite, periodId]
+        );
+    }
   } else {
-    // 4. CREACIÓN CON FECHA LÍMITE CALCULADA
+    // Si no existe el periodo cronológico, lo creamos como el nuevo actual
+    await db.execute('UPDATE periodos_academicos SET es_actual = 0');
     const [result]: any = await db.execute(`
       INSERT INTO periodos_academicos 
       (codigo, nombre, fecha_inicio, fecha_fin, fecha_limite_solicitud, es_actual) 
@@ -118,10 +135,6 @@ export async function obtenerOCrearPeriodoObjetivo() {
     `, [codigo, nombre, f_inicio, f_fin, f_limite]);
     periodId = result.insertId;
   }
-
-  // 5. SINCRONIZACIÓN DE VIGENCIA
-  await db.execute('UPDATE periodos_academicos SET es_actual = 0');
-  await db.execute('UPDATE periodos_academicos SET es_actual = 1 WHERE id = ?', [periodId]);
   
   return periodId;
 }

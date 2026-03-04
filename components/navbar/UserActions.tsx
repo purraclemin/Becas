@@ -160,7 +160,7 @@ export function UserActions({ user, loading }: UserActionsProps) {
 
             <div className="p-1.5 space-y-0.5">
               <Link 
-                href={user.role === 'admin' ? '/admin/dashboard' : '/Solicitud'} 
+                href={user.role === 'admin' ? '/admin/dashboard' : '/postulacion'} 
                 className="flex items-center gap-2.5 px-3 py-1.5 text-[11px] text-[#1e3a5f] hover:bg-[#f1f5f9] rounded-md font-bold transition-colors group"
                 onClick={() => setIsProfileOpen(false)}
               >

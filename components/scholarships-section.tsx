@@ -5,19 +5,19 @@ const noticias = [
   {
     title: "UNIMAR abre convocatoria de becas para el trimestre enero-abril 2026",
     excerpt:
-      "La Universidad de Margarita invita a todos los estudiantes regulares de pregrado a participar en el proceso de solicitud de becas academicas, socioeconomicas, deportivas y de excelencia para el periodo enero-abril 2026.",
+      "La Universidad de Margarita invita a todos los estudiantes regulares de pregrado a participar en el proceso de solicitud de becas aprendizaje, sociales, de excelencia y ayudas económicas.",
     date: "03 Feb 2026",
   },
   {
-    title: "Entrega de certificados a los ganadores de la Beca a la Excelencia, trimestre sept-dic 2025",
+    title: "Entrega de certificados a los ganadores de la Beca a la Excelencia Académica",
     excerpt:
-      "Te invitamos a que nos acompanes al acto de entrega de certificados a los ganadores de la Beca a la Excelencia del trimestre septiembre-diciembre 2025.",
+      "Reconocimiento al mayor índice acumulado de cada carrera que haya cursado y aprobado al menos cuatro trimestres.",
     date: "28 Ene 2026",
   },
   {
-    title: "Nuevo sistema digital para gestion de becas en UNIMAR",
+    title: "Actualización de la Normativa de Becas y Ayudas Económicas",
     excerpt:
-      "La plataforma permitira registrar datos, adjuntar documentos y monitorear el estado de las solicitudes de manera eficiente y transparente.",
+      "El Consejo Universitario ratifica las normas para el procesamiento y seguimiento de las subvenciones sobre el valor de la matrícula.",
     date: "15 Ene 2026",
   },
 ]
@@ -25,23 +25,23 @@ const noticias = [
 const becas = [
   {
     icon: GraduationCap,
-    title: "Beca Academica",
-    description: "Para estudiantes con promedio superior a 16 puntos. Cobertura hasta 50%.",
+    title: "Beca Aprendizaje",
+    description: "Subvención del 70% de la matrícula para estudiantes con índice ≥ 16 pts que realicen apoyo administrativo.",
   },
   {
     icon: Heart,
-    title: "Beca Socioeconomica",
-    description: "Segun estudio del perfil socioeconomico del nucleo familiar. Hasta 70%.",
+    title: "Beca Social Aprendizaje",
+    description: "Exoneración total del costo de matrícula para bachilleres de planteles públicos con promedio ≥ 18 pts.",
   },
   {
     icon: Trophy,
-    title: "Beca Deportiva",
-    description: "Para atletas que representen a la universidad en competencias. Hasta 40%.",
+    title: "Ayuda Económica",
+    description: "Beneficio parcial (hasta 30%) para casos de vulnerabilidad, grupos culturales o deportivos con índice ≥ 16 pts.",
   },
   {
     icon: Award,
-    title: "Beca a la Excelencia",
-    description: "Mejores promedios por carrera en cada trimestre. Hasta 100%.",
+    title: "Excelencia Académica",
+    description: "Exoneración total al mejor índice acumulado de la carrera (≥ 18 pts) a partir del 4to trimestre.",
   },
 ]
 
@@ -49,7 +49,7 @@ export function ScholarshipsSection() {
   return (
     <section id="becas" className="bg-[#f0f4f8] py-12">
       <div className="mx-auto max-w-7xl px-4">
-        {/* Two-column portal layout: Noticias + Tipos de Becas (like portalunimar) */}
+        {/* Two-column portal layout: Noticias + Tipos de Becas */}
         <div className="grid gap-8 lg:grid-cols-3">
           {/* Noticias - Left column (2/3 width) */}
           <div className="lg:col-span-2">
@@ -85,10 +85,10 @@ export function ScholarshipsSection() {
             </div>
           </div>
 
-          {/* Tipos de Becas - Right column (1/3 width, like Cartelera) */}
+          {/* Tipos de Becas - Right column */}
           <div>
             <div className="mb-6 flex items-center justify-between border-b-2 border-[#d4a843] pb-2">
-              <h2 className="text-xl font-bold text-[#1e3a5f] font-serif">Tipos de Becas</h2>
+              <h2 className="text-xl font-bold text-[#1e3a5f] font-serif">Modalidades</h2>
               <Link href="/becas" className="flex items-center gap-1 text-sm font-medium text-[#1e3a5f] hover:text-[#d4a843]">
                 Ver mas <ArrowRight className="h-3.5 w-3.5" />
               </Link>

@@ -1,14 +1,27 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { FileText, CheckCircle2, XCircle, AlertCircle, CalendarDays } from "lucide-react"
+import { FileText, CheckCircle2, XCircle, AlertCircle, CalendarDays, GraduationCap } from "lucide-react"
 
 /**
  * COMPONENTE: HISTORIAL DE NOTAS (VISTA DE ESTATUS)
- * Muestra las notas del periodo anterior con la etiqueta de su lapso correspondiente.
+ * Muestra las notas del periodo anterior con soporte para el nuevo formato estructurado.
  */
-export function GradesHistory({ materias, periodoNotas }: { materias: any[], periodoNotas?: string }) {
+export function GradesHistory({ materias: materiasInput, periodoNotas }: { materias: any, periodoNotas?: string }) {
   
-  // 1. ESTADO VACÍO: Si no hay materias, mostramos el placeholder
-  if (!materias || materias.length === 0) {
+  // 1. NORMALIZACIÓN DE DATOS: Manejo de formato antiguo (Array) y nuevo (Objeto)
+  let materiasLista: any[] = [];
+  let trimestreHistorico: number | null = null;
+
+  if (Array.isArray(materiasInput)) {
+    // Formato antiguo
+    materiasLista = materiasInput;
+  } else if (materiasInput && typeof materiasInput === 'object') {
+    // Nuevo formato estructurado
+    materiasLista = materiasInput.materias || [];
+    trimestreHistorico = materiasInput.trimestre || null;
+  }
+
+  // ESTADO VACÍO: Si no hay materias tras la normalización
+  if (!materiasLista || materiasLista.length === 0) {
     return (
       <Card className="border-none shadow-md bg-white overflow-hidden mt-6 animate-in fade-in zoom-in-95">
         <CardContent className="p-8 flex flex-col items-center justify-center text-center opacity-60">
@@ -25,10 +38,9 @@ export function GradesHistory({ materias, periodoNotas }: { materias: any[], per
     )
   }
 
-  // 2. CÁLCULOS: Promedio y Aprobación
-  // Usamos parseFloat para asegurar que trabajamos con números, incluso si vienen como strings de la BD
-  const suma = materias.reduce((acc, curr) => acc + parseFloat(curr.nota), 0);
-  const promedio = (suma / materias.length).toFixed(2);
+  // 2. CÁLCULOS: Promedio y Aprobación sobre la lista normalizada
+  const suma = materiasLista.reduce((acc, curr) => acc + parseFloat(curr.nota || 0), 0);
+  const promedio = (suma / materiasLista.length).toFixed(2);
   const esAprobatorio = parseFloat(promedio) >= 10;
 
   return (
@@ -38,14 +50,23 @@ export function GradesHistory({ materias, periodoNotas }: { materias: any[], per
       <CardHeader className="bg-[#fcfdfe] border-b border-gray-100 p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         
         <div className="space-y-1">
-            <CardTitle className="text-[#1e3a5f] font-serif text-lg flex items-center gap-3 uppercase tracking-tight">
-            <div className="p-2 bg-[#1e3a5f]/5 rounded-lg">
-                <FileText className="h-5 w-5 text-[#d4a843]" />
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-[#1e3a5f] font-serif text-lg flex items-center gap-3 uppercase tracking-tight">
+                <div className="p-2 bg-[#1e3a5f]/5 rounded-lg">
+                    <FileText className="h-5 w-5 text-[#d4a843]" />
+                </div>
+                Registro de Notas
+              </CardTitle>
+              
+              {/* 🟢 MOSTRAR TRIMESTRE HISTÓRICO SI EXISTE */}
+              {trimestreHistorico && (
+                <span className="bg-[#1e3a5f] text-white px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-tighter flex items-center gap-1">
+                  <GraduationCap className="h-3 w-3" /> T-{trimestreHistorico}
+                </span>
+              )}
             </div>
-            Registro de Notas
-            </CardTitle>
 
-            {/* Renderizado condicional: Solo se muestra si periodoNotas existe */}
+            {/* Renderizado condicional del Periodo */}
             {periodoNotas && (
                 <div className="flex items-center gap-2 pl-[3.25rem] animate-in fade-in slide-in-from-left-2 duration-500">
                     <CalendarDays className="h-3 w-3 text-gray-400" />
@@ -56,7 +77,7 @@ export function GradesHistory({ materias, periodoNotas }: { materias: any[], per
             )}
         </div>
 
-        {/* Badge del Promedio (Verde si aprobó, Rojo si reprobó) */}
+        {/* Badge del Promedio */}
         <div className={`px-4 py-1 rounded-full text-xs font-black border self-start sm:self-center ${esAprobatorio ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
           PROM: {promedio}
         </div>
@@ -65,7 +86,7 @@ export function GradesHistory({ materias, periodoNotas }: { materias: any[], per
       {/* BODY: Lista de Materias */}
       <CardContent className="p-0">
         <div className="divide-y divide-gray-50">
-          {materias.map((m: any, index: number) => {
+          {materiasLista.map((m: any, index: number) => {
             const nota = parseFloat(m.nota);
             const aprobada = nota >= 10;
 
@@ -96,7 +117,7 @@ export function GradesHistory({ materias, periodoNotas }: { materias: any[], per
           })}
         </div>
         
-        {/* FOOTER: Aviso Legal / Disclaimer */}
+        {/* FOOTER: Aviso Legal */}
         <div className="bg-gray-50 p-4 border-t border-gray-100">
           <div className="flex items-start gap-2">
             <AlertCircle className="h-4 w-4 text-gray-400 mt-0.5" />

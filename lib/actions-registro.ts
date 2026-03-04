@@ -40,19 +40,26 @@ export async function checkExistence(cedula: string, email: string) {
 }
 
 export async function register(formData: FormData) {
-  const nombre = formData.get('nombre') as string
-  const apellido = formData.get('apellido') as string
-  const email = formData.get('email') as string
-  const password = formData.get('password') as string
-  const cedula = formData.get('cedula') as string
-  const telefono = formData.get('telefono') as string
-  const carrera = formData.get('carrera') as string
-  const semestre = formData.get('semestre') as string
+  // 1. EXTRACCIÓN DE DATOS CON LIMPIEZA INICIAL
+  const nombre = (formData.get('nombre') as string)?.trim() || ""
+  const apellido = (formData.get('apellido') as string)?.trim() || ""
+  const email = (formData.get('email') as string)?.trim() || ""
+  const password = formData.get('password') as string || ""
+  const cedula = (formData.get('cedula') as string)?.trim() || ""
+  const telefono = (formData.get('telefono') as string)?.trim() || ""
+  const carrera = (formData.get('carrera') as string)?.trim() || ""
+  const semestre = (formData.get('semestre') as string) || "1"
   
-  // 🟢 Extraer nuevos campos
-  const sexo = formData.get('sexo') as string
-  const fecha_nacimiento = formData.get('fecha_nacimiento') as string
-  const municipio = formData.get('municipio') as string
+  // 🟢 TRATAMIENTO CRÍTICO: Convertir cadenas vacías en null real para MySQL
+  // Esto evita que si llega un "" (vacío) desde el cliente, se guarde así en la BD
+  const sexoRaw = formData.get('sexo') as string
+  const sexo = (sexoRaw && sexoRaw.trim() !== "") ? sexoRaw.trim() : null
+
+  const fechaRaw = formData.get('fecha_nacimiento') as string
+  const fecha_nacimiento = (fechaRaw && fechaRaw.trim() !== "") ? fechaRaw : null
+
+  const municipioRaw = formData.get('municipio') as string
+  const municipio = (municipioRaw && municipioRaw.trim() !== "") ? municipioRaw.trim() : ""
 
   let connection;
 
@@ -62,7 +69,7 @@ export async function register(formData: FormData) {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 1. Crear el usuario en la tabla de autenticación
+    // 1. Crear el usuario en la tabla de autenticación (users)
     const [userResult]: any = await connection.execute(
       'INSERT INTO users (email, password, role) VALUES (?, ?, ?)',
       [email, hashedPassword, 'estudiante']
@@ -70,22 +77,32 @@ export async function register(formData: FormData) {
 
     const userId = userResult.insertId;
 
-    // 2. 🟢 Crear el expediente académico en la tabla students
-    // Inicializamos indice_global en 0.00 para asegurar que el perfil 
-    // pueda leer el registro aunque aún no haya enviado solicitudes.
+    // 2. Crear el expediente en la tabla students
+    // Se mapea 'municipio' a 'municipio_residencia' y se inicializa el índice
     await connection.execute(
       `INSERT INTO students (
         id, nombre, apellido, cedula, sexo, fecha_nacimiento, 
         telefono, carrera, semestre, email, municipio_residencia, indice_global
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        userId, nombre, apellido, cedula, sexo, fecha_nacimiento, 
-        telefono, carrera, semestre, email, municipio, 0.00
+        userId, 
+        nombre, 
+        apellido, 
+        cedula, 
+        sexo, // M, F o NULL
+        fecha_nacimiento, 
+        telefono, 
+        carrera, 
+        semestre, 
+        email, 
+        municipio, 
+        0.00
       ]
     );
 
     await connection.commit();
 
+    // 3. Crear Cookies de sesión
     const cookieStore = await cookies();
     const sessionToken = `active_session_${userId}`;
     
@@ -113,7 +130,7 @@ export async function register(formData: FormData) {
     }
     
     console.error("❌ Error crítico en registro:", e);
-    return { error: 'Error del servidor. Intente más tarde.' };
+    return { error: 'Error interno del servidor. No se pudo completar el registro.' };
   } finally {
     if (connection) connection.release();
   }

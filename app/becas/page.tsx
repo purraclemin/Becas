@@ -7,67 +7,67 @@ import Link from "next/link"
 const becas = [
   {
     icon: GraduationCap,
-    title: "Beca Academica",
-    coverage: "Hasta 50%",
+    title: "Beca Aprendizaje",
+    coverage: "70%",
     description:
-      "Dirigida a estudiantes con un rendimiento academico destacado. Se otorga a quienes mantengan un promedio general igual o superior a 16 puntos durante el trimestre anterior.",
+      "Beneficio otorgado a estudiantes regulares de escasos recursos para desarrollar destrezas en actividades de apoyo administrativo que complementen su aprendizaje.",
     requisitos: [
-      "Promedio general igual o superior a 16 puntos",
-      "Estar inscrito en el trimestre vigente",
-      "No tener materias reprobadas en el ultimo trimestre",
-      "Constancia de notas certificada",
+      "Índice académico igual o superior a 16 puntos",
+      "Inscribir la máxima carga académica del pensum",
+      "Cumplir 15 horas semanales de actividades asignadas",
+      "Estudio socioeconómico aprobado por Bienestar Estudiantil",
     ],
     color: "bg-[#1e3a5f]",
   },
   {
     icon: Heart,
-    title: "Beca Socioeconomica",
-    coverage: "Hasta 70%",
+    title: "Beca Social Aprendizaje",
+    coverage: "100%",
     description:
-      "Destinada a estudiantes cuyo nucleo familiar presenta condiciones economicas que dificultan el pago de la matricula. Se evalua mediante un estudio socioeconomico.",
+      "Programa destinado a bachilleres de unidades educativas públicas del estado Nueva Esparta con alto rendimiento y necesidades económicas comprobadas.",
     requisitos: [
-      "Estudio socioeconomico del nucleo familiar",
-      "Carta de exposicion de motivos",
-      "Constancia de ingresos del representante",
-      "Recibos de servicios publicos del hogar",
+      "Promedio de notas igual o superior a 18 puntos",
+      "Provenir de una institución educativa pública regional",
+      "Ser de escasos recursos económicos comprobables",
+      "Dedicación de 15 horas semanales de apoyo administrativo",
     ],
     color: "bg-[#2a6041]",
   },
   {
     icon: Trophy,
-    title: "Beca Deportiva",
-    coverage: "Hasta 40%",
+    title: "Ayuda Económica (Talento)",
+    coverage: "20%",
     description:
-      "Para atletas que representen oficialmente a la universidad en competencias deportivas regionales, nacionales o internacionales.",
+      "Descuento sobre la matrícula para estudiantes que formen parte activa de clubes deportivos, actividades culturales o el orfeón de la universidad.",
     requisitos: [
-      "Constancia de representacion deportiva",
-      "Certificados de participacion en competencias",
-      "Aval de la Direccion de Deportes de UNIMAR",
-      "Mantener un promedio minimo de 13 puntos",
+      "Índice académico igual o superior a 16 puntos",
+      "Pertenecer a un club deportivo o grupo cultural UNIMAR",
+      "Verificación de rendimiento del trimestre anterior",
+      "Aval de la coordinación del área correspondiente",
     ],
     color: "bg-[#8b5e1b]",
   },
   {
     icon: Award,
     title: "Beca a la Excelencia",
-    coverage: "Hasta 100%",
+    coverage: "100%",
     description:
-      "La mas alta distincion academica de UNIMAR. Se otorga automaticamente a los estudiantes con el mejor promedio de cada carrera al finalizar el trimestre.",
+      "Reconocimiento al mérito académico otorgado al estudiante con el mayor índice acumulado de su carrera, exonerando el costo total de la matrícula.",
     requisitos: [
-      "Ser el mejor promedio de su carrera en el trimestre",
-      "Haber cursado la carga completa del trimestre",
-      "No tener materias reprobadas",
-      "Minimo 2 trimestres cursados en UNIMAR",
+      "Mayor índice acumulado de la carrera (mínimo 18 pts)",
+      "Cursar a partir del cuarto (4to) trimestre académico",
+      "Haber cumplido con todos los deberes universitarios",
+      "No haber sido objeto de sanciones disciplinarias",
     ],
     color: "bg-[#7c2d3e]",
   },
 ]
 
 const stats = [
-  { icon: Users, value: "500+", label: "Becas otorgadas" },
-  { icon: Percent, value: "100%", label: "Cobertura maxima" },
-  { icon: GraduationCap, value: "4", label: "Tipos de becas" },
-  { icon: Clock, value: "15", label: "Dias de proceso" },
+  { icon: Users, value: "60", label: "Cupos Beca Social" },
+  { icon: Percent, value: "100%", label: "Exoneración Total" },
+  { icon: GraduationCap, value: "25", label: "Cupos Beca Aprendizaje" },
+  { icon: Clock, value: "1", label: "Periodo de Vigencia" },
 ]
 
 export default function BecasPage() {
@@ -101,9 +101,8 @@ export default function BecasPage() {
       <section className="bg-[#f0f4f8] py-10">
         <div className="mx-auto max-w-7xl px-4">
           <p className="mx-auto max-w-3xl text-center text-sm leading-relaxed text-[#6b7280] md:text-base">
-            La Universidad de Margarita ofrece distintos programas de becas para apoyar a sus
-            estudiantes regulares de pregrado. Conoce cada tipo de beca, sus beneficios y
-            requisitos especificos.
+            De conformidad con la Normativa de Becas vigente, la Universidad de Margarita ofrece subvenciones 
+            totales o parciales sobre el valor de la matrícula para apoyar la formación de sus estudiantes regulares.
           </p>
         </div>
       </section>
@@ -127,7 +126,7 @@ export default function BecasPage() {
                       <div>
                         <h2 className="text-lg font-bold text-[#1e3a5f] font-serif">{beca.title}</h2>
                         <span className="inline-block rounded-full bg-[#d4a843]/15 px-3 py-0.5 text-xs font-semibold text-[#8b5e1b]">
-                          Cobertura: {beca.coverage}
+                          Beneficio: {beca.coverage}
                         </span>
                       </div>
                     </div>
@@ -135,7 +134,7 @@ export default function BecasPage() {
                       {beca.description}
                     </p>
                     <div className="mt-5">
-                      <h3 className="mb-2 text-sm font-bold text-[#1e3a5f]">Requisitos Especificos:</h3>
+                      <h3 className="mb-2 text-sm font-bold text-[#1e3a5f]">Requisitos Normativos:</h3>
                       <ul className="flex flex-col gap-2">
                         {beca.requisitos.map((req) => (
                           <li key={req} className="flex items-start gap-2">
@@ -151,7 +150,7 @@ export default function BecasPage() {
                   <div className={`flex flex-col items-center justify-center ${beca.color} p-6 text-center text-[#ffffff]`}>
                     <beca.icon className="h-16 w-16 opacity-30" />
                     <div className="mt-4 text-3xl font-extrabold">{beca.coverage}</div>
-                    <div className="text-sm opacity-80">de cobertura</div>
+                    <div className="text-sm opacity-80">de exoneración</div>
                     <Link
                       href="/registro"
                       className="mt-6 flex items-center gap-2 rounded-md bg-[#ffffff]/20 px-5 py-2 text-sm font-semibold backdrop-blur-sm transition-colors hover:bg-[#ffffff]/30"
@@ -171,24 +170,24 @@ export default function BecasPage() {
       <section className="bg-[#f0f4f8] py-10">
         <div className="mx-auto max-w-3xl px-4 text-center">
           <h2 className="text-xl font-bold text-[#1e3a5f] font-serif md:text-2xl">
-            Estas listo para solicitar tu beca?
+            Cumples con los requisitos académicos?
           </h2>
           <p className="mt-3 text-sm text-[#6b7280]">
-            Registrate en la plataforma y comienza tu proceso de solicitud hoy mismo.
+            El otorgamiento de becas es potestad del Consejo Superior y su vigencia es de un periodo académico renovable.
           </p>
           <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link
               href="/registro"
               className="flex items-center gap-2 rounded-md bg-[#d4a843] px-6 py-2.5 text-sm font-semibold text-[#1e3a5f] transition-colors hover:bg-[#c49a3a]"
             >
-              Registrarse
+              Iniciar Proceso
               <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
               href="/requisitos"
               className="rounded-md border border-[#1e3a5f] px-6 py-2.5 text-sm font-semibold text-[#1e3a5f] transition-colors hover:bg-[#1e3a5f] hover:text-[#ffffff]"
             >
-              Ver Requisitos
+              Consultar Normativa
             </Link>
           </div>
         </div>

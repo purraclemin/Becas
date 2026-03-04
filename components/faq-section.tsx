@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import {
   Accordion,
   AccordionContent,
@@ -9,105 +10,90 @@ import {
 
 const faqs = [
   {
-    question: "Quien puede solicitar una beca en UNIMAR?",
-    answer:
-      "Todos los estudiantes regulares de pregrado de la Universidad de Margarita que esten inscritos en el trimestre vigente y no posean deudas academicas o administrativas pendientes.",
+    question: "¿Quién tiene la potestad de otorgar las becas?",
+    answer: "El otorgamiento de Becas y Ayudas Económicas es potestad exclusiva del Consejo Superior de la Universidad de Margarita, tras analizar el estudio realizado por el Departamento de Bienestar Estudiantil y la disponibilidad presupuestaria.",
   },
   {
-    question: "Cuantas becas puedo solicitar al mismo tiempo?",
-    answer:
-      "Cada estudiante puede postularse a un solo tipo de beca por trimestre. Sin embargo, si no es seleccionado, puede aplicar a otro tipo de beca en el siguiente periodo.",
+    question: "¿Cuál es la vigencia de una beca otorgada?",
+    answer: "Toda subvención, ya sea total o parcial, tiene una duración de un (1) periodo académico. Para su renovación, el beneficio debe ser revisado y evaluado al culminar cada lapso.",
   },
   {
-    question: "Cual es el plazo para subir los documentos?",
-    answer:
-      "Los documentos deben ser cargados en la plataforma antes de la fecha limite de cada convocatoria. Generalmente se otorgan 15 dias habiles a partir de la apertura del proceso.",
+    question: "¿Qué compromiso deben cumplir los becarios de aprendizaje?",
+    answer: "Los beneficiarios de la Beca Aprendizaje y Beca Social Aprendizaje deben cumplir un plan de actividades de quince (15) horas semanales de apoyo administrativo para complementar su aprendizaje académico.",
   },
   {
-    question: "Como puedo conocer el estado de mi solicitud?",
-    answer:
-      "A traves de la plataforma puedes monitorear el estado de tu solicitud en tiempo real. Ademas, recibiras notificaciones por correo electronico cada vez que haya una actualizacion.",
+    question: "¿Qué requisitos académicos debo mantener para no perder el beneficio?",
+    answer: "Es obligatorio inscribir la máxima carga académica permitida y mantener el índice académico exigido (mínimo 16 pts para aprendizaje y 18 pts para social o excelencia). Además, se requiere una evaluación de desempeño positiva del tutor supervisor.",
   },
   {
-    question: "Que sucede si mi beca es aprobada?",
-    answer:
-      "Si tu beca es aprobada, el descuento correspondiente se aplicara automaticamente a tu estado de cuenta para el siguiente trimestre. Recibiras un certificado digital de beneficiario.",
+    question: "¿Puedo optar nuevamente a una beca si renuncio o me es suspendida?",
+    answer: "No. Según la normativa, todo estudiante que renuncie o a quien se le suspenda el beneficio por causas imputables (como bajo rendimiento o sanciones), no podrá optar nuevamente al mismo.",
   },
   {
-    question: "Puedo renovar mi beca?",
-    answer:
-      "Si, las becas son renovables trimestralmente siempre que el estudiante mantenga los requisitos de elegibilidad correspondientes al tipo de beca otorgada.",
+    question: "¿Existen beneficios por formar parte de grupos culturales o deportivos?",
+    answer: "Sí, los estudiantes que integran clubes deportivos, actividades culturales u orfeón pueden optar a una Ayuda Económica del 20% de descuento, siempre que mantengan un promedio igual o mayor a 16 puntos.",
   },
 ]
 
 export function FaqSection() {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   return (
     <section className="bg-[#f0f4f8] py-12">
       <div className="mx-auto max-w-7xl px-4">
         <div className="grid gap-10 lg:grid-cols-3">
-          {/* FAQ - 2/3 */}
           <div className="lg:col-span-2">
             <div className="mb-6 border-b-2 border-[#1e3a5f] pb-2">
-              <h2 className="text-xl font-bold text-[#1e3a5f] font-serif">Preguntas Frecuentes</h2>
+              <h2 className="text-xl font-bold text-[#1e3a5f] font-serif">Preguntas Frecuentes (Normativa 2023)</h2>
             </div>
 
-            <Accordion type="single" collapsible className="flex flex-col gap-2">
-              {faqs.map((faq, index) => (
-                <AccordionItem
-                  key={faq.question}
-                  value={`item-${index}`}
-                  className="rounded-lg border border-[#e2e8f0] bg-[#ffffff] px-5 shadow-sm"
-                >
-                  <AccordionTrigger className="py-4 text-left text-sm font-semibold text-[#1e3a5f] hover:text-[#d4a843] hover:no-underline">
-                    {faq.question}
-                  </AccordionTrigger>
-                  <AccordionContent className="pb-4 text-sm leading-relaxed text-[#6b7280]">
-                    {faq.answer}
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
+            {mounted ? (
+              <Accordion type="single" collapsible className="flex flex-col gap-2">
+                {faqs.map((faq, index) => (
+                  <AccordionItem
+                    key={index}
+                    value={`item-${index}`}
+                    className="rounded-lg border border-[#e2e8f0] bg-[#ffffff] px-5 shadow-sm"
+                  >
+                    <AccordionTrigger className="py-4 text-left text-sm font-semibold text-[#1e3a5f] hover:text-[#d4a843] hover:no-underline">
+                      {faq.question}
+                    </AccordionTrigger>
+                    <AccordionContent className="pb-4 text-sm leading-relaxed text-[#6b7280]">
+                      {faq.answer}
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            ) : (
+              <div className="h-[400px] w-full animate-pulse rounded-lg bg-gray-200" />
+            )}
           </div>
 
-          {/* Sidebar info - 1/3 */}
           <div>
             <div className="mb-6 border-b-2 border-[#d4a843] pb-2">
-              <h2 className="text-xl font-bold text-[#1e3a5f] font-serif">Contacto Becas</h2>
+              <h2 className="text-xl font-bold text-[#1e3a5f] font-serif">Contacto Oficial</h2>
             </div>
             <div className="rounded-lg border border-[#e2e8f0] bg-[#ffffff] p-6 shadow-sm">
               <h3 className="text-sm font-bold text-[#1e3a5f]">
-                Decanato de Bienestar Estudiantil
+                Bienestar Estudiantil UNIMAR
               </h3>
               <p className="mt-2 text-xs leading-relaxed text-[#6b7280]">
-                Para consultas sobre el proceso de becas, comunicate con nosotros a traves de los
-                siguientes canales:
+                De conformidad con el Artículo 4, el Departamento de Bienestar Estudiantil es el responsable de la planificación y control del proceso de becas.
               </p>
               <div className="mt-4 flex flex-col gap-3">
                 <div className="rounded-md bg-[#f0f4f8] p-3">
-                  <div className="text-xs font-semibold text-[#1e3a5f]">Correo Electronico</div>
+                  <div className="text-xs font-semibold text-[#1e3a5f]">Canal Oficial</div>
                   <div className="mt-0.5 text-xs text-[#6b7280]">becas@unimar.edu.ve</div>
                 </div>
                 <div className="rounded-md bg-[#f0f4f8] p-3">
-                  <div className="text-xs font-semibold text-[#1e3a5f]">Telefono</div>
-                  <div className="mt-0.5 text-xs text-[#6b7280]">0412.595.7430</div>
-                </div>
-                <div className="rounded-md bg-[#f0f4f8] p-3">
-                  <div className="text-xs font-semibold text-[#1e3a5f]">WhatsApp</div>
-                  <div className="mt-0.5 text-xs text-[#6b7280]">0412.595.7430</div>
-                </div>
-                <div className="rounded-md bg-[#f0f4f8] p-3">
-                  <div className="text-xs font-semibold text-[#1e3a5f]">Horario de Atencion</div>
-                  <div className="mt-0.5 text-xs text-[#6b7280]">Lunes a Viernes, 8:00am - 4:00pm</div>
+                  <div className="text-xs font-semibold text-[#1e3a5f]">Ubicación del Proceso</div>
+                  <div className="mt-0.5 text-xs text-[#6b7280]">Departamento de Bienestar Estudiantil</div>
                 </div>
               </div>
-            </div>
-
-            <div className="mt-4 overflow-hidden rounded-lg">
-              <img
-                src="/images/ourinstitution.jpg"
-                alt="Estudiantes de UNIMAR"
-                className="h-48 w-full object-cover"
-              />
             </div>
           </div>
         </div>

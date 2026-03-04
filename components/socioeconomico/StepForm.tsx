@@ -1,156 +1,205 @@
 "use client"
 
-import React, { useEffect } from "react"
-import { Home, Users, DollarSign, Zap, GraduationCap, ChevronRight, Save, Loader2, ArrowLeft } from "lucide-react"
+import React, { useEffect, useState } from "react"
+import { GraduationCap, Save, Loader2, ClipboardCheck, Lock } from "lucide-react"
+import { SECCIONES_MAESTRAS } from "./StepFormData"
+import { AuditSection } from "./StepFormUI"
 
-export function StepForm({ pasoActual, setPasoActual, handleNext, handleSubmit, loading, formData, setFormData }: any) {
-  
-  // UX: Scrollear hacia arriba cuando cambia el paso para que el usuario no se pierda
+export function StepForm({ student, handleSubmit, loading, formData, setFormData }: any) {
+  const [dataEstudiante, setDataEstudiante] = useState<any>(null);
+
+  const formatSafeValue = (val: any) => {
+    if (val instanceof Date) return val.toISOString().split('T')[0];
+    if (typeof val === 'object' && val !== null) return JSON.stringify(val);
+    return val;
+  };
+
   useEffect(() => {
-    const formContainer = document.getElementById('step-form-container');
-    if (formContainer) {
-        formContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (student) {
+      const flatData = {
+        socio_lugar_nac: student.socio_lugar_nac || "No declarado",
+        socio_nacionalidad: student.socio_nacionalidad || "No declarado",
+        socio_estado_civil: student.socio_estado_civil || "No declarado",
+        socio_municipio: student.municipio_residencia || "No declarado",
+        socio_telf_hab: student.socio_telf_hab || "No declarado",
+        direccion_completa: student.direccion_completa || "No declarado",
+        socio_trabajo_empresa: student.socio_trabajo_empresa || "N/A",
+        socio_trabajo_cargo: student.socio_trabajo_cargo || "N/A",
+        posee_empleo_aspirante: student.situacion_laboral_jefe || student.posee_empleo_aspirante || "No",
+        monto_ingreso_sueldo: student.monto_ingreso_sueldo || "0",
+        monto_ingreso_extra: student.monto_ingreso_extra || "0",
+        monto_ingreso_pension: student.monto_ingreso_pension || "0",
+        monto_ingreso_ayuda: student.monto_ingreso_ayuda || "0",
+        monto_ingreso_familiar: student.monto_ingreso_familiar || "0",
+        rango_ingreso_familiar: student.rango_ingreso_familiar || "No declarado",
+        socio_ue_procedencia: student.socio_ue_procedencia || "No declarado",
+        socio_otros_estudios: student.socio_otros_estudios || "Ninguno",
+        socio_fecha_unimar: formatSafeValue(student.socio_fecha_unimar) || "",
+        socio_carrera: student.carrera || "No declarado",
+        socio_trimestre: student.semestre ? student.semestre.toString() : "No declarado",
+        socio_modalidad: student.socio_modalidad === "P" ? "Presencial" : student.socio_modalidad === "S" ? "Semipresencial" : "Virtual",
+        padre_nombre: student.padre_nombre || "No declarado",
+        padre_edad: student.padre_edad || "0",
+        padre_ocupacion: student.padre_ocupacion || "No declarado",
+        padre_trabajo: student.padre_trabajo || "No declarado",
+        madre_nombre: student.madre_nombre || "No declarado",
+        madre_edad: student.madre_edad || "0",
+        madre_ocupacion: student.madre_ocupacion || "No declarado",
+        madre_trabajo: student.madre_trabajo || "No declarado",
+        familia_num_hermanos: student.familia_num_hermanos ?? "0", 
+        familia_hermanos_uni: student.familia_hermanos_uni ?? "0",
+        familia_relacion: student.familia_relacion || "Buena",
+        monto_egreso_mercado: student.monto_egreso_mercado || "0",
+        monto_egreso_vivienda: student.monto_egreso_vivienda || "0",
+        monto_egreso_salud: student.monto_egreso_salud || "0",
+        monto_egreso_servicios: student.monto_egreso_servicios || "0",
+        vivienda_tipo: student.vivienda_tipo || "No declarado",
+        vivienda_estatus: student.vivienda_estatus || "No declarado",
+        serv_internet: student.serv_internet === "on" ? "Posee" : "No posee",
+        serv_agua: student.serv_agua === "on" ? "Posee" : "No posee",
+        serv_luz: student.serv_luz === "on" ? "Posee" : "No posee",
+        serv_gas: student.serv_gas === "on" ? "Posee" : "No posee",
+        serv_aseo: student.serv_aseo === "on" ? "Posee" : "No posee",
+        equip_lavadora: student.equip_lavadora === "on" ? "Posee" : "No posee",
+        equip_nevera: student.equip_nevera === "on" ? "Posee" : "No posee",
+        equip_cable: student.equip_cable === "on" ? "Posee" : "No posee",
+        salud_condicion_especial: student.salud_condicion_especial || "No",
+        salud_enfermedad_desc: student.salud_enfermedad_desc || "N/A",
+        salud_tratamiento: student.salud_tratamiento || "N/A"
+      };
+      setDataEstudiante(flatData);
+
+      const cleanedFormData: any = { student_id: student.id };
+      SECCIONES_MAESTRAS.forEach(sec => {
+        sec.fields.forEach(f => {
+            if (f.type === "number") cleanedFormData[f.name] = "0";
+            else if (f.type === "checkbox") cleanedFormData[f.name] = "off";
+            else cleanedFormData[f.name] = "";
+        });
+      });
+      setFormData(cleanedFormData);
     }
-  }, [pasoActual]);
+  }, [student, setFormData]);
+
+  const copyValue = (field: string, value: any) => {
+    if (value === "" || value === undefined || value === "No declarado") return;
+
+    let normalizedValue = value;
+    let fieldType = "";
+    SECCIONES_MAESTRAS.forEach(s => s.fields.forEach(f => { if(f.name === field) fieldType = f.type || ""; }));
+
+    if (fieldType === 'checkbox') {
+      normalizedValue = (value === 'Posee' || value === 'on' || value === 'Si' || value === 'Sí') ? 'on' : 'off';
+    } else if (field === 'salud_condicion_especial' || field === 'posee_empleo_aspirante') {
+      normalizedValue = (value === 'Si' || value === 'Sí' || value === 'on' || value === 'Posee') ? 'Si' : 'No';
+    }
+
+    setFormData((prev: any) => ({ ...prev, [field]: normalizedValue }));
+  };
+
+  const copiarTodoParaPrueba = () => {
+    if (!dataEstudiante) return;
+    const newData = { ...formData };
+    
+    const camposNumericos = [
+        'monto_ingreso_sueldo', 'monto_ingreso_extra', 'monto_ingreso_pension', 'monto_ingreso_ayuda', 'monto_ingreso_familiar',
+        'familia_num_hermanos', 'familia_hermanos_uni', 'monto_egreso_mercado', 'monto_egreso_vivienda',
+        'monto_egreso_salud', 'monto_egreso_servicios'
+    ];
+
+    Object.keys(dataEstudiante).forEach(key => {
+      const val = dataEstudiante[key];
+      if (val !== "" && val !== undefined && val !== "No declarado") {
+          if (camposNumericos.includes(key)) {
+              newData[key] = val.toString().replace(/[^0-9.]/g, '');
+          } else if (val === "Posee" || val === "on" || val === "Si" || val === "Sí") {
+              let isCheck = false;
+              SECCIONES_MAESTRAS.forEach(s => s.fields.forEach(f => { if(f.name === key && f.type === 'checkbox') isCheck = true; }));
+              newData[key] = isCheck ? "on" : "Si";
+          } else if (val === "No posee" || val === "off" || val === "No") {
+              let isCheck = false;
+              SECCIONES_MAESTRAS.forEach(s => s.fields.forEach(f => { if(f.name === key && f.type === 'checkbox') isCheck = true; }));
+              newData[key] = isCheck ? "off" : "No";
+          } else {
+              newData[key] = val;
+          }
+      }
+    });
+    setFormData(newData);
+  };
+
+  const handleValidateAndSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    for (const seccion of SECCIONES_MAESTRAS) {
+      for (const field of seccion.fields) {
+        const val = formData[field.name];
+        if (field.type !== "checkbox" && (val === undefined || val === "" || val === "seleccione")) {
+          const element = document.getElementsByName(field.name)[0];
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            element.focus();
+          }
+          return;
+        }
+      }
+    }
+
+    await handleSubmit(e);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const isFormComplete = SECCIONES_MAESTRAS.every(s => 
+    s.fields.every(f => 
+      f.type === "checkbox" || (formData[f.name] !== undefined && formData[f.name] !== "" && formData[f.name] !== "seleccione")
+    )
+  );
 
   return (
-    <div id="step-form-container" className="bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
-      
-      {/* Barra de Progreso Superior */}
-      <div className="bg-slate-50 h-1.5 w-full flex">
-        <div className={`h-full transition-all duration-500 ease-in-out ${pasoActual >= 1 ? 'bg-[#d4a843] w-1/5' : 'bg-transparent w-0'}`}></div>
-        <div className={`h-full transition-all duration-500 ease-in-out ${pasoActual >= 2 ? 'bg-[#d4a843] w-1/5' : 'bg-transparent w-0'}`}></div>
-        <div className={`h-full transition-all duration-500 ease-in-out ${pasoActual >= 3 ? 'bg-[#d4a843] w-1/5' : 'bg-transparent w-0'}`}></div>
-        <div className={`h-full transition-all duration-500 ease-in-out ${pasoActual >= 4 ? 'bg-[#d4a843] w-1/5' : 'bg-transparent w-0'}`}></div>
-        <div className={`h-full transition-all duration-500 ease-in-out ${pasoActual >= 5 ? 'bg-[#d4a843] w-1/5' : 'bg-transparent w-0'}`}></div>
+    <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
+      <div className="bg-slate-50 border-b border-slate-200 p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 bg-[#1a2744] rounded-xl flex items-center justify-center shadow-lg">
+            <GraduationCap className="h-5 w-5 text-[#d4a843]" />
+          </div>
+          <div>
+            <h2 className="text-sm font-black text-[#1a2744] uppercase tracking-widest">Contraste de Auditoría Final</h2>
+            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Sincronización Total con Base de Datos</p>
+          </div>
+        </div>
+        <button type="button" onClick={copiarTodoParaPrueba} className="flex items-center gap-2 px-4 py-2 bg-slate-200 hover:bg-[#d4a843] hover:text-white text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-tighter transition-all shadow-sm">
+          <ClipboardCheck className="h-4 w-4" /> Modo Prueba: Copiar Todo
+        </button>
       </div>
 
-      <form onSubmit={handleSubmit} className="p-8 md:p-12 space-y-10">
-        
-        {/* PASO 1: VIVIENDA */}
-        {pasoActual === 1 && <Section icon={Home} title="Vivienda" step="01" 
-            fields={[
-                {label: "Tipo", name: "tipo_vivienda", options: ["Casa", "Apartamento", "Habitación", "Rancho/Anexo"]}, 
-                {label: "Tenencia", name: "tenencia_vivienda", options: ["Propia", "Alquilada", "Prestada", "Pagándose"]}, 
-                {label: "Habitaciones", name: "numero_habitaciones", type: "number"}, 
-                {label: "Material", name: "material_vivienda", options: ["Bloque", "Madera", "Zinc", "Adobe"]}
-            ]} formData={formData} setFormData={setFormData} />}
-        
-        {/* PASO 2: FAMILIA */}
-        {pasoActual === 2 && <Section icon={Users} title="Grupo Familiar" step="02" 
-            fields={[
-                {label: "Personas en Hogar", name: "num_personas_hogar", type: "number"}, 
-                {label: "Personas que Trabajan", name: "num_personas_trabajan", type: "number"}, 
-                {label: "Dependencia Económica", name: "dependencia_economica", options: ["Padres", "Cónyuge", "Autosuficiente", "Otros"]}, 
-                {label: "Discapacidad en Familia", name: "carga_familiar_discapacidad", options: ["Si", "No"]}
-            ]} formData={formData} setFormData={setFormData} />}
-        
-        {/* PASO 3: ECONOMÍA */}
-        {pasoActual === 3 && <Section icon={DollarSign} title="Economía" step="03" 
-            fields={[
-                {label: "Ingreso Familiar ($)", name: "ingreso_mensual_familiar", type: "number"}, 
-                {label: "Egreso Aprox. ($)", name: "egreso_mensual_aproximado", type: "number"}, 
-                {label: "Ocupación Jefe Hogar", name: "empleo_jefe_hogar", options: ["Fijo", "Informal", "Desempleado", "Jubilado"]}, 
-                {label: "Ayuda de Terceros", name: "ayuda_otros_familiares", options: ["Si", "No"]}
-            ]} formData={formData} setFormData={setFormData} />}
-        
-        {/* PASO 4: SERVICIOS */}
-        {pasoActual === 4 && <Section icon={Zap} title="Servicios Básicos" step="04" 
-            fields={[
-                {label: "Conexión a Internet", name: "acceso_internet", options: ["Excelente", "Bueno", "Deficiente", "No posee"]}, 
-                {label: "Posee Computadora", name: "equipo_computacion", options: ["Si", "No"]}, 
-                {label: "Servicio Agua/Luz", name: "servicio_agua_luz", options: ["Permanente", "Con Fallas", "Crítico"]}, 
-                {label: "Transporte a U", name: "transporte_universidad", options: ["Público", "Propio", "Caminando", "Cola"]}
-            ]} formData={formData} setFormData={setFormData} />}
-        
-        {/* PASO 5: OTROS */}
-        {pasoActual === 5 && <Section icon={GraduationCap} title="Salud y Estudios" step="05" 
-            fields={[
-                {label: "Gastos Médicos ($)", name: "gastos_medicos_mensuales", type: "number"}, 
-                {label: "Paga Residencia Est.", name: "pago_alquiler_residencia", options: ["Si", "No"]}, 
-                {label: "Hermanos Estudiando", name: "hermanos_estudiando", type: "number"}, 
-                {label: "Beca Otra Institución", name: "beca_otra_institucion", options: ["Si", "No"]}
-            ]} formData={formData} setFormData={setFormData} />}
+      <form onSubmit={handleValidateAndSubmit} className="p-0">
+        <div className="divide-y divide-slate-100">
+          {SECCIONES_MAESTRAS.map((sec, idx) => (
+            <AuditSection 
+              key={idx} icon={sec.icon} title={sec.titulo} fields={sec.fields}
+              formData={formData} dataEstudiante={dataEstudiante} copyValue={copyValue} setFormData={setFormData}
+            />
+          ))}
+        </div>
 
-        {/* BOTONES DE NAVEGACIÓN */}
-        <div className="pt-8 mt-4 flex gap-4 border-t border-slate-50">
-          {pasoActual > 1 && (
-            <button 
-                type="button" 
-                onClick={() => setPasoActual((p:number) => p-1)} 
-                className="flex-1 py-4 border-2 border-slate-100 rounded-2xl font-black uppercase text-xs text-slate-400 hover:text-[#1a2744] hover:border-[#1a2744] hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
-            >
-                <ArrowLeft className="h-4 w-4" /> Atrás
-            </button>
-          )}
-          
-          {pasoActual < 5 ? (
-            <button 
-                type="button" 
-                onClick={handleNext} 
-                className="flex-[2] py-4 bg-[#1a2744] text-[#d4a843] rounded-2xl font-black uppercase text-xs flex items-center justify-center gap-2 shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all"
-            >
-                Siguiente <ChevronRight className="h-4 w-4" />
-            </button>
-          ) : (
-            <button 
-                type="submit" 
-                disabled={loading} 
-                className="flex-[2] py-4 bg-emerald-600 text-white rounded-2xl font-black uppercase text-xs flex items-center justify-center gap-2 shadow-xl hover:bg-emerald-700 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
-            >
-                {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <><Save className="h-4 w-4" /> Finalizar Evaluación</>}
-            </button>
+        <div className="p-8 bg-slate-50 border-t border-slate-200">
+          <button 
+            type="submit" disabled={loading} 
+            className={`w-full py-5 rounded-2xl font-black uppercase text-xs flex items-center justify-center gap-3 shadow-xl transition-all ${
+              !isFormComplete ? "bg-slate-300 text-slate-500 hover:bg-rose-500 hover:text-white" : "bg-[#1a2744] text-[#d4a843] hover:scale-[1.01]"
+            }`}
+          >
+            {loading ? <Loader2 className="animate-spin h-5 w-5" /> : (
+              <>{!isFormComplete ? <Lock className="h-5 w-5" /> : <Save className="h-5 w-5" />} Finalizar y Guardar Baremo</>
+            )}
+          </button>
+          {!isFormComplete && (
+            <p className="text-center mt-4 text-[9px] font-bold text-rose-500 uppercase tracking-widest animate-pulse">
+              ⚠️ Incompleto: El botón le llevará al campo faltante al hacer clic
+            </p>
           )}
         </div>
       </form>
     </div>
   )
-}
-
-// Subcomponente de Sección (Interno)
-function Section({ icon: Icon, title, step, fields, formData, setFormData }: any) {
-    return (
-        <div className="space-y-8 animate-in slide-in-from-right-8 duration-300 fade-in">
-            <div className="flex items-center justify-between border-b-2 border-slate-100 pb-4">
-                <div className="flex items-center gap-4">
-                    <div className="p-3 bg-[#1a2744]/5 rounded-xl text-[#1a2744]"><Icon className="h-6 w-6" /></div>
-                    <h2 className="text-xl font-black text-[#1a2744] uppercase tracking-tight">{title}</h2>
-                </div>
-                <span className="text-5xl font-black text-slate-100 font-serif italic leading-none select-none">{step}</span>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                {fields.map((f: any) => (
-                    <div key={f.name} className="space-y-2 group">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1 group-focus-within:text-[#d4a843] transition-colors">
-                            {f.label}
-                        </label>
-                        {f.options ? (
-                            <div className="relative">
-                                <select 
-                                    name={f.name} 
-                                    value={formData[f.name]} 
-                                    onChange={(e) => setFormData((p:any) => ({...p, [f.name]: e.target.value}))} 
-                                    className={`w-full bg-slate-50 border-2 ${formData[f.name] === "" ? 'border-slate-100' : 'border-[#d4a843]/20 bg-[#d4a843]/5'} p-4 rounded-2xl text-sm font-bold text-[#1a2744] outline-none focus:border-[#d4a843] transition-all cursor-pointer appearance-none`}
-                                >
-                                    <option value="">Seleccione...</option>
-                                    {f.options.map((o: string) => <option key={o} value={o}>{o}</option>)}
-                                </select>
-                                <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none rotate-90" />
-                            </div>
-                        ) : (
-                            <input 
-                                type={f.type || "text"} 
-                                name={f.name} 
-                                value={formData[f.name]} 
-                                onChange={(e) => setFormData((p:any) => ({...p, [f.name]: e.target.value}))} 
-                                className={`w-full bg-slate-50 border-2 ${formData[f.name] === "" ? 'border-slate-100' : 'border-[#d4a843]/20 bg-[#d4a843]/5'} p-4 rounded-2xl text-sm font-bold text-[#1a2744] outline-none focus:border-[#d4a843] transition-all placeholder:text-slate-300`} 
-                                placeholder="0"
-                            />
-                        )}
-                    </div>
-                ))}
-            </div>
-        </div>
-    )
 }

@@ -10,17 +10,18 @@ const navLinks = [
     label: "Becas",
     href: "/becas",
     children: [
-      { label: "Académica", href: "/becas" },
-      { label: "Socioeconómica", href: "/becas" },
-      { label: "Deportiva", href: "/becas" },
-      { label: "Excelencia", href: "/becas" },
+      { label: "Beca Aprendizaje", href: "/becas" },
+      { label: "Social Aprendizaje", href: "/becas" },
+      { label: "Por Discapacidad", href: "/becas" },
+      { label: "Excelencia Académica", href: "/becas" },
     ],
   },
   { label: "Requisitos", href: "/requisitos" },
   { label: "Proceso", href: "/proceso" },
   { label: "Servicios", href: "/servicios" },
   { label: "Contacto", href: "/servicios#contacto" },
-  { label: "Solicitudes", href: "/Solicitud" },
+  { label: "Solicitudes", href: "/postulacion" },
+  
 ]
 
 interface NavMenuProps {

@@ -34,12 +34,9 @@ export async function obtenerRankingPrioridad(filtros: FiltrosRanking = {}) {
     }
 
     // C. Filtros de "Excelencia" (Umbral mínimo para aparecer en el Top)
-    // Puedes ajustar estos números según la exigencia de la UNIMAR
-    condiciones.push("s.promedio_notas >= 16.49"); // Umbral razonable para "buenos estudiantes"
-    // condiciones.push("IFNULL(e.puntaje, 0) >= 20"); // Opcional: Filtrar también por vulnerabilidad mínima
+    condiciones.push("s.promedio_notas >= 16.49"); 
 
     // 3. ARMAMOS LA SQL FINAL
-    // Unimos todas las condiciones con 'AND' automáticamente
     const whereClause = condiciones.length > 0 ? `WHERE ${condiciones.join(' AND ')}` : '';
 
     const query = `
@@ -64,7 +61,10 @@ export async function obtenerRankingPrioridad(filtros: FiltrosRanking = {}) {
 
       FROM solicitudes s
       JOIN students st ON s.user_id = st.id
-      LEFT JOIN estudios_socioeconomicos e ON st.id = e.student_id
+      
+      /* 🟢 CORRECCIÓN: Filtramos por tipo 'administrador' para evitar duplicados 
+         y usar solo la evaluación oficial. */
+      LEFT JOIN estudios_socioeconomicos e ON st.id = e.student_id AND e.tipo = 'administrador'
       
       ${whereClause}
       

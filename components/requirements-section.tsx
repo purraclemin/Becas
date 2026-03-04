@@ -2,14 +2,14 @@ import { CheckCircle2, FileText, Upload, ClipboardList, UserCheck } from "lucide
 
 const requirements = [
   "Ser estudiante regular de pregrado de la UNIMAR",
-  "Estar inscrito en el trimestre vigente",
-  "No poseer deudas academicas o administrativas pendientes",
-  "Presentar constancia de inscripcion actualizada",
-  "Documento de identidad vigente (cedula o pasaporte)",
-  "Constancia de notas certificada del ultimo trimestre",
-  "Carta de solicitud dirigida al Decanato de Bienestar Estudiantil",
-  "Estudio socioeconomico (para becas socioeconomicas)",
-  "Constancia de representacion deportiva (para becas deportivas)",
+  "Inscribir la máxima carga académica permitida según el pensum ",
+  "Mantener un índice académico ≥ 16 pts (Aprendizaje/Discapacidad/Ayudas) ",
+  "Tener un promedio ≥ 18 pts para la modalidad Beca Social Aprendizaje ",
+  "No haber sido objeto de sanciones académicas o disciplinarias ",
+  "Presentar constancia de notas actualizada emitida por Control de Estudios ",
+  "Documento de identidad vigente y planilla de solicitud de la página web ",
+  "Estudio socioeconómico y visita domiciliaria por Bienestar Estudiantil",
+  "Informe médico especializado y carnet (solo para Beca por Discapacidad)",
 ]
 
 const quickActions = [
@@ -72,12 +72,12 @@ export function RequirementsSection() {
           <div>
             <div className="mb-6 border-b-2 border-[#d4a843] pb-2">
               <h2 className="text-xl font-bold text-[#1e3a5f] font-serif">
-                Requisitos para Solicitar una Beca
+                Requisitos según Normativa 2023
               </h2>
             </div>
             <p className="mb-6 text-sm leading-relaxed text-[#6b7280]">
-              Para iniciar el proceso de solicitud de beca, asegurate de cumplir con los
-              siguientes requisitos y tener disponible la documentacion necesaria.
+              Para que tu solicitud sea considerada por el Consejo Superior, debes cumplir 
+              estrictamente con los requisitos y condiciones de mantenimiento establecidos.
             </p>
             <ul className="flex flex-col gap-2.5">
               {requirements.map((req) => (
@@ -102,7 +102,7 @@ export function RequirementsSection() {
               <div className="flex items-center gap-3">
                 <div className="text-3xl font-extrabold text-[#d4a843]">26+</div>
                 <div>
-                  <div className="text-sm font-bold">Anos formando profesionales</div>
+                  <div className="text-sm font-bold">Años formando profesionales</div>
                   <div className="text-xs text-[#8a9bbd]">Universidad de Margarita desde 2000</div>
                 </div>
               </div>
