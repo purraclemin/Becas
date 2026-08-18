@@ -93,11 +93,11 @@ export async function calcularPuntajeUnificado(data: any) {
   if (relacion === 'Regular') puntaje += 5;
   if (relacion === 'Mala') puntaje += 10;
 
-  // 3. DETERMINAR NIVEL DE RIESGO
+  // 3. DETERMINAR NIVEL DE RIESGO (Umbrales originales: 70, 50, 25)
   let nivelRiesgo = 'Bajo';
-  if (puntaje >= 60) nivelRiesgo = 'Crítico';
-  else if (puntaje >= 40) nivelRiesgo = 'Alto';
-  else if (puntaje >= 20) nivelRiesgo = 'Medio';
+  if (puntaje >= 70) nivelRiesgo = 'Crítico';
+  else if (puntaje >= 50) nivelRiesgo = 'Alto';
+  else if (puntaje >= 25) nivelRiesgo = 'Medio';
 
   return {
     puntaje,

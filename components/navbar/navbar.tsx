@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { Phone, Mail, Facebook, Instagram, Menu, X, LogIn, UserPlus } from "lucide-react"
+import { Menu, X, LogIn, UserPlus } from "lucide-react"
 import { getSession } from "@/lib/ActionsSession"
 import { UserActions } from "./UserActions"
 import { NavMenu } from "./NavMenu"
@@ -22,78 +22,75 @@ export function Navbar() {
   }, [])
 
   return (
-    <header className="sticky top-0 z-50 shadow-lg">
-      {/* Barra superior azul */}
-      <div className="bg-[#1a2744] text-xs text-[#8a9bbd]">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-1.5">
-          <div className="hidden items-center gap-4 sm:flex">
-            <span className="flex items-center gap-1.5"><Phone className="h-3 w-3" /> 0412.102.2538</span>
-            <span className="flex items-center gap-1.5"><Mail className="h-3 w-3" /> becas@unimar.edu.ve</span>
-          </div>
-          <div className="ml-auto flex items-center gap-3">
-            <Facebook className="h-3.5 w-3.5 hover:text-white transition-colors cursor-pointer" />
-            <Instagram className="h-3.5 w-3.5 hover:text-white transition-colors cursor-pointer" />
-          </div>
-        </div>
-      </div>
-
-      {/* Barra Blanca de Logo y Acciones */}
-      <div className="bg-white border-b border-[#e2e8f0]">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-2 sm:py-3">
+    <header className="fixed top-0 left-0 right-0 z-50 shadow-sm w-full bg-white">
+      {/* Barra Principal (Logo + Menú Integrado + Acciones) */}
+      <div className="relative z-20 w-full border-b border-[#e2e8f0]">
+        {/* Contenedor ampliado a max-w-[1600px] y padding lateral reducido a lg:px-8 para mayor espacio */}
+        <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between px-4 sm:px-6 lg:px-8 xl:px-10 py-2 sm:py-3">
           
-          <div className="flex items-center gap-2 sm:gap-3">
-            <Link href="/" className="flex items-center gap-2 sm:gap-3 shrink-0">
-              <div className="flex h-10 w-10 sm:h-14 sm:w-14 items-center justify-center rounded-full bg-[#1e3a5f] shadow-md border-2 border-[#d4a843]/20">
-                <span className="text-lg sm:text-2xl font-extrabold text-[#d4a843] font-serif">U</span>
+          {/* 1. Izquierda: Botón Hamburguesa (Móvil) + Logotipo Institucional */}
+          <div className="flex items-center gap-3 shrink-0">
+            {/* Botón de Menú Hamburguesa (Visible solo en móvil) */}
+            <button 
+              className="lg:hidden p-1.5 rounded-lg text-[#1e3a5f] hover:bg-slate-100 transition-colors" 
+              onClick={() => setMobileOpen(!mobileOpen)}
+              aria-label="Toggle menu"
+            >
+              {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </button>
+
+            <Link href="/" className="flex items-center gap-2 sm:gap-3">
+              <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-[#1e3a5f] shadow-sm border border-[#d4a843]/30">
+                <span className="text-base sm:text-xl font-extrabold text-[#d4a843] font-serif">U</span>
               </div>
               <div>
-                <span className="block text-sm sm:text-xl font-extrabold tracking-wide text-[#1e3a5f] font-serif leading-none">UNIMAR</span>
-                <span className="block text-[9px] sm:text-[11px] font-medium uppercase tracking-widest text-[#6b7280] mt-1">Gestión de Becas</span>
+                <span className="block text-sm sm:text-lg font-extrabold tracking-wide text-[#1e3a5f] font-serif leading-none">UNIMAR</span>
+                <span className="block text-[8px] sm:text-[10px] font-medium uppercase tracking-widest text-[#6b7280] mt-0.5">Gestión de Becas</span>
               </div>
             </Link>
           </div>
 
-          {/* Bloque de Acciones y Menú alineados de derecha a izquierda */}
-          <div className="flex items-center flex-row-reverse">
-            
-            {/* 1. Botón de Menú Hamburguesa Principal (Extremo derecho) */}
-            <button 
-              className="lg:hidden p-1.5 rounded-lg bg-[#f8fafb] border border-[#e2e8f0] text-[#1e3a5f] transition-colors ml-2" 
-              onClick={() => setMobileOpen(!mobileOpen)}
-            >
-              {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </button>
+          {/* 2. Centro: Menú de Navegación Integrado (Escritorio) */}
+          <div className="hidden lg:flex flex-1 justify-center px-4">
+            <NavMenu mobileOpen={false} setMobileOpen={setMobileOpen} user={user} />
+          </div>
 
-            {/* 2. Botones de Sesión (Entrar / Registrarse) - Pegados al menú de hamburguesa */}
+          {/* 3. Derecha: Bloque de Acciones y Sesión */}
+          <div className="flex items-center gap-3 shrink-0">
+            
+            {/* Botones de Sesión */}
             {!loading && (!user || !user.isLoggedIn) && (
-              <div className="flex items-center gap-1.5 sm:gap-2 animate-in fade-in duration-500">
+              <div className="flex items-center gap-2 animate-in fade-in duration-500">
                 <Link 
                   href="/login" 
-                  className="flex items-center gap-1 rounded-md border border-[#1e3a5f] px-2 py-1.5 lg:px-4 lg:py-2 text-[10px] lg:text-sm font-bold text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white transition-all"
+                  className="hidden sm:flex items-center gap-1 rounded-md border border-[#1e3a5f] px-3 py-1.5 text-xs font-bold text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white transition-all"
                 >
-                  <LogIn className="h-5 w-5" /> <span>Entrar</span>
+                  <LogIn className="h-4 w-4" /> <span>Entrar</span>
                 </Link>
                 <Link 
                   href="/registro" 
-                  className="flex items-center gap-1 rounded-md bg-[#d4a843] px-2 py-1.5 lg:px-4 lg:py-2 text-[10px] lg:text-sm font-bold text-[#1e3a5f] hover:bg-[#c49a3a] shadow-sm transition-all"
+                  className="flex items-center gap-1 rounded-md bg-[#d4a843] px-3 py-1.5 text-xs font-bold text-[#1e3a5f] hover:bg-[#c49a3a] shadow-sm transition-all"
                 >
-                  <UserPlus className="h-5 w-5" /> <span>Registrarse</span>
+                  <UserPlus className="h-4 w-4" /> <span>Registrarse</span>
                 </Link>
               </div>
             )}
 
-            {/* 3. Línea Vertical Separadora (Solo si hay usuario logueado en móvil) */}
-            {user?.isLoggedIn && <div className="lg:hidden h-8 w-[1px] bg-black/10 mx-2" />}
+            {/* Perfil de Usuario */}
+            <div className="relative z-30">
+              <UserActions user={user} loading={loading} />
+            </div>
 
-            {/* 4. Componente de Perfil / Información (Solo si hay usuario) */}
-            <UserActions user={user} loading={loading} />
-            
           </div>
         </div>
       </div>
 
-      {/* Menú azul de navegación */}
-      <NavMenu mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} user={user} />
+      {/* Menú Desplegable Compacto para Móviles */}
+      <div className={`lg:hidden absolute top-full left-0 w-full bg-white shadow-md border-b border-[#e2e8f0] transition-all duration-300 origin-top ${mobileOpen ? "scale-y-100 opacity-100" : "scale-y-0 opacity-0 h-0 overflow-hidden"}`}>
+        <div className="flex flex-col w-full">
+          <NavMenu mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} user={user} />
+        </div>
+      </div>
       
     </header>
   )

@@ -1,7 +1,23 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { GraduationCap, Mail, IdCard, CalendarDays, BookOpen, Clock, User2, Trophy } from "lucide-react"
+import { GraduationCap, Mail, IdCard, CalendarDays, BookOpen, Clock, User2, Trophy, LucideIcon } from "lucide-react"
 
-export function AcademicInfo({ user }: { user: any }) {
+// 1. INTERFACES ESTRICTAS (Cero 'any')
+export interface IAcademicInfoUser {
+  id?: number | string;
+  cedula?: string | number;
+  email?: string;
+  carrera?: string;
+  trimestre?: number | string;
+  semestre?: number | string;
+  periodoActual?: string;
+  indiceGlobal?: number | string | null;
+}
+
+interface IAcademicInfoProps {
+  user: IAcademicInfoUser;
+}
+
+export function AcademicInfo({ user }: IAcademicInfoProps) {
   // 🟢 Formateo seguro para el Índice Global:
   // Evitamos que un valor de 0 sea tratado como "falso" y aseguramos la conversión a decimal.
   const displayIndice = (user.indiceGlobal !== undefined && user.indiceGlobal !== null) 
@@ -20,7 +36,7 @@ export function AcademicInfo({ user }: { user: any }) {
       </CardHeader>
       <CardContent className="p-6 md:p-10">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-y-10 gap-x-8">
-          <InfoItem icon={IdCard} label="Cédula" value={`V-${user.cedula}`} />
+          <InfoItem icon={IdCard} label="Cédula" value={`V-${user.cedula || "---"}`} />
           
           <InfoItem icon={Mail} label="Correo" value={user.email} isLowercase />
           
@@ -57,7 +73,15 @@ export function AcademicInfo({ user }: { user: any }) {
   )
 }
 
-function InfoItem({ icon: Icon, label, value, isLowercase, isUppercase }: any) {
+interface IInfoItemProps {
+  icon: LucideIcon;
+  label: string;
+  value: string | number | undefined | null;
+  isLowercase?: boolean;
+  isUppercase?: boolean;
+}
+
+function InfoItem({ icon: Icon, label, value, isLowercase, isUppercase }: IInfoItemProps) {
   return (
     <div className="space-y-2 group cursor-default">
       <div className="flex items-center gap-2 text-[10px] text-gray-400 font-black uppercase tracking-widest group-hover:text-[#d4a843] transition-colors">

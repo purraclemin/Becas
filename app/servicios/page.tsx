@@ -1,5 +1,4 @@
 import { Navbar } from "@/components/navbar/navbar"
-import { PageHeader } from "@/components/page-header"
 import { Footer } from "@/components/footer"
 import {
   Shield, BarChart3, Users, Settings, FileSearch, Database,
@@ -83,19 +82,21 @@ const enlaces = [
 
 export default function ServiciosPage() {
   return (
-    <main className="min-h-screen">
+    <main className="min-h-screen w-full flex flex-col bg-slate-50">
       <Navbar />
-      <PageHeader
-        title="Servicios Institucionales"
-        breadcrumbs={[
-          { label: "Inicio", href: "/" },
-          { label: "Servicios" },
-        ]}
-      />
+      
+      {/* Contenedor con la franja azul institucional y tipografía unificada estilo Hero (sin breadcrumbs) */}
+      <div className="mt-[73px] sm:mt-[81px] w-full bg-[#1e3a5f] text-white py-8 sm:py-10">
+        <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 xl:px-10">
+          <h1 className="text-2xl font-extrabold font-serif sm:text-3xl md:text-4xl uppercase tracking-tight drop-shadow-lg text-white">
+            Servicios Institucionales
+          </h1>
+        </div>
+      </div>
 
       {/* Servicios Estudiantiles */}
-      <section className="bg-[#ffffff] py-12">
-        <div className="mx-auto max-w-7xl px-4">
+      <section className="bg-[#ffffff] py-12 w-full">
+        <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 xl:px-10">
           <div className="mb-8 border-b-2 border-[#1e3a5f] pb-2">
             <h2 className="text-xl font-bold text-[#1e3a5f] font-serif uppercase tracking-tight">Atención al Estudiante</h2>
           </div>
@@ -124,8 +125,8 @@ export default function ServiciosPage() {
       </section>
 
       {/* Herramientas Administrativas */}
-      <section className="bg-[#f0f4f8] py-12">
-        <div className="mx-auto max-w-7xl px-4">
+      <section className="bg-[#f0f4f8] py-12 w-full">
+        <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 xl:px-10">
           <div className="grid gap-10 lg:grid-cols-3">
             <div className="lg:col-span-2">
               <div className="mb-6 border-b-2 border-[#1e3a5f] pb-2">
@@ -177,9 +178,9 @@ export default function ServiciosPage() {
         </div>
       </section>
 
-      {/* Contacto y Ubicación */}
-      <section className="bg-[#ffffff] py-12">
-        <div className="mx-auto max-w-7xl px-4">
+      {/* Contacto y Ubicación (Con id="contacto" y scroll-mt-24 para el desplazamiento perfecto desde el Navbar) */}
+      <section id="contacto" className="bg-[#ffffff] py-12 w-full scroll-mt-24">
+        <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 xl:px-10">
           <div className="mb-8 border-b-2 border-[#1e3a5f] pb-2">
             <h2 className="text-xl font-bold text-[#1e3a5f] font-serif uppercase tracking-tight">Atención Institucional</h2>
           </div>
@@ -218,7 +219,7 @@ export default function ServiciosPage() {
               <div className="aspect-video overflow-hidden rounded-lg border border-[#e2e8f0] shadow-sm">
                 <iframe
                   title="Ubicacion UNIMAR"
-                  src="http://googleusercontent.com/maps.google.com/2"
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3915.244307525232!2d-63.885834624103755!3d10.983050059231614!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8c318f77967b072b%3A0x6b4c9b369f80164c!2sUniversidad%20de%20Margarita!5e0!3m2!1ses!2sve!4v1708535000000!5m2!1ses!2sve"
                   className="h-full w-full"
                   style={{ border: 0 }}
                   allowFullScreen

@@ -6,6 +6,51 @@ import { obtenerOCrearPeriodoObjetivo } from './SolicitudAcademic'
 import { calcularPuntajeUnificado } from './MotorBaremoUnificado'
 
 /**
+ * Obtiene el estudio socioeconómico para el panel de administración.
+ * Prioriza el registro de tipo 'administrador' si ya fue editado/auditado,
+ * de lo contrario, hereda y carga automáticamente el registro de tipo 'estudiante'
+ * declarado en la postulación inicial para evitar desincronización o datos en blanco.
+ */
+export async function obtenerEstudioSocioeconomico(studentId: number) {
+  const session = await getSession();
+  if (!session || !session.id) throw new Error("Sesión no válida.");
+
+  const periodoIdActual = await obtenerOCrearPeriodoObjetivo();
+  const connection = await db.getConnection();
+
+  try {
+    // 1. Buscar si ya existe un registro previo de tipo 'administrador' para este periodo
+    const [rowsAdmin]: any = await connection.execute(
+      `SELECT * FROM estudios_socioeconomicos WHERE student_id = ? AND periodo_id = ? AND tipo = 'administrador' LIMIT 1`,
+      [studentId, periodoIdActual]
+    );
+
+    if (rowsAdmin && rowsAdmin.length > 0) {
+      return { data: rowsAdmin[0], origen: 'administrador' };
+    }
+
+    // 2. Si no hay de administrador, buscar y heredar el registro de tipo 'estudiante'
+    const [rowsEstudiante]: any = await connection.execute(
+      `SELECT * FROM estudios_socioeconomicos WHERE student_id = ? AND periodo_id = ? AND tipo = 'estudiante' LIMIT 1`,
+      [studentId, periodoIdActual]
+    );
+
+    if (rowsEstudiante && rowsEstudiante.length > 0) {
+      return { data: rowsEstudiante[0], origen: 'estudiante' };
+    }
+
+    // 3. Si no existe ninguno, retornar null para que el formulario maneje valores por defecto
+    return { data: null, origen: 'ninguno' };
+
+  } catch (error) {
+    console.error("❌ Error al obtener estudio socioeconómico:", error);
+    throw error;
+  } finally {
+    if (connection) connection.release();
+  }
+}
+
+/**
  * Lógica de negocio para procesar y guardar el estudio socioeconómico (Auditoría Admin)
  */
 export async function procesarGuardadoEstudio(data: any) {
@@ -20,7 +65,7 @@ export async function procesarGuardadoEstudio(data: any) {
     (val === 'Posee' || val === 'Si' || val === 'on' || val === 'on_true') ? 'on' : 'off';
 
   // 1. Ejecución del motor con los datos auditados
-  const { puntaje, nivel } = await calcularPuntajeUnificado({
+  const resultadoMotor = await calcularPuntajeUnificado({
     ...data,
     monto_ingreso_sueldo: Number(data.monto_ingreso_sueldo || 0),
     monto_ingreso_extra: Number(data.monto_ingreso_extra || 0),
@@ -40,66 +85,74 @@ export async function procesarGuardadoEstudio(data: any) {
     salud_condicion_especial: data.carga_familiar_discapacidad || data.salud_condicion_especial || 'No'
   });
 
+  const puntaje = resultadoMotor?.puntaje ?? 0;
+  const nivel = resultadoMotor?.nivelRiesgo ?? 'Bajo';
+
   const connection = await db.getConnection();
   try {
     await connection.beginTransaction();
 
-    const fechaUnimar = (data.socio_fecha_unimar && data.socio_fecha_unimar !== "") ? data.socio_fecha_unimar : null;
+    const fechaUnimar = (data?.socio_fecha_unimar && data.socio_fecha_unimar !== "") ? data.socio_fecha_unimar : null;
 
-    // safeParams: Lista exacta de 52 valores para los "?" del INSERT
-    const safeParams = [
-      data.student_id, 
-      periodoIdActual, 
-      adminId,
-      data.socio_lugar_nac || "", 
-      data.socio_nacionalidad || "", 
-      data.socio_estado_civil || "", 
-      data.socio_telf_hab || "", 
-      data.direccion_completa || "",
-      data.socio_trabajo_empresa || "", 
-      data.socio_trabajo_cargo || "", 
-      Number(data.monto_ingreso_sueldo || 0), 
-      Number(data.monto_ingreso_extra || 0), 
-      Number(data.monto_ingreso_pension || 0), 
-      Number(data.monto_ingreso_ayuda || 0),
-      Number(data.monto_ingreso_familiar || 0), // Nueva columna 15
-      data.socio_ue_procedencia || "", 
-      data.socio_otros_estudios || "", 
+    // rawParams: Lista exacta de 53 valores correspondientes a los 53 campos del INSERT
+    const rawParams = [
+      data?.student_id ?? null, 
+      periodoIdActual ?? null, 
+      adminId ?? null,
+      'administrador',
+      data?.socio_lugar_nac ?? "", 
+      data?.socio_nacionalidad ?? "", 
+      data?.socio_estado_civil ?? "", 
+      data?.socio_telf_hab ?? "", 
+      data?.direccion_completa ?? "",
+      data?.socio_trabajo_empresa ?? "", 
+      data?.socio_trabajo_cargo ?? "", 
+      Number(data?.monto_ingreso_sueldo ?? 0), 
+      Number(data?.monto_ingreso_extra ?? 0), 
+      Number(data?.monto_ingreso_pension ?? 0), 
+      Number(data?.monto_ingreso_ayuda ?? 0),
+      Number(data?.monto_ingreso_familiar ?? 0),
+      data?.socio_ue_procedencia ?? "", 
+      data?.socio_otros_estudios ?? "", 
       fechaUnimar, 
-      data.socio_modalidad || "P",
-      data.padre_nombre || "", 
-      Number(data.padre_edad || 0), 
-      data.padre_ocupacion || "", 
-      data.padre_trabajo || "",
-      data.madre_nombre || "", 
-      Number(data.madre_edad || 0), 
-      data.madre_ocupacion || "", 
-      data.madre_trabajo || "",
-      data.rango_ingreso_familiar || "1", 
-      data.vivienda_tipo || "", 
-      data.vivienda_estatus || "",
-      normalizeSwitch(data.serv_internet),
-      Number(data.familia_num_hermanos || 0), 
-      Number(data.familia_hermanos_uni || 0),
-      Number(data.monto_egreso_mercado || 0), 
-      Number(data.monto_egreso_vivienda || 0),
-      Number(data.monto_egreso_salud || 0), 
-      Number(data.monto_egreso_servicios || 0),
-      data.posee_empleo_aspirante || "No", 
-      data.carga_familiar_discapacidad || data.salud_condicion_especial || "No",
-      normalizeSwitch(data.serv_agua), 
-      normalizeSwitch(data.serv_gas), 
-      normalizeSwitch(data.serv_aseo),
-      normalizeSwitch(data.equip_lavadora), 
-      normalizeSwitch(data.equip_nevera), 
-      normalizeSwitch(data.serv_luz),
-      normalizeSwitch(data.equip_cable),
-      data.salud_enfermedad_desc || "", 
-      data.salud_tratamiento || "", 
-      data.familia_relacion || "Buena",
+      data?.socio_modalidad ?? "P",
+      data?.padre_nombre ?? "", 
+      Number(data?.padre_edad ?? 0), 
+      data?.padre_ocupacion ?? "", 
+      data?.padre_trabajo ?? "",
+      data?.madre_nombre ?? "", 
+      Number(data?.madre_edad ?? 0), 
+      data?.madre_ocupacion ?? "", 
+      data?.madre_trabajo ?? "",
+      data?.rango_ingreso_familiar ?? "1", 
+      data?.vivienda_tipo ?? "", 
+      data?.vivienda_estatus ?? "",
+      normalizeSwitch(data?.serv_internet),
+      Number(data?.familia_num_hermanos ?? 0), 
+      Number(data?.familia_hermanos_uni ?? 0),
+      Number(data?.monto_egreso_mercado ?? 0), 
+      Number(data?.monto_egreso_vivienda ?? 0),
+      Number(data?.monto_egreso_salud ?? 0), 
+      Number(data?.monto_egreso_servicios ?? 0),
+      data?.posee_empleo_aspirante ?? "No", 
+      data?.carga_familiar_discapacidad || data?.salud_condicion_especial || "No",
+      normalizeSwitch(data?.serv_agua), 
+      normalizeSwitch(data?.serv_gas), 
+      normalizeSwitch(data?.serv_aseo),
+      normalizeSwitch(data?.equip_lavadora), 
+      normalizeSwitch(data?.equip_nevera), 
+      normalizeSwitch(data?.serv_luz),
+      normalizeSwitch(data?.equip_cable),
+      data?.salud_enfermedad_desc ?? "", 
+      data?.salud_tratamiento ?? "", 
+      data?.familia_relacion ?? "Buena",
       puntaje, 
-      nivel
+      nivel,
+      new Date()
     ];
+
+    // Sanitización absoluta para eliminar cualquier valor 'undefined' y evitar el error de mysql2
+    const safeParams = rawParams.map(param => (param === undefined ? null : param));
 
     await connection.execute(
       `INSERT INTO estudios_socioeconomicos 
@@ -115,12 +168,7 @@ export async function procesarGuardadoEstudio(data: any) {
          serv_agua, serv_gas, serv_aseo, equip_lavadora, equip_nevera, serv_luz,
          equip_cable, salud_enfermedad_desc, salud_tratamiento, familia_relacion,
          puntaje, nivel_riesgo, created_at) 
-        VALUES (?, ?, ?, 'administrador', 
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
-                ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE 
           periodo_id = VALUES(periodo_id),
           evaluador_id = VALUES(evaluador_id),
@@ -141,7 +189,7 @@ export async function procesarGuardadoEstudio(data: any) {
     // 2. Actualización de estatus de la solicitud
     await connection.execute(
       `UPDATE solicitudes SET estatus = 'En Revisión', fecha_revision = NOW() WHERE user_id = ? AND estatus = 'Pendiente'`,
-      [data.student_id]
+      [data?.student_id ?? null]
     );
 
     await connection.commit();

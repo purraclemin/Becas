@@ -54,6 +54,7 @@ export const SECCIONES_REPORTE: any = {
       monto_ingreso_extra: "Ingresos Extras",
       monto_ingreso_pension: "Pensión/Bonos",
       monto_ingreso_ayuda: "Ayudas Externas",
+      monto_ingreso_familiar: "Ingreso Familiar Extra",
       rango_ingreso_familiar: "Escala Salarial",
       situacion_laboral_jefe: "¿Trabaja?",
       monto_egreso_mercado: "Gasto Mercado",
@@ -85,6 +86,6 @@ export const SECCIONES_REPORTE: any = {
 
 export const CAMPOS_MONETARIOS = [
   "monto_ingreso_sueldo", "monto_ingreso_extra", "monto_ingreso_pension", 
-  "monto_ingreso_ayuda", "monto_egreso_mercado", "monto_egreso_vivienda", 
+  "monto_ingreso_ayuda", "monto_ingreso_familiar", "monto_egreso_mercado", "monto_egreso_vivienda", 
   "monto_egreso_salud", "monto_egreso_servicios"
 ];

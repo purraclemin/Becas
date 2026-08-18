@@ -16,6 +16,7 @@ export function StepForm({ student, handleSubmit, loading, formData, setFormData
 
   useEffect(() => {
     if (student) {
+      // Preparamos los datos declarados del estudiante para visualizarlos exclusivamente en el panel izquierdo (comparativa)
       const flatData = {
         socio_lugar_nac: student.socio_lugar_nac || "No declarado",
         socio_nacionalidad: student.socio_nacionalidad || "No declarado",
@@ -68,18 +69,8 @@ export function StepForm({ student, handleSubmit, loading, formData, setFormData
         salud_tratamiento: student.salud_tratamiento || "N/A"
       };
       setDataEstudiante(flatData);
-
-      const cleanedFormData: any = { student_id: student.id };
-      SECCIONES_MAESTRAS.forEach(sec => {
-        sec.fields.forEach(f => {
-            if (f.type === "number") cleanedFormData[f.name] = "0";
-            else if (f.type === "checkbox") cleanedFormData[f.name] = "off";
-            else cleanedFormData[f.name] = "";
-        });
-      });
-      setFormData(cleanedFormData);
     }
-  }, [student, setFormData]);
+  }, [student]); // 🟢 Dependencia única y constante para evitar el error de tamaño de array en React
 
   const copyValue = (field: string, value: any) => {
     if (value === "" || value === undefined || value === "No declarado") return;

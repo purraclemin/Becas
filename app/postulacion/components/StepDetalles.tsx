@@ -50,7 +50,7 @@ export function StepDetalles({
   };
 
   return (
-    <div className="flex flex-col h-full space-y-5 animate-in fade-in duration-500">
+    <div className="space-y-4 animate-in fade-in duration-500 h-full flex flex-col pb-6 lg:pb-0">
       
       {/* 🟢 INPUTS TÉCNICOS OCULTOS (Requeridos por ActionsSolicitud.ts) */}
       <input type="hidden" name="user_id" value={user?.id || ""} />
@@ -59,37 +59,38 @@ export function StepDetalles({
       <input type="hidden" name="trimestre_seleccionado" value={trimestreEstudiante} />
       <input type="hidden" name="tipo_beca" value={tipoBecaSeleccionada || user?.tipo_beca || ""} />
 
-      {/* Encabezado e Indicador de Promedio */}
-      <div className="flex items-center justify-between shrink-0">
-        <div className="flex items-start gap-3">
-          <div className="h-10 w-10 rounded-xl bg-[#d4a843]/10 flex items-center justify-center border border-[#d4a843]/20">
-            <LayoutDashboard className="h-5 w-5 text-[#d4a843]" />
+      {/* Encabezado e Indicador de Promedio: Simétrico al bloque de periodo académico de StepMaterias */}
+      <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 rounded-lg bg-[#1e3a5f] flex items-center justify-center shadow-md shrink-0">
+            <LayoutDashboard className="h-4 w-4 text-[#d4a843]" />
           </div>
           <div>
-            <h3 className="text-[#1e3a5f] font-black text-base uppercase tracking-tight leading-none">Configuración del Beneficio</h3>
-            <p className="text-slate-400 text-[11px] font-medium mt-1 leading-none">Especifique la modalidad de beca y justifique su solicitud.</p>
+            <h4 className="text-[#1e3a5f] font-black text-xs uppercase tracking-tight leading-none">Configuración del Beneficio</h4>
+            <p className="text-slate-500 text-[8px] font-bold uppercase tracking-widest mt-1 leading-none">Especifique modalidad y justificación</p>
           </div>
         </div>
 
+        {/* Bloque de promedio adaptado con la misma estética limpia */}
         <div className={cn(
-          "flex items-center gap-3 px-3 py-1.5 rounded-xl border transition-all duration-500 shadow-sm",
+          "flex items-center justify-between sm:justify-end gap-3 px-3 py-1.5 rounded-xl border transition-all duration-500 shadow-sm",
           getStatusClasses(avg)
         )}>
-          <div className="flex flex-col items-end">
+          <div className="flex flex-col items-start sm:items-end">
             <span className="text-[7px] font-black uppercase tracking-[0.15em] leading-none opacity-70">Promedio Actual</span>
             <span className="text-[9px] font-black uppercase mt-1 leading-none">{getStatusLabel(avg)}</span>
           </div>
-          <div className="h-7 w-9 rounded-lg bg-white/80 backdrop-blur-sm flex items-center justify-center border border-inherit shadow-inner">
+          <div className="h-7 w-9 rounded-lg bg-white/80 backdrop-blur-sm flex items-center justify-center border border-inherit shadow-inner shrink-0">
              <span className="text-[11px] font-black">{promedio}</span>
           </div>
         </div>
       </div>
 
-      <div className="flex flex-col flex-1 min-h-0 gap-5">
+      <div className="flex flex-col flex-1 min-h-0 space-y-4">
         
         {/* Selección de Modalidad */}
-        <div className="space-y-2.5 shrink-0">
-          <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 flex items-center gap-1.5">
+        <div className="space-y-2 shrink-0">
+          <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 flex items-center gap-1.5 leading-none">
             <BookOpen className="h-3 w-3 text-[#d4a843]" /> Modalidad de Beneficio Solicitado
           </Label>
           <Select 
@@ -119,23 +120,23 @@ export function StepDetalles({
         </div>
 
         {/* Exposición de Motivos */}
-        <div className="flex flex-col flex-1 min-h-0 space-y-2.5">
-          <div className="flex items-center justify-between shrink-0">
-            <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 flex items-center gap-1.5">
+        <div className="flex flex-col flex-1 min-h-0 space-y-2">
+          <div className="flex items-center justify-between px-1 shrink-0">
+            <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 flex items-center gap-1.5 leading-none">
               <FileText className="h-3 w-3 text-[#d4a843]" /> Exposición de Motivos
             </Label>
-            <div className="flex items-center gap-1 text-[8px] font-black text-[#d4a843] bg-[#d4a843]/10 px-2 py-0.5 rounded-full uppercase tracking-tighter border border-[#d4a843]/20">
+            <div className="flex items-center gap-1 text-[8px] font-black text-[#d4a843] bg-[#d4a843]/10 px-2 py-0.5 rounded-full uppercase tracking-tighter border border-[#d4a843]/20 leading-none">
               <Info className="h-2.5 w-2.5" />
               {motivo.length < 2 ? `Faltan ${2 - motivo.length} carac.` : "Requisito cumplido"}
             </div>
           </div>
           
-          <div className="relative group flex-1 flex flex-col min-h-0">
+          <div className="relative group flex flex-col flex-1 min-h-0">
             <Textarea 
               name="motivo_solicitud" 
               placeholder="Describa detalladamente su situación actual y por qué considera que debe ser beneficiario de este programa de becas..." 
               className={cn(
-                "flex-1 w-full p-4 md:p-5 rounded-2xl border-slate-200 bg-slate-50 text-xs leading-relaxed text-[#1e3a5f] font-medium focus:bg-white focus:border-[#1e3a5f] focus:ring-4 focus:ring-[#1e3a5f]/5 transition-all duration-300 resize-none",
+                "w-full h-36 lg:h-full p-4 md:p-5 rounded-xl border-slate-200 bg-slate-50 text-xs leading-relaxed text-[#1e3a5f] font-medium focus:bg-white focus:border-[#1e3a5f] focus:ring-4 focus:ring-[#1e3a5f]/5 transition-all duration-300 resize-none",
                 motivo.length > 0 && motivo.length < 2 && "border-amber-200 bg-amber-50/30"
               )}
               value={motivo}

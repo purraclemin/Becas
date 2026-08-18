@@ -1,5 +1,4 @@
 import { Navbar } from "@/components/navbar/navbar"
-import { PageHeader } from "@/components/page-header"
 import { Footer } from "@/components/footer"
 import { 
   UserPlus, 
@@ -13,8 +12,7 @@ import {
   FileSearch,
   Users,
   Gavel,
-  ClipboardList,
-  Clock
+  ClipboardList
 } from "lucide-react"
 import Link from "next/link"
 import {
@@ -122,34 +120,35 @@ const timelineArticulos = [
 
 export default function ProcesoPage() {
   return (
-    <main className="min-h-screen">
+    <main className="min-h-screen w-full flex flex-col bg-slate-50">
       <Navbar />
-      <PageHeader
-        title="Proceso Administrativo"
-        breadcrumbs={[
-          { label: "Inicio", href: "/" },
-          { label: "Proceso" },
-        ]}
-      />
+      
+      {/* Contenedor del encabezado corregido (Lo Amarillo visible y lo Verde eliminado) */}
+      <div className="mt-[73px] sm:mt-[81px] w-full bg-[#1e3a5f] text-white py-8 sm:py-10">
+        <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 xl:px-10">
+          <h1 className="text-2xl font-extrabold font-serif sm:text-3xl md:text-4xl uppercase tracking-tight drop-shadow-lg text-white">
+            Proceso Administrativo
+          </h1>
+        </div>
+      </div>
 
-      <section className="bg-[#f0f4f8] py-10">
-        <div className="mx-auto max-w-7xl px-4">
-          <p className="mx-auto max-w-3xl text-center text-sm leading-relaxed text-[#6b7280] md:text-base">
+      <section className="bg-[#f0f4f8] py-10 w-full">
+        <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 xl:px-10">
+          <p className="mx-auto max-w-3xl text-center text-sm leading-relaxed text-[#6b7280] md:text-base font-medium">
             El procesamiento de Becas y Ayudas Económicas se rige por etapas administrativas 
             que garantizan la transparencia y el cumplimiento de la normativa institucional.
           </p>
         </div>
       </section>
 
-      <section className="bg-[#ffffff] py-12">
-        <div className="mx-auto max-w-7xl px-4">
+      <section className="bg-[#ffffff] py-12 w-full">
+        <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 xl:px-10">
           <div className="flex flex-col gap-8">
-            {steps.map((step, index) => (
+            {steps.map((step) => (
               <div key={step.step} className="relative">
-                {index < steps.length - 1 && (
-                  <div className="absolute left-6 top-[72px] hidden h-[calc(100%+32px)] w-0.5 bg-[#e2e8f0] lg:left-8 lg:block" />
-                )}
+                {/* LÍNEA VERTICAL CONECTORA ELIMINADA AQUÍ (Lo Rojo) */}
                 <div className="overflow-hidden rounded-lg border border-[#e2e8f0] shadow-sm">
+                  {/* ESTRUCTURA INTACTA DE LAS TARJETAS (Lo Azul) */}
                   <div className="grid lg:grid-cols-3">
                     <div className="p-6 lg:col-span-2 lg:p-8">
                       <div className="flex items-center gap-4">
@@ -190,12 +189,12 @@ export default function ProcesoPage() {
         </div>
       </section>
 
-      <section className="bg-[#f0f4f8] py-12">
-        <div className="mx-auto max-w-7xl px-4">
+      <section className="bg-[#f0f4f8] py-12 w-full">
+        <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 xl:px-10">
           <div className="grid gap-10 lg:grid-cols-3">
             <div className="lg:col-span-2">
               <div className="mb-6 border-b-2 border-[#1e3a5f] pb-2">
-                <h2 className="text-xl font-bold text-[#1e3a5f] font-serif uppercase">
+                <h2 className="text-xl font-bold text-[#1e3a5f] font-serif uppercase tracking-tight">
                   Trazabilidad Normativa (Haz clic para ver el artículo)
                 </h2>
               </div>
@@ -232,7 +231,7 @@ export default function ProcesoPage() {
 
             <div>
               <div className="mb-6 border-b-2 border-[#d4a843] pb-2">
-                <h2 className="text-xl font-bold text-[#1e3a5f] font-serif uppercase">Consideraciones</h2>
+                <h2 className="text-xl font-bold text-[#1e3a5f] font-serif uppercase tracking-tight">Consideraciones</h2>
               </div>
               <div className="flex flex-col gap-4">
                 <div className="rounded-lg border border-[#e2e8f0] bg-[#ffffff] p-5 shadow-sm">
@@ -248,19 +247,22 @@ export default function ProcesoPage() {
         </div>
       </section>
 
-      <section className="bg-[#1e3a5f] py-10">
-        <div className="mx-auto max-w-3xl px-4 text-center">
-          <h2 className="text-xl font-bold text-[#ffffff] font-serif md:text-2xl uppercase">
-            Inicia tu solicitud institucional
-          </h2>
-          <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link
-              href="/registro"
-              className="flex items-center gap-2 rounded-md bg-[#d4a843] px-6 py-2.5 text-sm font-semibold text-[#1e3a5f] transition-colors hover:bg-[#c49a3a]"
-            >
-              Comenzar Solicitud
-              <ArrowRight className="h-4 w-4" />
-            </Link>
+      {/* CTA con el estilo exacto de los botones del Hero */}
+      <section className="bg-[#1e3a5f] py-10 w-full">
+        <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 xl:px-10 text-center">
+          <div className="mx-auto max-w-3xl">
+            <h2 className="text-xl font-extrabold text-[#ffffff] font-serif md:text-2xl uppercase tracking-tight drop-shadow-lg">
+              Inicia tu solicitud institucional
+            </h2>
+            <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row pointer-events-auto">
+              <Link
+                href="/registro"
+                className="group flex items-center justify-center gap-2 rounded-full bg-[#d4a843] px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-[#1e3a5f] transition-all hover:bg-[#e5bc55] hover:scale-105 hover:shadow-[0_0_20px_rgba(212,168,67,0.4)] active:scale-95 w-full sm:w-auto"
+              >
+                Comenzar Solicitud
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </Link>
+            </div>
           </div>
         </div>
       </section>

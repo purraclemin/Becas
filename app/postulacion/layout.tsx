@@ -1,5 +1,3 @@
-// app/postulacion/layout.tsx
-
 import React from "react"
 
 export const metadata = {
@@ -13,10 +11,12 @@ export default function PostulacionLayout({
   children: React.ReactNode
 }) {
   return (
-    <div className="h-full w-full bg-[#f8fafc] overflow-hidden flex flex-col">
-      {/* Se eliminó 'h-screen' y 'fixed inset-0'. 
-          Al usar 'h-full', este contenedor hereda la altura compensada del RootLayout
-          y se encoge perfectamente sin dejar espacios en blanco.
+    <div className="w-full bg-[#f8fafc] flex flex-col">
+      {/* Retícula Maestra Ajustada:
+          - Se eliminó el 'pt-[73px] sm:pt-[81px]' que forzaba un margen superior externo 
+            separado del flujo y dejaba la franja blanca superior.
+          - Se mantiene 'w-full bg-[#f8fafc] flex flex-col' para que el contenedor ocupe 
+            limpiamente el espacio disponible y se acople de manera fluida al Navbar y al contenido.
       */}
       {children}
     </div>

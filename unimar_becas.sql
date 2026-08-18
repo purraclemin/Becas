@@ -1,0 +1,1117 @@
+-- phpMyAdmin SQL Dump
+-- version 5.2.1
+-- https://www.phpmyadmin.net/
+--
+-- Servidor: 127.0.0.1
+-- Tiempo de generación: 06-08-2026 a las 19:49:26
+-- Versión del servidor: 10.4.32-MariaDB
+-- Versión de PHP: 8.2.12
+
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+START TRANSACTION;
+SET time_zone = "+00:00";
+
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+
+--
+-- Base de datos: `unimar_becas`
+--
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `carreras`
+--
+
+CREATE TABLE `carreras` (
+  `id` int(11) NOT NULL,
+  `nombre` varchar(150) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `carreras`
+--
+
+INSERT INTO `carreras` (`id`, `nombre`) VALUES
+(5, 'Administración'),
+(3, 'Artes mención Diseño Gráfico'),
+(6, 'Contaduría Pública'),
+(7, 'Derecho'),
+(4, 'Idiomas Modernos'),
+(1, 'Ingeniería de Sistemas'),
+(2, 'Ingeniería Industrial'),
+(8, 'Psicología');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `estudios_socioeconomicos`
+--
+
+CREATE TABLE `estudios_socioeconomicos` (
+  `id` int(11) NOT NULL,
+  `student_id` int(11) NOT NULL,
+  `periodo_id` int(11) NOT NULL,
+  `tipo` enum('estudiante','administrador') DEFAULT 'estudiante',
+  `evaluador_id` int(11) DEFAULT NULL,
+  `socio_lugar_nac` varchar(100) DEFAULT NULL,
+  `socio_nacionalidad` varchar(50) DEFAULT NULL,
+  `socio_estado_civil` varchar(50) DEFAULT NULL,
+  `socio_telf_hab` varchar(20) DEFAULT NULL,
+  `direccion_completa` text DEFAULT NULL,
+  `socio_trabajo_empresa` varchar(100) DEFAULT NULL,
+  `socio_trabajo_cargo` varchar(100) DEFAULT NULL,
+  `monto_ingreso_sueldo` decimal(10,2) DEFAULT NULL,
+  `monto_ingreso_extra` decimal(10,2) DEFAULT 0.00,
+  `monto_ingreso_pension` decimal(10,2) DEFAULT 0.00,
+  `monto_ingreso_ayuda` decimal(10,2) DEFAULT 0.00,
+  `monto_ingreso_familiar` decimal(10,2) DEFAULT 0.00,
+  `socio_ue_procedencia` varchar(150) DEFAULT NULL,
+  `socio_otros_estudios` varchar(255) DEFAULT NULL,
+  `socio_fecha_unimar` date DEFAULT NULL,
+  `socio_modalidad` char(1) DEFAULT NULL,
+  `padre_nombre` varchar(150) DEFAULT NULL,
+  `padre_edad` int(11) DEFAULT NULL,
+  `padre_ocupacion` varchar(100) DEFAULT NULL,
+  `padre_trabajo` varchar(150) DEFAULT NULL,
+  `madre_nombre` varchar(150) DEFAULT NULL,
+  `madre_edad` int(11) DEFAULT NULL,
+  `madre_ocupacion` varchar(100) DEFAULT NULL,
+  `madre_trabajo` varchar(150) DEFAULT NULL,
+  `rango_ingreso_familiar` varchar(50) DEFAULT NULL,
+  `vivienda_tipo` varchar(50) DEFAULT NULL,
+  `vivienda_estatus` varchar(50) DEFAULT NULL,
+  `serv_internet` varchar(10) DEFAULT 'off',
+  `familia_num_hermanos` int(11) DEFAULT NULL,
+  `familia_hermanos_uni` int(11) DEFAULT NULL,
+  `monto_egreso_mercado` decimal(10,2) DEFAULT 0.00,
+  `monto_egreso_vivienda` decimal(10,2) DEFAULT 0.00,
+  `monto_egreso_salud` decimal(10,2) DEFAULT 0.00,
+  `monto_egreso_servicios` decimal(10,2) DEFAULT 0.00,
+  `situacion_laboral_jefe` varchar(50) DEFAULT NULL,
+  `salud_condicion_especial` varchar(10) DEFAULT NULL,
+  `serv_agua` varchar(5) DEFAULT 'off',
+  `serv_gas` varchar(5) DEFAULT 'off',
+  `serv_aseo` varchar(5) DEFAULT 'off',
+  `equip_lavadora` varchar(5) DEFAULT 'off',
+  `equip_nevera` varchar(5) DEFAULT 'off',
+  `serv_luz` varchar(10) DEFAULT 'off',
+  `equip_cable` varchar(5) DEFAULT 'off',
+  `salud_enfermedad_desc` text DEFAULT NULL,
+  `salud_tratamiento` text DEFAULT NULL,
+  `familia_relacion` varchar(50) DEFAULT NULL,
+  `puntaje` int(11) NOT NULL,
+  `nivel_riesgo` varchar(20) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `estudios_socioeconomicos`
+--
+
+INSERT INTO `estudios_socioeconomicos` (`id`, `student_id`, `periodo_id`, `tipo`, `evaluador_id`, `socio_lugar_nac`, `socio_nacionalidad`, `socio_estado_civil`, `socio_telf_hab`, `direccion_completa`, `socio_trabajo_empresa`, `socio_trabajo_cargo`, `monto_ingreso_sueldo`, `monto_ingreso_extra`, `monto_ingreso_pension`, `monto_ingreso_ayuda`, `monto_ingreso_familiar`, `socio_ue_procedencia`, `socio_otros_estudios`, `socio_fecha_unimar`, `socio_modalidad`, `padre_nombre`, `padre_edad`, `padre_ocupacion`, `padre_trabajo`, `madre_nombre`, `madre_edad`, `madre_ocupacion`, `madre_trabajo`, `rango_ingreso_familiar`, `vivienda_tipo`, `vivienda_estatus`, `serv_internet`, `familia_num_hermanos`, `familia_hermanos_uni`, `monto_egreso_mercado`, `monto_egreso_vivienda`, `monto_egreso_salud`, `monto_egreso_servicios`, `situacion_laboral_jefe`, `salud_condicion_especial`, `serv_agua`, `serv_gas`, `serv_aseo`, `equip_lavadora`, `equip_nevera`, `serv_luz`, `equip_cable`, `salud_enfermedad_desc`, `salud_tratamiento`, `familia_relacion`, `puntaje`, `nivel_riesgo`, `created_at`) VALUES
+(106, 12, 2, 'estudiante', NULL, '', 'Venezolano/a', '', '', 'ffff', NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, '', '', '0000-00-00', 'P', '', 0, '', '', '', 0, '', '', '1', '', '', 'off', 0, 0, 0.00, 0.00, 0.00, 0.00, 'No', 'No', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, 'Buena', 25, 'Medio', '2026-02-21 02:53:17'),
+(109, 12, 1, 'administrador', 1, 'ddd', 'Venezolano/a', 'Casado/a', 'dddd', 'ffff', 'N/A', 'N/A', 0.00, 0.00, 0.00, 0.00, 0.00, 'ddd', 'Ninguno', '2026-02-11', 'P', 'dddddd', 0, 'ddd', 'dd', 'ddddd', 0, 'dddd', 'dddd', '1', 'Quinta', 'Propia', 'off', 0, 0, 0.00, 0.00, 0.00, 0.00, 'Si', 'No', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'N/A', 'N/A', 'Buena', 15, 'Bajo', '2026-02-21 04:28:34'),
+(116, 114, 2, 'estudiante', NULL, NULL, 'Venezolano/a', 'Divorciado/a', 'DDDDDDDD', 'DDDDDDDDDDD', NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, NULL, NULL, NULL, 'P', NULL, 0, NULL, NULL, NULL, 0, NULL, NULL, '1', NULL, NULL, 'off', 0, 0, 0.00, 0.00, 0.00, 0.00, 'No', 'No', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, 'Regular', 52, 'Alto', '2026-03-04 08:03:33');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `historial_aprobaciones`
+--
+
+CREATE TABLE `historial_aprobaciones` (
+  `id` int(11) NOT NULL,
+  `solicitud_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `periodo_id` int(11) NOT NULL,
+  `admin_id` int(11) NOT NULL,
+  `promedio_ciclo` decimal(5,2) NOT NULL,
+  `trimestre` int(11) NOT NULL,
+  `puntaje_baremo_` int(11) NOT NULL,
+  `nivel_riesgo` varchar(50) NOT NULL,
+  `tipo_beca_snapshot` varchar(100) DEFAULT NULL,
+  `estatus_previo` varchar(50) NOT NULL,
+  `estatus_nuevo` varchar(50) NOT NULL,
+  `observacion_admin` text DEFAULT NULL,
+  `materias_snapshot_json` longtext DEFAULT NULL,
+  `indice_global_snapshot` decimal(5,2) DEFAULT NULL,
+  `fecha_aprobacion` timestamp NOT NULL DEFAULT current_timestamp(),
+  `token_verificacion` varchar(255) DEFAULT NULL,
+  `ip_accion` varchar(45) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `historial_aprobaciones`
+--
+
+INSERT INTO `historial_aprobaciones` (`id`, `solicitud_id`, `user_id`, `periodo_id`, `admin_id`, `promedio_ciclo`, `trimestre`, `puntaje_baremo_`, `nivel_riesgo`, `tipo_beca_snapshot`, `estatus_previo`, `estatus_nuevo`, `observacion_admin`, `materias_snapshot_json`, `indice_global_snapshot`, `fecha_aprobacion`, `token_verificacion`, `ip_accion`) VALUES
+(26, 61, 12, 1, 1, 20.00, 5, 15, 'Bajo', 'BECA SOCIAL', 'En Revisión', 'Aprobada', NULL, '{\"trimestre\":4,\"materias\":[{\"codigo\":\"FIS0405341\",\"nombre\":\"FÍSICA II\",\"nota\":20},{\"codigo\":\"MAT0405341\",\"nombre\":\"MATEMÁTICA III\",\"nota\":20},{\"codigo\":\"INI0404341\",\"nombre\":\"INGLÉS INSTRUMENTAL II\",\"nota\":20},{\"codigo\":\"PRO0405341\",\"nombre\":\"PROGRAMACIÓN I\",\"nota\":20},{\"codigo\":\"LAF0403141\",\"nombre\":\"LABORATORIO DE FÍSICA I\",\"nota\":20},{\"codigo\":\"ESH0402201\",\"nombre\":\"ELECTIVA SOCIO-HUMANÍSTICA 2\",\"nota\":20}],\"fecha_proceso\":\"2026-02-21T02:53:17.309Z\"}', 20.00, '2026-02-21 16:05:42', 'd93e9a42-cba4-47e9-9710-efac5cfca827', '127.0.0.1'),
+(27, 61, 12, 1, 1, 20.00, 5, 15, 'Bajo', 'BECA SOCIAL', 'Aprobada', 'Rechazada', NULL, '{\"trimestre\":4,\"materias\":[{\"codigo\":\"FIS0405341\",\"nombre\":\"FÍSICA II\",\"nota\":20},{\"codigo\":\"MAT0405341\",\"nombre\":\"MATEMÁTICA III\",\"nota\":20},{\"codigo\":\"INI0404341\",\"nombre\":\"INGLÉS INSTRUMENTAL II\",\"nota\":20},{\"codigo\":\"PRO0405341\",\"nombre\":\"PROGRAMACIÓN I\",\"nota\":20},{\"codigo\":\"LAF0403141\",\"nombre\":\"LABORATORIO DE FÍSICA I\",\"nota\":20},{\"codigo\":\"ESH0402201\",\"nombre\":\"ELECTIVA SOCIO-HUMANÍSTICA 2\",\"nota\":20}],\"fecha_proceso\":\"2026-02-21T02:53:17.309Z\"}', 20.00, '2026-02-21 16:10:15', '1b158794-8e5c-4e19-a6cf-47eee0121d12', '127.0.0.1'),
+(28, 61, 12, 1, 1, 20.00, 5, 15, 'Bajo', 'BECA SOCIAL', 'Rechazada', 'Aprobada', NULL, '{\"trimestre\":4,\"materias\":[{\"codigo\":\"FIS0405341\",\"nombre\":\"FÍSICA II\",\"nota\":20},{\"codigo\":\"MAT0405341\",\"nombre\":\"MATEMÁTICA III\",\"nota\":20},{\"codigo\":\"INI0404341\",\"nombre\":\"INGLÉS INSTRUMENTAL II\",\"nota\":20},{\"codigo\":\"PRO0405341\",\"nombre\":\"PROGRAMACIÓN I\",\"nota\":20},{\"codigo\":\"LAF0403141\",\"nombre\":\"LABORATORIO DE FÍSICA I\",\"nota\":20},{\"codigo\":\"ESH0402201\",\"nombre\":\"ELECTIVA SOCIO-HUMANÍSTICA 2\",\"nota\":20}],\"fecha_proceso\":\"2026-02-21T02:53:17.309Z\"}', 20.00, '2026-02-21 16:10:21', '94b5ffc9-aa49-4ee1-aca0-81e12c5496ff', '127.0.0.1'),
+(33, 164, 12, 2, 0, 20.00, 5, 15, 'Bajo', 'BECA SOCIAL', 'Aprobada', 'Renovacion', 'Sistema: Habilitación por ventana de tiempo.', '[]', 20.00, '2026-02-21 20:40:23', '8c97d343-e3be-43ac-b1f7-9d6ccb04d0f7', '127.0.0.1'),
+(34, 164, 12, 2, 1, 20.00, 5, 15, 'Bajo', 'BECA SOCIAL', 'Pendiente', 'Aprobada', NULL, '{\"trimestre\":4,\"materias\":[{\"codigo\":\"FIS0405341\",\"nombre\":\"FÍSICA II\",\"nota\":20},{\"codigo\":\"MAT0405341\",\"nombre\":\"MATEMÁTICA III\",\"nota\":20},{\"codigo\":\"INI0404341\",\"nombre\":\"INGLÉS INSTRUMENTAL II\",\"nota\":20},{\"codigo\":\"PRO0405341\",\"nombre\":\"PROGRAMACIÓN I\",\"nota\":20},{\"codigo\":\"LAF0403141\",\"nombre\":\"LABORATORIO DE FÍSICA I\",\"nota\":20},{\"codigo\":\"ESH0402201\",\"nombre\":\"ELECTIVA SOCIO-HUMANÍSTICA 2\",\"nota\":20}],\"fecha_proceso\":\"2026-02-21T20:40:33.312Z\",\"audit_detecto_reprobadas\":false}', 20.00, '2026-02-21 20:42:14', 'f48a1fb3-574e-4acb-8009-977540b38afa', '127.0.0.1'),
+(35, 164, 12, 2, 1, 20.00, 5, 15, 'Bajo', 'BECA SOCIAL', 'Aprobada', 'En Revisión', NULL, '{\"trimestre\":4,\"materias\":[{\"codigo\":\"FIS0405341\",\"nombre\":\"FÍSICA II\",\"nota\":20},{\"codigo\":\"MAT0405341\",\"nombre\":\"MATEMÁTICA III\",\"nota\":20},{\"codigo\":\"INI0404341\",\"nombre\":\"INGLÉS INSTRUMENTAL II\",\"nota\":20},{\"codigo\":\"PRO0405341\",\"nombre\":\"PROGRAMACIÓN I\",\"nota\":20},{\"codigo\":\"LAF0403141\",\"nombre\":\"LABORATORIO DE FÍSICA I\",\"nota\":20},{\"codigo\":\"ESH0402201\",\"nombre\":\"ELECTIVA SOCIO-HUMANÍSTICA 2\",\"nota\":20}],\"fecha_proceso\":\"2026-02-21T20:40:33.312Z\",\"audit_detecto_reprobadas\":false}', 20.00, '2026-02-21 23:43:22', 'dc54db20-e705-4b49-85ea-4a667722857a', '127.0.0.1'),
+(37, 164, 12, 2, 1, 20.00, 5, 15, 'Bajo', 'BECA SOCIAL', 'En Revisión', 'Aprobada', NULL, '{\"trimestre\":4,\"materias\":[{\"codigo\":\"FIS0405341\",\"nombre\":\"FÍSICA II\",\"nota\":20},{\"codigo\":\"MAT0405341\",\"nombre\":\"MATEMÁTICA III\",\"nota\":20},{\"codigo\":\"INI0404341\",\"nombre\":\"INGLÉS INSTRUMENTAL II\",\"nota\":20},{\"codigo\":\"PRO0405341\",\"nombre\":\"PROGRAMACIÓN I\",\"nota\":20},{\"codigo\":\"LAF0403141\",\"nombre\":\"LABORATORIO DE FÍSICA I\",\"nota\":20},{\"codigo\":\"ESH0402201\",\"nombre\":\"ELECTIVA SOCIO-HUMANÍSTICA 2\",\"nota\":20}],\"fecha_proceso\":\"2026-02-21T20:40:33.312Z\",\"audit_detecto_reprobadas\":false}', 20.00, '2026-03-05 06:29:35', 'cd5c447c-c1ed-473d-8999-ee23b537b7f2', '127.0.0.1'),
+(38, 164, 12, 2, 1, 20.00, 5, 15, 'Bajo', 'BECA SOCIAL', 'Aprobada', 'Rechazada', NULL, '{\"trimestre\":4,\"materias\":[{\"codigo\":\"FIS0405341\",\"nombre\":\"FÍSICA II\",\"nota\":20},{\"codigo\":\"MAT0405341\",\"nombre\":\"MATEMÁTICA III\",\"nota\":20},{\"codigo\":\"INI0404341\",\"nombre\":\"INGLÉS INSTRUMENTAL II\",\"nota\":20},{\"codigo\":\"PRO0405341\",\"nombre\":\"PROGRAMACIÓN I\",\"nota\":20},{\"codigo\":\"LAF0403141\",\"nombre\":\"LABORATORIO DE FÍSICA I\",\"nota\":20},{\"codigo\":\"ESH0402201\",\"nombre\":\"ELECTIVA SOCIO-HUMANÍSTICA 2\",\"nota\":20}],\"fecha_proceso\":\"2026-02-21T20:40:33.312Z\",\"audit_detecto_reprobadas\":false}', 20.00, '2026-03-05 06:29:37', '0096e0ee-7ef0-405e-858d-0d39aa3ac85a', '127.0.0.1');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `pensum_materias`
+--
+
+CREATE TABLE `pensum_materias` (
+  `id` int(11) NOT NULL,
+  `carrera_id` int(11) NOT NULL,
+  `trimestre_ubicacion` int(11) NOT NULL,
+  `codigo_materia` varchar(20) NOT NULL,
+  `nombre_materia` varchar(150) NOT NULL,
+  `unidades_credito` int(11) DEFAULT 3
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `pensum_materias`
+--
+
+INSERT INTO `pensum_materias` (`id`, `carrera_id`, `trimestre_ubicacion`, `codigo_materia`, `nombre_materia`, `unidades_credito`) VALUES
+(1, 1, 1, 'GRL0104300', 'GRAMÁTICA Y LECTURA', 3),
+(2, 1, 1, 'FOC0104300', 'FORMACIÓN CIUDADANA', 3),
+(3, 1, 1, 'TEE0104300', 'TÉCNICAS DE ESTUDIO', 3),
+(4, 1, 1, 'IG0104341', 'INTRODUCCIÓN A LA INGENIERÍA DE SISTEMAS', 3),
+(5, 1, 1, 'INM0104300', 'INTRODUCCIÓN A LA MATEMÁTICA', 3),
+(6, 1, 1, 'ITI0104300', 'INTRODUCCIÓN A LA TECNOLOGÍA DE LA INFORMACIÓN', 3),
+(7, 1, 1, 'ADR0102100', 'ACTIVIDADES DEPORTIVAS Y RECREATIVAS', 1),
+(8, 1, 2, 'IDR0204300', 'IDENTIDAD REGIONAL', 3),
+(9, 1, 2, 'AMS0204300', 'AMBIENTE SOSTENIBLE', 3),
+(10, 1, 2, 'MAT0205341', 'MATEMÁTICA I', 3),
+(11, 1, 2, 'ALD0204341', 'ÁLGEBRA DISCRETA', 3),
+(12, 1, 2, 'DIB0203141', 'DIBUJO I', 1),
+(13, 1, 2, 'GEA0205341', 'GEOMETRÍA ANALÍTICA', 3),
+(14, 1, 2, 'QUG0205341', 'QUÍMICA GENERAL', 3),
+(15, 1, 3, 'MAT0305341', 'MATEMÁTICA II', 3),
+(16, 1, 3, 'FIS0304341', 'FÍSICA I', 3),
+(17, 1, 3, 'INI0304341', 'INGLÉS INSTRUMENTAL I', 3),
+(18, 1, 3, 'TEP0304341', 'TÉCNICAS DE PROGRAMACIÓN', 3),
+(19, 1, 3, 'LQU0303141', 'LABORATORIO DE QUÍMICA GENERAL', 1),
+(20, 1, 4, 'FIS0405341', 'FÍSICA II', 3),
+(21, 1, 4, 'MAT0405341', 'MATEMÁTICA III', 3),
+(22, 1, 4, 'INI0404341', 'INGLÉS INSTRUMENTAL II', 3),
+(23, 1, 4, 'PRO0405341', 'PROGRAMACIÓN I', 3),
+(24, 1, 4, 'LAF0403141', 'LABORATORIO DE FÍSICA I', 1),
+(25, 1, 5, 'MAT0505341', 'MATEMÁTICA IV', 3),
+(26, 1, 5, 'ESD0504341', 'ESTRUCTURA DE DATOS', 3),
+(27, 1, 5, 'PRO0505341', 'PROGRAMACIÓN II', 3),
+(28, 1, 5, 'CIE0505341', 'CIRCUITOS ELÉCTRICOS', 3),
+(29, 1, 5, 'MER0505341', 'MECÁNICA RACIONAL', 3),
+(30, 1, 5, 'INI0504341', 'INGLÉS INSTRUMENTAL III', 3),
+(31, 1, 6, 'MAT0605341', 'MATEMÁTICA V', 3),
+(32, 1, 6, 'ESP0605341', 'ESTADÍSTICA Y PROBABILIDADES', 3),
+(33, 1, 6, 'PRO0605341', 'PROGRAMACIÓN III', 3),
+(34, 1, 6, 'ELE0606341', 'ELECTRÓNICA', 3),
+(35, 1, 6, 'ARC0604341', 'ARQUITECTURA DEL COMPUTADOR', 3),
+(36, 1, 7, 'PRO0705341', 'PROGRAMACIÓN IV', 3),
+(37, 1, 7, 'SID0705341', 'SISTEMAS DIGITALES', 3),
+(38, 1, 7, 'ESA0704341', 'ESTADÍSTICA APLICADA', 3),
+(39, 1, 8, 'INV0804341', 'INVESTIGACIÓN DE OPERACIONES', 3),
+(40, 1, 8, 'SIS0805341', 'SISTEMAS DE INFORMACIÓN', 3),
+(41, 1, 8, 'RED0805341', 'REDES DE DATOS I', 3),
+(42, 1, 9, 'SIO0904341', 'SISTEMAS OPERATIVOS', 3),
+(43, 1, 9, 'SIG0905341', 'SISTEMAS DE INFORMACIÓN GERENCIAL', 3),
+(44, 1, 9, 'SIC0905341', 'SISTEMAS DE CONTROLES', 3),
+(45, 1, 9, 'MEI0904341', 'METODOLOGÍA DE LA INVESTIGACIÓN', 3),
+(46, 1, 9, 'INE0904341', 'INGENIERÍA ECONÓMICA', 3),
+(47, 1, 10, 'HEG1004341', 'HERRAMIENTAS GERENCIALES', 3),
+(48, 1, 10, 'SIS1004341', 'SISTEMAS DE SEÑALES', 3),
+(49, 1, 10, 'RED1005341', 'REDES DE DATOS II', 3),
+(50, 1, 10, 'SMI1004341', 'SEMINARIO METODOLÓGICO DE INVESTIGACIÓN', 3),
+(51, 1, 10, 'MDS1004241', 'METODOLOGÍA DE DESARROLLO DE SOFTWARE', 2),
+(52, 1, 11, 'TRI1106341', 'TRABAJO DE INVESTIGACIÓN I', 3),
+(53, 1, 11, 'ECP1104341', 'EVALUACIÓN Y CONTROL DE PROYECTOS', 3),
+(54, 1, 11, 'INT1105341', 'INTRODUCCIÓN A LAS TELECOMUNICACIONES', 3),
+(55, 1, 11, 'PRP1107441', 'PRÁCTICA PROFESIONAL', 4),
+(56, 1, 12, 'TRI1208441', 'TRABAJO DE INVESTIGACIÓN II', 4),
+(57, 1, 12, 'AUS1205341', 'AUDITORIA DE SISTEMAS', 3),
+(58, 1, 12, 'SIO1204341', 'SIMULACIÓN Y OPTIMIZACIÓN', 3),
+(59, 1, 12, 'EDP1203341', 'ÉTICA Y DEONTOLOGÍA PROFESIONAL', 3),
+(60, 2, 1, 'CEL0104300', 'COMPRENSIÓN Y EXPRESIÓN LINGÜÍSTICA', 3),
+(61, 2, 1, 'FOC0104300', 'FORMACIÓN CIUDADANA', 3),
+(62, 2, 1, 'TEE0104300', 'TÉCNICAS DE ESTUDIO', 3),
+(63, 2, 1, 'INI0104300', 'INTRODUCCIÓN A LA INGENIERÍA INDUSTRIAL', 3),
+(64, 2, 1, 'INM0104300', 'INTRODUCCIÓN A LA MATEMÁTICA', 3),
+(65, 2, 1, 'ITI0104300', 'INTRODUCCIÓN A LA TECNOLOGÍA DE LA INFORMACIÓN', 3),
+(66, 2, 1, 'ADR0102100', 'ACTIVIDADES DEPORTIVAS Y RECREATIVAS', 1),
+(67, 2, 2, 'IDR0204300', 'IDENTIDAD REGIONAL', 3),
+(68, 2, 2, 'AMS0204300', 'AMBIENTE SOSTENIBLE', 3),
+(69, 2, 2, 'MAT0205342', 'MATEMÁTICA I', 3),
+(70, 2, 2, 'QUG0205342', 'QUÍMICA GENERAL I', 3),
+(71, 2, 2, 'DIB0203142', 'DIBUJO I', 1),
+(72, 2, 2, 'GEA0205342', 'GEOMETRÍA ANALÍTICA', 3),
+(73, 2, 3, 'MAT0305342', 'MATEMÁTICA II', 3),
+(74, 2, 3, 'FIS0304342', 'FÍSICA I', 3),
+(75, 2, 3, 'QUG0305342', 'QUÍMICA GENERAL II', 3),
+(76, 2, 3, 'DIB0303142', 'DIBUJO II', 1),
+(77, 2, 3, 'LQU0303142', 'LABORATORIO DE QUÍMICA GENERAL I', 1),
+(78, 2, 3, 'ING0304342', 'INGLÉS I', 3),
+(79, 2, 4, 'FIS0405342', 'FÍSICA II', 3),
+(80, 2, 4, 'MAT0405342', 'MATEMÁTICA III', 3),
+(81, 2, 4, 'ALN0404342', 'ALGEBRA LINEAL', 3),
+(82, 2, 4, 'ING0404342', 'INGLÉS II', 3),
+(83, 2, 4, 'LAF0403142', 'LABORATORIO DE FÍSICA I', 1),
+(84, 2, 5, 'MAT0505342', 'MATEMÁTICA IV', 3),
+(85, 2, 5, 'FIS0505342', 'FÍSICA III', 3),
+(86, 2, 5, 'MER0505342', 'MECÁNICA RACIONAL I', 3),
+(87, 2, 5, 'ING0504342', 'INGLÉS III', 3),
+(88, 2, 5, 'LAF0503142', 'LABORATORIO DE FÍSICA II', 1),
+(89, 2, 6, 'MER0605342', 'MECÁNICA RACIONAL II', 3),
+(90, 2, 6, 'ESP0605342', 'ESTADÍSTICA I', 3),
+(91, 2, 6, 'TEI0604342', 'TERMODINÁMICA I', 3),
+(92, 2, 6, 'COI0604342', 'COMPUTACIÓN PARA INGENIEROS', 3),
+(93, 2, 6, 'REI0605342', 'RESISTENCIA DE MATERIALES I', 3),
+(94, 2, 7, 'REI0705342', 'RESISTENCIA DE MATERIALES II', 3),
+(95, 2, 7, 'ESP0705342', 'ESTADÍSTICA II', 3),
+(96, 2, 7, 'TEI0705342', 'TERMODINÁMICA II', 3),
+(97, 2, 7, 'MFL0705342', 'MECÁNICA DE LOS FLUIDOS', 3),
+(98, 2, 7, 'PRM0704342', 'PROCESOS DE MANUFACTURA I', 3),
+(99, 2, 8, 'INV0804342', 'INVESTIGACIÓN DE OPERACIONES I', 3),
+(100, 2, 8, 'PRM0805342', 'PROCESOS DE MANUFACTURA II', 3),
+(101, 2, 8, 'IEM0804342', 'INGENIERÍA DE MÉTODOS I', 3),
+(102, 2, 8, 'TRC0804342', 'TRANSFERENCIA DE CALOR', 3),
+(103, 2, 8, 'ELI0805342', 'ELECTROTECNIA INDUSTRIAL', 3),
+(104, 2, 9, 'INV0904342', 'INVESTIGACIÓN DE OPERACIONES II', 3),
+(105, 2, 9, 'IEM0905342', 'INGENIERÍA DE MÉTODOS II', 3),
+(106, 2, 9, 'CPQ0904342', 'CONTROL DE PRODUCCIÓN Y CALIDAD I', 3),
+(107, 2, 9, 'MEI0904342', 'METODOLOGÍA DE LA INVESTIGACIÓN', 3),
+(108, 2, 9, 'INE0904342', 'INGENIERÍA ECONÓMICA', 3),
+(109, 2, 10, 'CPQ1005342', 'CONTROL DE PRODUCCIÓN Y CALIDAD II', 3),
+(110, 2, 10, 'HIG1004342', 'HIGIENE Y SEGURIDAD INDUSTRIAL', 3),
+(111, 2, 10, 'SMI1004342', 'SEMINARIO METODOLÓGICO DE INVESTIGACIÓN', 3),
+(112, 2, 10, 'MDS1004342', 'MANTENIMIENTO INDUSTRIAL', 3),
+(113, 2, 11, 'TRI1106342', 'TRABAJO DE INVESTIGACIÓN I', 3),
+(114, 2, 11, 'PRP1107442', 'PRÁCTICA PROFESIONAL', 4),
+(115, 2, 11, 'ADP1104342', 'ADMINISTRACIÓN DE PERSONAL', 3),
+(116, 2, 11, 'GPC1104342', 'GERENCIA DE PROYECTOS Y COSTOS', 3),
+(117, 2, 12, 'TRI1208442', 'TRABAJO DE INVESTIGACIÓN II', 4),
+(118, 2, 12, 'EDP1203342', 'ÉTICA Y DEONTOLOGÍA PROFESIONAL', 3),
+(119, 2, 12, 'PLA1204342', 'PLANIFICACIÓN AGROINDUSTRIAL', 3),
+(120, 1, 3, 'ESH0302201', 'ELECTIVA SOCIO-HUMANÍSTICA 1', 2),
+(121, 1, 4, 'ESH0402201', 'ELECTIVA SOCIO-HUMANÍSTICA 2', 2),
+(122, 1, 6, 'ESH0702201', 'ELECTIVA SOCIO-HUMANÍSTICA 3', 2),
+(123, 1, 9, 'ELP0904301', 'ELECTIVA PROFESIONAL 1', 3),
+(124, 1, 10, 'ELP1004301', 'ELECTIVA PROFESIONAL 2', 3),
+(125, 1, 11, 'ELP1104301', 'ELECTIVA PROFESIONAL 3', 3),
+(126, 2, 4, 'ESH0402202', 'ELECTIVA SOCIO-HUMANÍSTICA 1', 2),
+(127, 2, 5, 'ESH0502202', 'ELECTIVA SOCIO-HUMANÍSTICA 2', 2),
+(128, 2, 10, 'ESH1002202', 'ELECTIVA SOCIO-HUMANÍSTICA 3', 2),
+(129, 2, 9, 'ELP0904302', 'ELECTIVA PROFESIONAL 1', 3),
+(130, 2, 10, 'ELP1004302', 'ELECTIVA PROFESIONAL 2', 3),
+(131, 2, 12, 'ELP1204302', 'ELECTIVA PROFESIONAL 3', 3),
+(132, 3, 1, 'GRL0104300', 'GRAMÁTICA Y LECTURA', 3),
+(133, 3, 1, 'FOC0104300', 'FORMACIÓN CIUDADANA', 3),
+(134, 3, 1, 'TEE0104300', 'TÉCNICAS DE ESTUDIO', 3),
+(135, 3, 1, 'INM0104300', 'INTRODUCCIÓN A LA MATEMÁTICA', 3),
+(136, 3, 1, 'IT10104300', 'INTRODUCCIÓN A LA TECNOLOGÍA DE LA INFORMACIÓN', 3),
+(137, 3, 1, 'ADR0102100', 'ACTIVIDADES DEPORTIVAS Y RECREATIVAS', 1),
+(138, 3, 1, 'IAP0103332', 'INTRODUCCIÓN A LAS ARTES PLÁSTICAS', 3),
+(139, 3, 2, 'IDR0204300', 'IDENTIDAD REGIONAL', 3),
+(140, 3, 2, 'AMS0204300', 'AMBIENTE SOSTENIBLE', 3),
+(141, 3, 2, 'HIS0203332', 'HISTORIA DEL ARTE I', 3),
+(142, 3, 2, 'DIB0203332', 'DIBUJO ANALÍTICO I', 3),
+(143, 3, 2, 'TEF0203332', 'TEORÍA DE LA FORMA', 3),
+(144, 3, 2, 'TCO0203332', 'TEORÍA DEL COLOR', 3),
+(145, 3, 3, 'ESH0302203', 'ELECTIVA SOCIO-HUMANÍSTICA 1', 2),
+(146, 3, 3, 'HIS0303332', 'HISTORIA DEL ARTE II', 3),
+(147, 3, 3, 'DIB0303332', 'DIBUJO ANALÍTICO II', 3),
+(148, 3, 3, 'TIP0303332', 'TIPOGRAFÍA I', 3),
+(149, 3, 3, 'DIF0303332', 'DISEÑO FUNDAMENTAL I', 3),
+(150, 3, 3, 'IIL0303332', 'ILUSTRACIÓN I', 3),
+(151, 3, 4, 'ESH0402203', 'ELECTIVA SOCIO-HUMANÍSTICA 2', 2),
+(152, 3, 4, 'HIS0403332', 'HISTORIA DEL ARTE III', 3),
+(153, 3, 4, 'TIP0403332', 'TIPOGRAFÍA II', 3),
+(154, 3, 4, 'DIF0403332', 'DISEÑO FUNDAMENTAL II', 3),
+(155, 3, 4, 'IIL0403332', 'ILUSTRACIÓN II', 3),
+(156, 3, 4, 'COM0403332', 'COMPUTACIÓN GRÁFICA I', 3),
+(157, 3, 5, 'ESH0502203', 'ELECTIVA SOCIO-HUMANÍSTICA 3', 2),
+(158, 3, 5, 'HDS0503332', 'HISTORIA DEL DISEÑO', 3),
+(159, 3, 5, 'DIG0504332', 'DISEÑO GRÁFICO I', 3),
+(160, 3, 5, 'FOT0503332', 'FOTOGRAFÍA I', 3),
+(161, 3, 5, 'COM0503332', 'COMPUTACIÓN GRÁFICA II', 3),
+(162, 3, 5, 'SEM0503332', 'SEMIOLOGÍA', 3),
+(163, 3, 6, 'DIG0604332', 'DISEÑO GRÁFICO II', 3),
+(164, 3, 6, 'FOT0603332', 'FOTOGRAFÍA II', 3),
+(165, 3, 6, 'COM0603332', 'COMPUTACIÓN GRÁFICA III', 3),
+(166, 3, 6, 'EST0603332', 'ESTÉTICA', 3),
+(167, 3, 6, 'PUP0603332', 'PUBLICIDAD Y PROPAGANDA', 3),
+(168, 3, 7, 'DIG0704332', 'DISEÑO GRÁFICO III', 3),
+(169, 3, 7, 'TEP0703332', 'TÉCNICAS DE PRE-PRENSA', 3),
+(170, 3, 7, 'COM0703332', 'COMPUTACIÓN GRÁFICA IV', 3),
+(171, 3, 7, 'MAD0703332', 'MARKETING PARA DISEÑADORES', 3),
+(172, 3, 7, 'DEI0703332', 'DISEÑO EDITORIAL I', 3),
+(173, 3, 8, 'DIG0804332', 'DISEÑO GRÁFICO IV', 3),
+(174, 3, 8, 'DEI0803332', 'DISEÑO EDITORIAL II', 3),
+(175, 3, 8, 'DIP0803332', 'DISEÑO PUBLICITARIO I', 3),
+(176, 3, 8, 'DIW0803332', 'DISEÑO WEB I', 3),
+(177, 3, 8, 'PRO0803332', 'PRODUCCIÓN GRÁFICA', 3),
+(178, 3, 9, 'ELP0904303', 'ELECTIVA PROFESIONAL 1', 3),
+(179, 3, 9, 'DIP0903332', 'DISEÑO PUBLICITARIO II', 3),
+(180, 3, 9, 'DIW0903332', 'DISEÑO WEB II', 3),
+(181, 3, 9, 'MEI0904332', 'METODOLOGÍA DE LA INVESTIGACIÓN', 3),
+(182, 3, 9, 'ETI0903332', 'ETIQUETA Y ENVASE', 3),
+(183, 3, 10, 'ELP1004303', 'ELECTIVA PROFESIONAL 2', 3),
+(184, 3, 10, 'SMI1004332', 'SEMINARIO METODOLÓGICO DE INVESTIGACIÓN', 3),
+(185, 3, 10, 'POF1003332', 'PORTAFOLIO', 3),
+(186, 3, 10, 'GEP1003332', 'GERENCIA DE PROYECTOS', 3),
+(187, 3, 10, 'IIM1003332', 'IDENTIDAD IMAGEN CORPORATIVA', 3),
+(188, 3, 11, 'ELP1104303', 'ELECTIVA PROFESIONAL 3', 3),
+(189, 3, 11, 'TRI1106332', 'TRABAJO DE INVESTIGACIÓN I', 3),
+(190, 3, 11, 'PRP1107432', 'PRÁCTICA PROFESIONAL', 4),
+(191, 3, 12, 'TRI1208432', 'TRABAJO DE INVESTIGACIÓN II', 4),
+(192, 3, 12, 'EDP1203332', 'ÉTICA Y DEONTOLOGÍA PROFESIONAL', 3),
+(193, 3, 12, 'PAS1203332', 'PASANTÍA', 3),
+(256, 4, 1, 'GRL0104300', 'GRAMÁTICA Y LECTURA', 3),
+(257, 4, 1, 'FOC0104300', 'FORMACIÓN CIUDADANA', 3),
+(258, 4, 1, 'TEE0104300', 'TÉCNICAS DE ESTUDIO', 3),
+(259, 4, 1, 'INM0104300', 'INTRODUCCIÓN A LA MATEMÁTICA', 3),
+(260, 4, 1, 'IT10104300', 'INTRODUCCIÓN A LA TECNOLOGÍA DE LA INFORMACIÓN', 3),
+(261, 4, 1, 'ADR0102100', 'ACTIVIDADES DEPORTIVAS Y RECREATIVAS', 1),
+(262, 4, 1, 'IIM0103333', 'INTRODUCCIÓN A LOS IDIOMAS MODERNOS', 3),
+(263, 4, 2, 'IDR0204300', 'IDENTIDAD REGIONAL', 3),
+(264, 4, 2, 'AMS0204300', 'AMBIENTE SOSTENIBLE', 3),
+(265, 4, 2, 'ING0204333', 'INGLÉS I', 3),
+(266, 4, 2, 'FRA0204333', 'FRANCÉS I', 3),
+(267, 4, 2, 'LIN0204333', 'LINGÜÍSTICA I', 3),
+(268, 4, 2, 'CUL0204333', 'CULTURA Y CIVILIZACIÓN I', 3),
+(269, 4, 3, 'ESH0302204', 'ELECTIVA SOCIO-HUMANÍSTICA 1', 2),
+(270, 4, 3, 'ING0304333', 'INGLÉS II', 3),
+(271, 4, 3, 'FRA0304333', 'FRANCÉS II', 3),
+(272, 4, 3, 'LIN0304333', 'LINGÜÍSTICA II', 3),
+(273, 4, 3, 'CUL0304333', 'CULTURA Y CIVILIZACIÓN II', 3),
+(274, 4, 3, 'FGE0304333', 'FONÉTICA GENERAL', 3),
+(275, 4, 4, 'ESH0402204', 'ELECTIVA SOCIO-HUMANÍSTICA 2', 2),
+(276, 4, 4, 'ING0404333', 'INGLÉS III', 3),
+(277, 4, 4, 'FRA0404333', 'FRANCÉS III', 3),
+(278, 4, 4, 'FIN0404333', 'FONÉTICA INGLESA I', 3),
+(279, 4, 4, 'FFR0404333', 'FONÉTICA FRANCESA I', 3),
+(280, 4, 4, 'MOR0404333', 'MORFOSINTAXIS', 3),
+(281, 4, 5, 'ESH0502204', 'ELECTIVA SOCIO-HUMANÍSTICA 3', 2),
+(282, 4, 5, 'ING0505333', 'INGLÉS IV', 3),
+(283, 4, 5, 'FRA0505333', 'FRANCÉS IV', 3),
+(284, 4, 5, 'FIN0504333', 'FONÉTICA INGLESA II', 3),
+(285, 4, 5, 'FFR0504333', 'FONÉTICA FRANCESA II', 3),
+(286, 4, 5, 'SEM0504333', 'SEMÁNTICA', 3),
+(287, 4, 6, 'ING0605333', 'INGLÉS V', 3),
+(288, 4, 6, 'FRA0605333', 'FRANCÉS V', 3),
+(289, 4, 6, 'LIN0604333', 'LINGÜÍSTICA APLICADA', 3),
+(290, 4, 6, 'TRD0604333', 'TEORÍA DE LA TRADUCCIÓN', 3),
+(291, 4, 6, 'LIT0604333', 'LITERATURA ANGLÓFONA', 3),
+(292, 4, 7, 'ING0705333', 'INGLÉS VI', 3),
+(293, 4, 7, 'FRA0705333', 'FRANCÉS VI', 3),
+(294, 4, 7, 'TRA0704333', 'TRADUCCIÓN I (INGLÉS)', 3),
+(295, 4, 7, 'TRB0704333', 'TRADUCCIÓN I (FRANCÉS)', 3),
+(296, 4, 7, 'LIT0704333', 'LITERATURA FRANCOFONA', 3),
+(297, 4, 8, 'ITA0804333', 'ITALIANO I', 3),
+(298, 4, 8, 'TRA0805333', 'TRADUCCIÓN II (INGLÉS)', 3),
+(299, 4, 8, 'TRB0805333', 'TRADUCCIÓN II (FRANCÉS)', 3),
+(300, 4, 8, 'DIC0804333', 'DICCIÓN Y ORATORIA', 3),
+(301, 4, 8, 'MEI0804333', 'METODOLOGÍA DE LA INVESTIGACIÓN', 3),
+(302, 4, 9, 'ELP0904304', 'ELECTIVA PROFESIONAL 1', 3),
+(303, 4, 9, 'ITA0904333', 'ITALIANO II', 3),
+(304, 4, 9, 'TRA0905333', 'TRADUCCIÓN III (INGLÉS)', 3),
+(305, 4, 9, 'TRB0905333', 'TRADUCCIÓN III (FRANCÉS)', 3),
+(306, 4, 9, 'SMI0904333', 'SEMINARIO METODOLÓGICO DE INVESTIGACIÓN', 3),
+(307, 4, 10, 'ELP1004304', 'ELECTIVA PROFESIONAL 2', 3),
+(308, 4, 10, 'ITA1004333', 'ITALIANO III', 3),
+(309, 4, 10, 'INT1004333', 'INTERPRETACIÓN I', 3),
+(310, 4, 10, 'ETP1004333', 'ÉTICA PROFESIONAL', 3),
+(311, 4, 10, 'MGR1004333', 'MODALIDAD DE GRADO (SEMINARIO)', 3),
+(312, 4, 11, 'ELP1104304', 'ELECTIVA PROFESIONAL 3', 3),
+(313, 4, 11, 'ITA1103233', 'ITALIANO IV', 2),
+(314, 4, 11, 'MGP1106333', 'PASANTÍA I / PROYECTO I', 3),
+(315, 4, 11, 'INT1104333', 'INTERPRETACIÓN II', 3),
+(316, 4, 12, 'TRI1208433', 'TRABAJO DE GRADO / PASANTÍA II', 4),
+(317, 4, 12, 'ITA1203233', 'ITALIANO V', 2),
+(318, 4, 12, 'RDP1203333', 'REDACCIÓN Y ESTILO', 3),
+(319, 5, 1, 'GRL0104300', 'GRAMÁTICA Y LECTURA', 3),
+(320, 5, 1, 'FOC0104300', 'FORMACIÓN CIUDADANA', 3),
+(321, 5, 1, 'TEE0104300', 'TÉCNICAS DE ESTUDIO', 3),
+(322, 5, 1, 'INM0104300', 'INTRODUCCIÓN A LA MATEMÁTICA', 3),
+(323, 5, 1, 'IT10104300', 'INTRODUCCIÓN A LA TECNOLOGÍA DE LA INFORMACIÓN', 3),
+(324, 5, 1, 'ADR0102100', 'ACTIVIDADES DEPORTIVAS Y RECREATIVAS', 1),
+(325, 5, 1, 'ICA0104311', 'INTRODUC. A LAS CIENCIAS ECONÓMICAS, ADMINISTRATIVAS Y CONTABLES', 3),
+(326, 5, 2, 'IDR0204300', 'IDENTIDAD REGIONAL', 3),
+(327, 5, 2, 'AMS0204300', 'AMBIENTE SOSTENIBLE', 3),
+(328, 5, 2, 'MAT0205311', 'MATEMÁTICA I', 3),
+(329, 5, 2, 'CON0205311', 'CONTABILIDAD I', 3),
+(330, 5, 2, 'ADM0204311', 'ADMINISTRACIÓN I', 3),
+(331, 5, 2, 'SOC0204311', 'SOCIOLOGÍA', 3),
+(332, 5, 3, 'ESH0302205', 'ELECTIVA SOCIO-HUMANÍSTICA 1', 2),
+(333, 5, 3, 'MAT0305311', 'MATEMÁTICA II', 3),
+(334, 5, 3, 'CON0305311', 'CONTABILIDAD II', 3),
+(335, 5, 3, 'ADM0304311', 'ADMINISTRACIÓN II', 3),
+(336, 5, 3, 'DER0304311', 'DERECHO I', 3),
+(337, 5, 3, 'MKT0304311', 'MERCADOTECNIA I', 3),
+(338, 5, 4, 'ESH0402205', 'ELECTIVA SOCIO-HUMANÍSTICA 2', 2),
+(339, 5, 4, 'EST0405311', 'ESTADÍSTICA I', 3),
+(340, 5, 4, 'CON0405311', 'CONTABILIDAD III', 3),
+(341, 5, 4, 'ADM0404311', 'ADMINISTRACIÓN III', 3),
+(342, 5, 4, 'DER0404311', 'DERECHO II', 3),
+(343, 5, 4, 'MKT0404311', 'MERCADOTECNIA II', 3),
+(344, 5, 5, 'ESH0502205', 'ELECTIVA SOCIO-HUMANÍSTICA 3', 2),
+(345, 5, 5, 'EST0505311', 'ESTADÍSTICA II', 3),
+(346, 5, 5, 'ECO0504311', 'ECONOMÍA I', 3),
+(347, 5, 5, 'ADM0504311', 'ADMINISTRACIÓN IV', 3),
+(348, 5, 5, 'DER0504311', 'DERECHO III', 3),
+(349, 5, 5, 'INF0504311', 'INFORMÁTICA', 3),
+(350, 5, 6, 'ECO0604311', 'ECONOMÍA II', 3),
+(351, 5, 6, 'ADM0604311', 'ADMINISTRACIÓN V', 3),
+(352, 5, 6, 'MAT0604311', 'MATEMÁTICA FINANCIERA', 3),
+(353, 5, 6, 'DER0604311', 'DERECHO IV', 3),
+(354, 5, 6, 'SIS0604311', 'SISTEMAS Y PROCEDIMIENTOS', 3),
+(355, 5, 7, 'FIN0704311', 'FINANZAS I', 3),
+(356, 5, 7, 'ADM0704311', 'ADMINISTRACIÓN VI', 3),
+(357, 5, 7, 'CON0704311', 'CONTABILIDAD DE COSTOS I', 3),
+(358, 5, 7, 'DER0704311', 'DERECHO V', 3),
+(359, 5, 7, 'MET0704311', 'MÉTODOS CUANTITATIVOS I', 3),
+(360, 5, 8, 'FIN0804311', 'FINANZAS II', 3),
+(361, 5, 8, 'ADM0804311', 'ADMINISTRACIÓN VII', 3),
+(362, 5, 8, 'CON0804311', 'CONTABILIDAD DE COSTOS II', 3),
+(363, 5, 8, 'MET0804311', 'MÉTODOS CUANTITATIVOS II', 3),
+(364, 5, 8, 'PRE0804311', 'PRESUPUESTO I', 3),
+(365, 5, 9, 'ELP0904305', 'ELECTIVA PROFESIONAL 1', 3),
+(366, 5, 9, 'FIN0904311', 'FINANZAS III', 3),
+(367, 5, 9, 'ADM0904311', 'ADMINISTRACIÓN VIII', 3),
+(368, 5, 9, 'MET0904311', 'METODOLOGÍA DE LA INVESTIGACIÓN', 3),
+(369, 5, 9, 'PRE0904311', 'PRESUPUESTO II', 3),
+(370, 5, 10, 'ELP1004305', 'ELECTIVA PROFESIONAL 2', 3),
+(371, 5, 10, 'ADM1004311', 'ADMINISTRACIÓN IX', 3),
+(372, 5, 10, 'AUD1004311', 'AUDITORÍA ADMINISTRATIVA I', 3),
+(373, 5, 10, 'SMI1004311', 'SEMINARIO METODOLÓGICO DE INVESTIGACIÓN', 3),
+(374, 5, 10, 'ETI1004311', 'ÉTICA PROFESIONAL', 3),
+(375, 5, 11, 'ELP1104305', 'ELECTIVA PROFESIONAL 3', 3),
+(376, 5, 11, 'TRI1106311', 'TRABAJO DE INVESTIGACIÓN I', 3),
+(377, 5, 11, 'PRP1107411', 'PRÁCTICA PROFESIONAL', 4),
+(378, 5, 11, 'AUD1104311', 'AUDITORÍA ADMINISTRATIVA II', 3),
+(379, 5, 12, 'TRI1208411', 'TRABAJO DE INVESTIGACIÓN II', 4),
+(380, 5, 12, 'PAS1203311', 'PASANTÍA', 3),
+(381, 5, 12, 'DEO1203311', 'DEONTOLOGÍA PROFESIONAL', 3),
+(382, 6, 1, 'GRL0104300', 'GRAMÁTICA Y LECTURA', 3),
+(383, 6, 1, 'FOC0104300', 'FORMACIÓN CIUDADANA', 3),
+(384, 6, 1, 'TEE0104300', 'TÉCNICAS DE ESTUDIO', 3),
+(385, 6, 1, 'INM0104300', 'INTRODUCCIÓN A LA MATEMÁTICA', 3),
+(386, 6, 1, 'IT10104300', 'INTRODUCCIÓN A LA TECNOLOGÍA DE LA INFORMACIÓN', 3),
+(387, 6, 1, 'ADR0102100', 'ACTIVIDADES DEPORTIVAS Y RECREATIVAS', 1),
+(388, 6, 1, 'ICC0104312', 'INTRODUC. A LAS CIENCIAS ECONÓMICAS, ADMINISTRATIVAS Y CONTABLES', 3),
+(389, 6, 2, 'IDR0204300', 'IDENTIDAD REGIONAL', 3),
+(390, 6, 2, 'AMS0204300', 'AMBIENTE SOSTENIBLE', 3),
+(391, 6, 2, 'MAT0205312', 'MATEMÁTICA I', 3),
+(392, 6, 2, 'CON0205312', 'CONTABILIDAD I', 3),
+(393, 6, 2, 'ADM0204312', 'ADMINISTRACIÓN I', 3),
+(394, 6, 2, 'SOC0204312', 'SOCIOLOGÍA', 3),
+(395, 6, 3, 'ESH0302206', 'ELECTIVA SOCIO-HUMANÍSTICA 1', 2),
+(396, 6, 3, 'MAT0305312', 'MATEMÁTICA II', 3),
+(397, 6, 3, 'CON0305312', 'CONTABILIDAD II', 3),
+(398, 6, 3, 'ADM0304312', 'ADMINISTRACIÓN II', 3),
+(399, 6, 3, 'DER0304312', 'DERECHO I', 3),
+(400, 6, 3, 'MKT0304312', 'MERCADOTECNIA I', 3),
+(401, 6, 4, 'ESH0402206', 'ELECTIVA SOCIO-HUMANÍSTICA 2', 2),
+(402, 6, 4, 'EST0405312', 'ESTADÍSTICA I', 3),
+(403, 6, 4, 'CON0405312', 'CONTABILIDAD III', 3),
+(404, 6, 4, 'ADM0404312', 'ADMINISTRACIÓN III', 3),
+(405, 6, 4, 'DER0404312', 'DERECHO II', 3),
+(406, 6, 4, 'MAT0404312', 'MATEMÁTICA FINANCIERA', 3),
+(407, 6, 5, 'ESH0502206', 'ELECTIVA SOCIO-HUMANÍSTICA 3', 2),
+(408, 6, 5, 'EST0505312', 'ESTADÍSTICA II', 3),
+(409, 6, 5, 'CON0505312', 'CONTABILIDAD IV', 3),
+(410, 6, 5, 'ECO0504312', 'ECONOMÍA I', 3),
+(411, 6, 5, 'DER0504312', 'DERECHO III', 3),
+(412, 6, 5, 'INF0504312', 'INFORMÁTICA', 3),
+(413, 6, 6, 'CON0605312', 'CONTABILIDAD V', 3),
+(414, 6, 6, 'ECO0604312', 'ECONOMÍA II', 3),
+(415, 6, 6, 'CON0604312', 'CONTABILIDAD DE COSTOS I', 3),
+(416, 6, 6, 'DER0604312', 'DERECHO IV', 3),
+(417, 6, 6, 'SIS0604312', 'SISTEMAS Y PROCEDIMIENTOS', 3),
+(418, 6, 7, 'CON0705312', 'CONTABILIDAD VI', 3),
+(419, 6, 7, 'FIN0704312', 'FINANZAS I', 3),
+(420, 6, 7, 'CON0704312', 'CONTABILIDAD DE COSTOS II', 3),
+(421, 6, 7, 'DER0704312', 'DERECHO V', 3),
+(422, 6, 7, 'MET0704312', 'MÉTODOS CUANTITATIVOS I', 3),
+(423, 6, 8, 'CON0805312', 'CONTABILIDAD VII', 3),
+(424, 6, 8, 'FIN0804312', 'FINANZAS II', 3),
+(425, 6, 8, 'MET0804312', 'MÉTODOS CUANTITATIVOS II', 3),
+(426, 6, 8, 'AUD0804312', 'AUDITORÍA I', 3),
+(427, 6, 8, 'PRE0804312', 'PRESUPUESTO I', 3),
+(428, 6, 9, 'ELP0904306', 'ELECTIVA PROFESIONAL 1', 3),
+(429, 6, 9, 'CON0905312', 'CONTABILIDAD VIII', 3),
+(430, 6, 9, 'AUD0904312', 'AUDITORÍA II', 3),
+(431, 6, 9, 'MEI0904312', 'METODOLOGÍA DE LA INVESTIGACIÓN', 3),
+(432, 6, 9, 'PRE0904312', 'PRESUPUESTO II', 3),
+(433, 6, 10, 'ELP1004306', 'ELECTIVA PROFESIONAL 2', 3),
+(434, 6, 10, 'AUD1004312', 'AUDITORÍA III', 3),
+(435, 6, 10, 'SMI1004312', 'SEMINARIO METODOLÓGICO DE INVESTIGACIÓN', 3),
+(436, 6, 10, 'TRI1004312', 'TRIBUTACIÓN I', 3),
+(437, 6, 10, 'ETP1004312', 'ÉTICA PROFESIONAL', 3),
+(438, 6, 11, 'ELP1104306', 'ELECTIVA PROFESIONAL 3', 3),
+(439, 6, 11, 'TRI1106312', 'TRABAJO DE INVESTIGACIÓN I', 3),
+(440, 6, 11, 'PRP1107412', 'PRÁCTICA PROFESIONAL', 4),
+(441, 6, 11, 'TRI1104312', 'TRIBUTACIÓN II', 3),
+(442, 6, 12, 'TRI1208412', 'TRABAJO DE INVESTIGACIÓN II', 4),
+(443, 6, 12, 'PAS1203312', 'PASANTÍA', 3),
+(444, 6, 12, 'DEO1203312', 'DEONTOLOGÍA PROFESIONAL', 3),
+(445, 5, 1, 'GRL0104300', 'GRAMÁTICA Y LECTURA', 3),
+(446, 5, 1, 'FOC0104300', 'FORMACIÓN CIUDADANA', 3),
+(447, 5, 1, 'TEE0104300', 'TÉCNICAS DE ESTUDIO', 3),
+(448, 5, 1, 'INM0104300', 'INTRODUCCIÓN A LA MATEMÁTICA', 3),
+(449, 5, 1, 'IT10104300', 'INTRODUCCIÓN A LA TECNOLOGÍA DE LA INFORMACIÓN', 3),
+(450, 5, 1, 'ADR0102100', 'ACTIVIDADES DEPORTIVAS Y RECREATIVAS', 1),
+(451, 5, 1, 'ICA0104311', 'INTRODUC. A LAS CIENCIAS ECONÓMICAS, ADMINISTRATIVAS Y CONTABLES', 3),
+(452, 5, 2, 'IDR0204300', 'IDENTIDAD REGIONAL', 3),
+(453, 5, 2, 'AMS0204300', 'AMBIENTE SOSTENIBLE', 3),
+(454, 5, 2, 'MAT0205311', 'MATEMÁTICA I', 3),
+(455, 5, 2, 'CON0205311', 'CONTABILIDAD I', 3),
+(456, 5, 2, 'ADM0204311', 'ADMINISTRACIÓN I', 3),
+(457, 5, 2, 'SOC0204311', 'SOCIOLOGÍA', 3),
+(458, 5, 3, 'ESH0302205', 'ELECTIVA SOCIO-HUMANÍSTICA 1', 2),
+(459, 5, 3, 'MAT0305311', 'MATEMÁTICA II', 3),
+(460, 5, 3, 'CON0305311', 'CONTABILIDAD II', 3),
+(461, 5, 3, 'ADM0304311', 'ADMINISTRACIÓN II', 3),
+(462, 5, 3, 'DER0304311', 'DERECHO I', 3),
+(463, 5, 3, 'MKT0304311', 'MERCADOTECNIA I', 3),
+(464, 5, 4, 'ESH0402205', 'ELECTIVA SOCIO-HUMANÍSTICA 2', 2),
+(465, 5, 4, 'EST0405311', 'ESTADÍSTICA I', 3),
+(466, 5, 4, 'CON0405311', 'CONTABILIDAD III', 3),
+(467, 5, 4, 'ADM0404311', 'ADMINISTRACIÓN III', 3),
+(468, 5, 4, 'DER0404311', 'DERECHO II', 3),
+(469, 5, 4, 'MKT0404311', 'MERCADOTECNIA II', 3),
+(470, 5, 5, 'ESH0502205', 'ELECTIVA SOCIO-HUMANÍSTICA 3', 2),
+(471, 5, 5, 'EST0505311', 'ESTADÍSTICA II', 3),
+(472, 5, 5, 'ECO0504311', 'ECONOMÍA I', 3),
+(473, 5, 5, 'ADM0504311', 'ADMINISTRACIÓN IV', 3),
+(474, 5, 5, 'DER0504311', 'DERECHO III', 3),
+(475, 5, 5, 'INF0504311', 'INFORMÁTICA', 3),
+(476, 5, 6, 'ECO0604311', 'ECONOMÍA II', 3),
+(477, 5, 6, 'ADM0604311', 'ADMINISTRACIÓN V', 3),
+(478, 5, 6, 'MAT0604311', 'MATEMÁTICA FINANCIERA', 3),
+(479, 5, 6, 'DER0604311', 'DERECHO IV', 3),
+(480, 5, 6, 'SIS0604311', 'SISTEMAS Y PROCEDIMIENTOS', 3),
+(481, 5, 7, 'FIN0704311', 'FINANZAS I', 3),
+(482, 5, 7, 'ADM0704311', 'ADMINISTRACIÓN VI', 3),
+(483, 5, 7, 'CON0704311', 'CONTABILIDAD DE COSTOS I', 3),
+(484, 5, 7, 'DER0704311', 'DERECHO V', 3),
+(485, 5, 7, 'MET0704311', 'MÉTODOS CUANTITATIVOS I', 3),
+(486, 5, 8, 'FIN0804311', 'FINANZAS II', 3),
+(487, 5, 8, 'ADM0804311', 'ADMINISTRACIÓN VII', 3),
+(488, 5, 8, 'CON0804311', 'CONTABILIDAD DE COSTOS II', 3),
+(489, 5, 8, 'MET0804311', 'MÉTODOS CUANTITATIVOS II', 3),
+(490, 5, 8, 'PRE0804311', 'PRESUPUESTO I', 3),
+(491, 5, 9, 'ELP0904305', 'ELECTIVA PROFESIONAL 1', 3),
+(492, 5, 9, 'FIN0904311', 'FINANZAS III', 3),
+(493, 5, 9, 'ADM0904311', 'ADMINISTRACIÓN VIII', 3),
+(494, 5, 9, 'MET0904311', 'METODOLOGÍA DE LA INVESTIGACIÓN', 3),
+(495, 5, 9, 'PRE0904311', 'PRESUPUESTO II', 3),
+(496, 5, 10, 'ELP1004305', 'ELECTIVA PROFESIONAL 2', 3),
+(497, 5, 10, 'ADM1004311', 'ADMINISTRACIÓN IX', 3),
+(498, 5, 10, 'AUD1004311', 'AUDITORÍA ADMINISTRATIVA I', 3),
+(499, 5, 10, 'SMI1004311', 'SEMINARIO METODOLÓGICO DE INVESTIGACIÓN', 3),
+(500, 5, 10, 'ETI1004311', 'ÉTICA PROFESIONAL', 3),
+(501, 5, 11, 'ELP1104305', 'ELECTIVA PROFESIONAL 3', 3),
+(502, 5, 11, 'TRI1106311', 'TRABAJO DE INVESTIGACIÓN I', 3),
+(503, 5, 11, 'PRP1107411', 'PRÁCTICA PROFESIONAL', 4),
+(504, 5, 11, 'AUD1104311', 'AUDITORÍA ADMINISTRATIVA II', 3),
+(505, 5, 12, 'TRI1208411', 'TRABAJO DE INVESTIGACIÓN II', 4),
+(506, 5, 12, 'PAS1203311', 'PASANTÍA', 3),
+(507, 5, 12, 'DEO1203311', 'DEONTOLOGÍA PROFESIONAL', 3),
+(508, 6, 1, 'GRL0104300', 'GRAMÁTICA Y LECTURA', 3),
+(509, 6, 1, 'FOC0104300', 'FORMACIÓN CIUDADANA', 3),
+(510, 6, 1, 'TEE0104300', 'TÉCNICAS DE ESTUDIO', 3),
+(511, 6, 1, 'INM0104300', 'INTRODUCCIÓN A LA MATEMÁTICA', 3),
+(512, 6, 1, 'IT10104300', 'INTRODUCCIÓN A LA TECNOLOGÍA DE LA INFORMACIÓN', 3),
+(513, 6, 1, 'ADR0102100', 'ACTIVIDADES DEPORTIVAS Y RECREATIVAS', 1),
+(514, 6, 1, 'ICC0104312', 'INTRODUC. A LAS CIENCIAS ECONÓMICAS, ADMINISTRATIVAS Y CONTABLES', 3),
+(515, 6, 2, 'IDR0204300', 'IDENTIDAD REGIONAL', 3),
+(516, 6, 2, 'AMS0204300', 'AMBIENTE SOSTENIBLE', 3),
+(517, 6, 2, 'MAT0205312', 'MATEMÁTICA I', 3),
+(518, 6, 2, 'CON0205312', 'CONTABILIDAD I', 3),
+(519, 6, 2, 'ADM0204312', 'ADMINISTRACIÓN I', 3),
+(520, 6, 2, 'SOC0204312', 'SOCIOLOGÍA', 3),
+(521, 6, 3, 'ESH0302206', 'ELECTIVA SOCIO-HUMANÍSTICA 1', 2),
+(522, 6, 3, 'MAT0305312', 'MATEMÁTICA II', 3),
+(523, 6, 3, 'CON0305312', 'CONTABILIDAD II', 3),
+(524, 6, 3, 'ADM0304312', 'ADMINISTRACIÓN II', 3),
+(525, 6, 3, 'DER0304312', 'DERECHO I', 3),
+(526, 6, 3, 'MKT0304312', 'MERCADOTECNIA I', 3),
+(527, 6, 4, 'ESH0402206', 'ELECTIVA SOCIO-HUMANÍSTICA 2', 2),
+(528, 6, 4, 'EST0405312', 'ESTADÍSTICA I', 3),
+(529, 6, 4, 'CON0405312', 'CONTABILIDAD III', 3),
+(530, 6, 4, 'ADM0404312', 'ADMINISTRACIÓN III', 3),
+(531, 6, 4, 'DER0404312', 'DERECHO II', 3),
+(532, 6, 4, 'MAT0404312', 'MATEMÁTICA FINANCIERA', 3),
+(533, 6, 5, 'ESH0502206', 'ELECTIVA SOCIO-HUMANÍSTICA 3', 2),
+(534, 6, 5, 'EST0505312', 'ESTADÍSTICA II', 3),
+(535, 6, 5, 'CON0505312', 'CONTABILIDAD IV', 3),
+(536, 6, 5, 'ECO0504312', 'ECONOMÍA I', 3),
+(537, 6, 5, 'DER0504312', 'DERECHO III', 3),
+(538, 6, 5, 'INF0504312', 'INFORMÁTICA', 3),
+(539, 6, 6, 'CON0605312', 'CONTABILIDAD V', 3),
+(540, 6, 6, 'ECO0604312', 'ECONOMÍA II', 3),
+(541, 6, 6, 'CON0604312', 'CONTABILIDAD DE COSTOS I', 3),
+(542, 6, 6, 'DER0604312', 'DERECHO IV', 3),
+(543, 6, 6, 'SIS0604312', 'SISTEMAS Y PROCEDIMIENTOS', 3),
+(544, 6, 7, 'CON0705312', 'CONTABILIDAD VI', 3),
+(545, 6, 7, 'FIN0704312', 'FINANZAS I', 3),
+(546, 6, 7, 'CON0704312', 'CONTABILIDAD DE COSTOS II', 3),
+(547, 6, 7, 'DER0704312', 'DERECHO V', 3),
+(548, 6, 7, 'MET0704312', 'MÉTODOS CUANTITATIVOS I', 3),
+(549, 6, 8, 'CON0805312', 'CONTABILIDAD VII', 3),
+(550, 6, 8, 'FIN0804312', 'FINANZAS II', 3),
+(551, 6, 8, 'MET0804312', 'MÉTODOS CUANTITATIVOS II', 3),
+(552, 6, 8, 'AUD0804312', 'AUDITORÍA I', 3),
+(553, 6, 8, 'PRE0804312', 'PRESUPUESTO I', 3),
+(554, 6, 9, 'ELP0904306', 'ELECTIVA PROFESIONAL 1', 3),
+(555, 6, 9, 'CON0905312', 'CONTABILIDAD VIII', 3),
+(556, 6, 9, 'AUD0904312', 'AUDITORÍA II', 3),
+(557, 6, 9, 'MEI0904312', 'METODOLOGÍA DE LA INVESTIGACIÓN', 3),
+(558, 6, 9, 'PRE0904312', 'PRESUPUESTO II', 3),
+(559, 6, 10, 'ELP1004306', 'ELECTIVA PROFESIONAL 2', 3),
+(560, 6, 10, 'AUD1004312', 'AUDITORÍA III', 3),
+(561, 6, 10, 'SMI1004312', 'SEMINARIO METODOLÓGICO DE INVESTIGACIÓN', 3),
+(562, 6, 10, 'TRI1004312', 'TRIBUTACIÓN I', 3),
+(563, 6, 10, 'ETP1004312', 'ÉTICA PROFESIONAL', 3),
+(564, 6, 11, 'ELP1104306', 'ELECTIVA PROFESIONAL 3', 3),
+(565, 6, 11, 'TRI1106312', 'TRABAJO DE INVESTIGACIÓN I', 3),
+(566, 6, 11, 'PRP1107412', 'PRÁCTICA PROFESIONAL', 4),
+(567, 6, 11, 'TRI1104312', 'TRIBUTACIÓN II', 3),
+(568, 6, 12, 'TRI1208412', 'TRABAJO DE INVESTIGACIÓN II', 4),
+(569, 6, 12, 'PAS1203312', 'PASANTÍA', 3),
+(570, 6, 12, 'DEO1203312', 'DEONTOLOGÍA PROFESIONAL', 3),
+(571, 7, 1, 'GRL0104300', 'GRAMÁTICA Y LECTURA', 3),
+(572, 7, 1, 'FOC0104300', 'FORMACIÓN CIUDADANA', 3),
+(573, 7, 1, 'TEE0104300', 'TÉCNICAS DE ESTUDIO', 3),
+(574, 7, 1, 'INM0104300', 'INTRODUCCIÓN A LA MATEMÁTICA', 3),
+(575, 7, 1, 'IT10104300', 'INTRODUCCIÓN A LA TECNOLOGÍA DE LA INFORMACIÓN', 3),
+(576, 7, 1, 'ADR0102100', 'ACTIVIDADES DEPORTIVAS Y RECREATIVAS', 1),
+(577, 7, 1, 'HID0104321', 'HISTORIA DEL DERECHO', 3),
+(578, 7, 2, 'IDR0204300', 'IDENTIDAD REGIONAL', 3),
+(579, 7, 2, 'AMS0204300', 'AMBIENTE SOSTENIBLE', 3),
+(580, 7, 2, 'INT0204321', 'INTRODUCCIÓN AL DERECHO', 3),
+(581, 7, 2, 'DER0204321', 'DERECHO ROMANO I', 3),
+(582, 7, 2, 'FIL0204321', 'FILOSOFÍA DEL DERECHO', 3),
+(583, 7, 2, 'DIP0204321', 'DERECHO INDIVIDUAL DEL TRABAJO', 3),
+(584, 7, 3, 'ESH0302207', 'ELECTIVA SOCIO-HUMANÍSTICA 1', 2),
+(585, 7, 3, 'DER0304321', 'DERECHO ROMANO II', 3),
+(586, 7, 3, 'CIV0304321', 'DERECHO CIVIL I (PERSONAS)', 3),
+(587, 7, 3, 'CON0304321', 'DERECHO CONSTITUCIONAL I', 3),
+(588, 7, 3, 'PEN0304321', 'DERECHO PENAL I', 3),
+(589, 7, 3, 'DCO0304321', 'DERECHO COLECTIVO DEL TRABAJO', 3),
+(590, 7, 4, 'ESH0402207', 'ELECTIVA SOCIO-HUMANÍSTICA 2', 2),
+(591, 7, 4, 'CIV0404321', 'DERECHO CIVIL II (BIENES)', 3),
+(592, 7, 4, 'CON0404321', 'DERECHO CONSTITUCIONAL II', 3),
+(593, 7, 4, 'PEN0404321', 'DERECHO PENAL II', 3),
+(594, 7, 4, 'TEP0404321', 'TEORÍA GENERAL DEL PROCESO', 3),
+(595, 7, 4, 'DEA0404321', 'DERECHO ADMINISTRATIVO I', 3),
+(596, 7, 5, 'ESH0502207', 'ELECTIVA SOCIO-HUMANÍSTICA 3', 2),
+(597, 7, 5, 'CIV0504321', 'DERECHO CIVIL III (OBLIGACIONES I)', 3),
+(598, 7, 5, 'PEN0504321', 'DERECHO PENAL III', 3),
+(599, 7, 5, 'DPC0504321', 'DERECHO PROCESAL CIVIL I', 3),
+(600, 7, 5, 'DEA0504321', 'DERECHO ADMINISTRATIVO II', 3),
+(601, 7, 5, 'MED0504321', 'MEDICINA LEGAL', 3),
+(602, 7, 6, 'CIV0604321', 'DERECHO CIVIL IV (OBLIGACIONES II)', 3),
+(603, 7, 6, 'DPC0604321', 'DERECHO PROCESAL CIVIL II', 3),
+(604, 7, 6, 'DEA0604321', 'DERECHO ADMINISTRATIVO III', 3),
+(605, 7, 6, 'DPP0604321', 'DERECHO PROCESAL PENAL I', 3),
+(606, 7, 6, 'DIT0604321', 'DERECHO INTERNACIONAL PÚBLICO', 3),
+(607, 7, 7, 'CIV0704321', 'DERECHO CIVIL V (CONTRATOS)', 3),
+(608, 7, 7, 'DPC0704321', 'DERECHO PROCESAL CIVIL III', 3),
+(609, 7, 7, 'DPP0704321', 'DERECHO PROCESAL PENAL II', 3),
+(610, 7, 7, 'DME0704321', 'DERECHO MERCANTIL I', 3),
+(611, 7, 7, 'PRO0704321', 'PRÁCTICA FORENSE I', 3),
+(612, 7, 8, 'CIV0804321', 'DERECHO CIVIL VI (GARANTÍAS)', 3),
+(613, 7, 8, 'DME0804321', 'DERECHO MERCANTIL II', 3),
+(614, 7, 8, 'DPR0804321', 'DERECHO PROCESAL DEL TRABAJO', 3),
+(615, 7, 8, 'PRO0804321', 'PRÁCTICA FORENSE II', 3),
+(616, 7, 8, 'MEI0804321', 'METODOLOGÍA DE LA INVESTIGACIÓN', 3),
+(617, 7, 9, 'ELP0904307', 'ELECTIVA PROFESIONAL 1', 3),
+(618, 7, 9, 'CIV0904321', 'DERECHO CIVIL VII (FAMILIA)', 3),
+(619, 7, 9, 'DME0904321', 'DERECHO MERCANTIL III', 3),
+(620, 7, 9, 'DIP0904321', 'DERECHO INTERNACIONAL PRIVADO', 3),
+(621, 7, 9, 'SMI0904321', 'SEMINARIO METODOLÓGICO DE INVESTIGACIÓN', 3),
+(622, 7, 10, 'ELP1004307', 'ELECTIVA PROFESIONAL 2', 3),
+(623, 7, 10, 'CIV1004321', 'DERECHO CIVIL VIII (SUCESIONES)', 3),
+(624, 7, 10, 'DTB1004321', 'DERECHO TRIBUTARIO', 3),
+(625, 7, 10, 'MGR1004321', 'MODALIDAD DE GRADO (SEMINARIO)', 3),
+(626, 7, 10, 'ETP1004321', 'ÉTICA PROFESIONAL', 3),
+(627, 7, 11, 'ELP1104307', 'ELECTIVA PROFESIONAL 3', 3),
+(628, 7, 11, 'TRI1106321', 'TRABAJO DE INVESTIGACIÓN I', 3),
+(629, 7, 11, 'PRP1107421', 'PRÁCTICA PROFESIONAL', 4),
+(630, 7, 11, 'MAR1104321', 'MÉTODOS ALTERNATIVOS DE RESOLUCIÓN DE CONFLICTOS', 3),
+(631, 7, 12, 'TRI1208421', 'TRABAJO DE INVESTIGACIÓN II', 4),
+(632, 7, 12, 'DEO1203321', 'DEONTOLOGÍA JURÍDICA', 3),
+(633, 7, 12, 'PAS1203321', 'PASANTÍA', 3),
+(634, 8, 1, 'GRL0104300', 'GRAMÁTICA Y LECTURA', 3),
+(635, 8, 1, 'FOC0104300', 'FORMACIÓN CIUDADANA', 3),
+(636, 8, 1, 'TEE0104300', 'TÉCNICAS DE ESTUDIO', 3),
+(637, 8, 1, 'INP0103335', 'INTRODUCCIÓN A LA PSICOLOGÍA', 3),
+(638, 8, 1, 'INM0104300', 'INTRODUCCIÓN A LA MATEMÁTICA', 3),
+(639, 8, 1, 'IT10104300', 'INTRODUCCIÓN A LA TECNOLOGÍA DE LA INFORMACIÓN', 3),
+(640, 8, 1, 'ADR0102100', 'ACTIVIDADES DEPORTIVAS Y RECREATIVAS', 1),
+(641, 8, 2, 'IDR0204300', 'IDENTIDAD REGIONAL', 3),
+(642, 8, 2, 'AMS0204300', 'AMBIENTE SOSTENIBLE', 3),
+(643, 8, 2, 'PSB0204335', 'PSICOBIOLOGÍA', 3),
+(644, 8, 2, 'PSE0204335', 'PSICOLOGÍA EVOLUTIVA I', 3),
+(645, 8, 2, 'PSL0204335', 'PSICOLOGÍA SOCIAL I', 3),
+(646, 8, 2, 'STA0204335', 'SISTEMAS Y TEORÍAS EN PSICOLOGÍA', 3),
+(647, 8, 3, 'ESH0302208', 'ELECTIVA SOCIO-HUMANÍSTICA 1', 2),
+(648, 8, 3, 'NEU0304335', 'NEUROCIENCIAS', 3),
+(649, 8, 3, 'PSE0304335', 'PSICOLOGÍA EVOLUTIVA II', 3),
+(650, 8, 3, 'PSL0304335', 'PSICOLOGÍA SOCIAL II', 3),
+(651, 8, 3, 'PRO0304335', 'PROCESOS PSICOLÓGICOS BÁSICOS I', 3),
+(652, 8, 3, 'EST0304335', 'ESTADÍSTICA I', 3),
+(653, 8, 4, 'ESH0402208', 'ELECTIVA SOCIO-HUMANÍSTICA 2', 2),
+(654, 8, 4, 'LNE0403135', 'LABORATORIO DE NEUROCIENCIAS', 1),
+(655, 8, 4, 'PSP0404335', 'PSICOLOGÍA DE LA PERSONALIDAD I', 3),
+(656, 8, 4, 'PRO0404335', 'PROCESOS PSICOLÓGICOS BÁSICOS II', 3),
+(657, 8, 4, 'EST0404335', 'ESTADÍSTICA II', 3),
+(658, 8, 4, 'MET0404335', 'METODOLOGÍA DE LA INVESTIGACIÓN I', 3),
+(659, 8, 5, 'ESH0502208', 'ELECTIVA SOCIO-HUMANÍSTICA 3', 2),
+(660, 8, 5, 'PSP0504335', 'PSICOLOGÍA DE LA PERSONALIDAD II', 3),
+(661, 8, 5, 'PSF0504335', 'PSICOFISIOLOGÍA', 3),
+(662, 8, 5, 'PSI0504335', 'PSICOMETRÍA I', 3),
+(663, 8, 5, 'MET0504335', 'METODOLOGÍA DE LA INVESTIGACIÓN II', 3),
+(664, 8, 5, 'PSM0504335', 'PSICOLOGÍA DE LA MOTIVACIÓN Y EMOCIÓN', 3),
+(665, 8, 6, 'PSF0604335', 'PSICOPATOLOGÍA I', 3),
+(666, 8, 6, 'PSI0604335', 'PSICOMETRÍA II', 3),
+(667, 8, 6, 'EVA0604335', 'EVALUACIÓN PSICOLÓGICA I', 3),
+(668, 8, 6, 'ORI0604335', 'ORIENTACIÓN PSICOLÓGICA', 3),
+(669, 8, 6, 'DIN0604335', 'DINÁMICA DE GRUPOS', 3),
+(670, 8, 7, 'PSF0704335', 'PSICOPATOLOGÍA II', 3),
+(671, 8, 7, 'EVA0704335', 'EVALUACIÓN PSICOLÓGICA II', 3),
+(672, 8, 7, 'MOD0704335', 'MODIFICACIÓN DE CONDUCTA', 3),
+(673, 8, 7, 'PSI0704335', 'PSICOLOGÍA INSTITUCIONAL', 3),
+(674, 8, 7, 'ENT0704335', 'ENTREVISTA PSICOLÓGICA', 3),
+(675, 8, 8, 'PSF0804335', 'PSICOLOGÍA FAMILIAR', 3),
+(676, 8, 8, 'PCO0804335', 'PSICOLOGÍA COMUNITARIA', 3),
+(677, 8, 8, 'PSI0804335', 'PSICOLOGÍA INDUSTRIAL', 3),
+(678, 8, 8, 'TEE0804335', 'TÉCNICAS DE EXPLORACIÓN PSICOLÓGICA', 3),
+(679, 8, 8, 'PSC0804335', 'PSICOLOGÍA CLÍNICA', 3),
+(680, 8, 9, 'ELP0904308', 'ELECTIVA PROFESIONAL 1', 3),
+(681, 8, 9, 'MEI0904335', 'METODOLOGÍA DE LA INVESTIGACIÓN III', 3),
+(682, 8, 9, 'PCA0904335', 'PSICOLOGÍA DEL APRENDIZAJE', 3),
+(683, 8, 9, 'PDI0904335', 'PSICODIAGNÓSTICO', 3),
+(684, 8, 9, 'PSI0904335', 'PSICOLOGÍA EXPERIMENTAL', 3),
+(685, 8, 10, 'ELP1004308', 'ELECTIVA PROFESIONAL 2', 3),
+(686, 8, 10, 'SMI1004335', 'SEMINARIO METODOLÓGICO DE INVESTIGACIÓN', 3),
+(687, 8, 10, 'PPI1007435', 'PRÁCTICA PROFESIONAL INFANTO JUVENIL', 4),
+(688, 8, 10, 'DEC1004335', 'DERECHOS HUMANOS Y PSICOLOGÍA', 3),
+(689, 8, 10, 'ETP1004335', 'ÉTICA PROFESIONAL', 3),
+(690, 8, 11, 'ELP1104308', 'ELECTIVA PROFESIONAL 3', 3),
+(691, 8, 11, 'TRI1106335', 'TRABAJO DE INVESTIGACIÓN I', 3),
+(692, 8, 11, 'PPA1107435', 'PRÁCTICA PROFESIONAL ADULTO', 4),
+(693, 8, 11, 'PSI1104335', 'PSICOTERAPIA', 3),
+(694, 8, 12, 'TRI1208435', 'TRABAJO DE INVESTIGACIÓN II', 4),
+(695, 8, 12, 'PPC1207435', 'PRÁCTICA PROFESIONAL COMUNITARIA', 4),
+(696, 8, 12, 'EDP1203335', 'ÉTICA Y DEONTOLOGÍA PROFESIONAL', 3);
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `periodos_academicos`
+--
+
+CREATE TABLE `periodos_academicos` (
+  `id` int(11) NOT NULL,
+  `codigo` varchar(20) DEFAULT NULL,
+  `nombre` varchar(50) DEFAULT NULL,
+  `fecha_inicio` date DEFAULT NULL,
+  `fecha_fin` date DEFAULT NULL,
+  `es_actual` tinyint(1) DEFAULT 0,
+  `fecha_limite_solicitud` date DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `periodos_academicos`
+--
+
+INSERT INTO `periodos_academicos` (`id`, `codigo`, `nombre`, `fecha_inicio`, `fecha_fin`, `es_actual`, `fecha_limite_solicitud`) VALUES
+(1, '2026-I', 'Periodo I 2026 (Ene-Abr)', '2026-01-01', '2026-04-30', 0, '2026-01-15'),
+(2, '2026-II', 'Periodo II 2026 (May-Ago)', '2026-05-01', '2026-08-31', 1, '2026-05-15'),
+(3, '2026-III', 'Periodo III 2026 (Sep-Dic)', '2026-09-01', '2026-12-31', 0, '2026-09-15');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `sistema_config`
+--
+
+CREATE TABLE `sistema_config` (
+  `clave` varchar(50) NOT NULL,
+  `valor_int` int(11) DEFAULT 0,
+  `valor_txt` varchar(255) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `sistema_config`
+--
+
+INSERT INTO `sistema_config` (`clave`, `valor_int`, `valor_txt`) VALUES
+('bypass_reglas', 1, NULL),
+('mes_simulado', 0, '5');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `solicitudes`
+--
+
+CREATE TABLE `solicitudes` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `periodo_id` int(11) DEFAULT NULL,
+  `email_institucional` varchar(150) NOT NULL,
+  `tipo_beca` varchar(100) NOT NULL,
+  `promedio_notas` decimal(4,2) NOT NULL,
+  `motivo_solicitud` text DEFAULT NULL,
+  `materias_json` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`materias_json`)),
+  `estatus` enum('Pendiente','En Revisión','Revisión Especial','Renovacion','Aprobada','Rechazada') DEFAULT 'Pendiente',
+  `fecha_registro` timestamp NOT NULL DEFAULT current_timestamp(),
+  `foto_carnet` varchar(255) DEFAULT NULL,
+  `copia_cedula` varchar(255) DEFAULT NULL,
+  `planilla_inscripcion` varchar(255) DEFAULT NULL,
+  `fecha_revision` datetime DEFAULT NULL COMMENT 'Fecha cuando pasó a estatus En Revisión',
+  `fecha_decision` datetime DEFAULT NULL COMMENT 'Fecha cuando se Aprobó o Rechazó definitivamente',
+  `observaciones_admin` text DEFAULT NULL COMMENT 'Notas del administrador sobre la decisión',
+  `revisado_por` bigint(20) UNSIGNED DEFAULT NULL COMMENT 'ID del usuario administrador que gestionó la solicitud',
+  `porcentaje_cobertura` int(11) DEFAULT 100 COMMENT 'Porcentaje de la beca otorgado (ej. 50, 100)',
+  `categoria_rechazo` varchar(50) DEFAULT NULL COMMENT 'PROMEDIO_BAJO, INGRESOS_ALTOS, DOCUMENTOS_INCOMPLETOS, etc.'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `solicitudes`
+--
+
+INSERT INTO `solicitudes` (`id`, `user_id`, `periodo_id`, `email_institucional`, `tipo_beca`, `promedio_notas`, `motivo_solicitud`, `materias_json`, `estatus`, `fecha_registro`, `foto_carnet`, `copia_cedula`, `planilla_inscripcion`, `fecha_revision`, `fecha_decision`, `observaciones_admin`, `revisado_por`, `porcentaje_cobertura`, `categoria_rechazo`) VALUES
+(61, 12, 1, 'juan@unimar.edu.ve', 'BECA SOCIAL', 20.00, 'ffffff', '{\"trimestre\":4,\"materias\":[{\"codigo\":\"FIS0405341\",\"nombre\":\"FÍSICA II\",\"nota\":20},{\"codigo\":\"MAT0405341\",\"nombre\":\"MATEMÁTICA III\",\"nota\":20},{\"codigo\":\"INI0404341\",\"nombre\":\"INGLÉS INSTRUMENTAL II\",\"nota\":20},{\"codigo\":\"PRO0405341\",\"nombre\":\"PROGRAMACIÓN I\",\"nota\":20},{\"codigo\":\"LAF0403141\",\"nombre\":\"LABORATORIO DE FÍSICA I\",\"nota\":20},{\"codigo\":\"ESH0402201\",\"nombre\":\"ELECTIVA SOCIO-HUMANÍSTICA 2\",\"nota\":20}],\"fecha_proceso\":\"2026-02-21T02:53:17.309Z\"}', 'Aprobada', '2026-02-21 02:53:17', '/uploads/1771642397313-image.png', '/uploads/1771642397314-image.png', NULL, '2026-02-21 00:28:34', '2026-02-21 12:10:21', NULL, 1, 100, NULL),
+(164, 12, 2, 'juan@unimar.edu.ve', 'BECA SOCIAL', 20.00, 'ffffff', '{\"trimestre\":4,\"materias\":[{\"codigo\":\"FIS0405341\",\"nombre\":\"FÍSICA II\",\"nota\":20},{\"codigo\":\"MAT0405341\",\"nombre\":\"MATEMÁTICA III\",\"nota\":20},{\"codigo\":\"INI0404341\",\"nombre\":\"INGLÉS INSTRUMENTAL II\",\"nota\":20},{\"codigo\":\"PRO0405341\",\"nombre\":\"PROGRAMACIÓN I\",\"nota\":20},{\"codigo\":\"LAF0403141\",\"nombre\":\"LABORATORIO DE FÍSICA I\",\"nota\":20},{\"codigo\":\"ESH0402201\",\"nombre\":\"ELECTIVA SOCIO-HUMANÍSTICA 2\",\"nota\":20}],\"fecha_proceso\":\"2026-02-21T20:40:33.312Z\",\"audit_detecto_reprobadas\":false}', 'Rechazada', '2026-02-21 20:40:33', '/uploads/1771642397313-image.png', '/uploads/1771642397314-image.png', NULL, '2026-02-21 19:43:22', '2026-03-05 02:29:37', NULL, 1, 100, NULL),
+(175, 114, 2, 'mario@unimar.edu.ve', 'BECA APRENDIZAJE', 20.00, 'xxxxxxxxxxxx', '{\"trimestre\":8,\"materias\":[{\"codigo\":\"INV0804342\",\"nombre\":\"INVESTIGACIÓN DE OPERACIONES I\",\"nota\":20},{\"codigo\":\"PRM0805342\",\"nombre\":\"PROCESOS DE MANUFACTURA II\",\"nota\":20},{\"codigo\":\"IEM0804342\",\"nombre\":\"INGENIERÍA DE MÉTODOS I\",\"nota\":20},{\"codigo\":\"TRC0804342\",\"nombre\":\"TRANSFERENCIA DE CALOR\",\"nota\":20},{\"codigo\":\"ELI0805342\",\"nombre\":\"ELECTROTECNIA INDUSTRIAL\",\"nota\":20}],\"fecha_proceso\":\"2026-03-04T08:03:33.869Z\"}', 'Pendiente', '2026-03-04 08:03:33', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 100, NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `students`
+--
+
+CREATE TABLE `students` (
+  `id` int(11) NOT NULL,
+  `nombre` varchar(100) NOT NULL,
+  `apellido` varchar(100) NOT NULL,
+  `cedula` varchar(20) NOT NULL,
+  `sexo` enum('M','F') DEFAULT NULL,
+  `fecha_nacimiento` date DEFAULT NULL,
+  `telefono` varchar(20) NOT NULL,
+  `carrera` varchar(150) NOT NULL,
+  `semestre` int(11) NOT NULL,
+  `indice_global` decimal(5,2) DEFAULT 0.00,
+  `email` varchar(150) DEFAULT NULL,
+  `municipio_residencia` varchar(100) DEFAULT NULL,
+  `ha_tenido_beca` tinyint(1) DEFAULT 0 COMMENT 'Indica si el estudiante ya fue beneficiado alguna vez',
+  `beca_perdida` tinyint(1) DEFAULT 0 COMMENT 'Indica si perdió la beca por bajo rendimiento o sanción',
+  `motivo_exclusion` text DEFAULT NULL COMMENT 'Razón detallada de por qué no puede volver a solicitar'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `students`
+--
+
+INSERT INTO `students` (`id`, `nombre`, `apellido`, `cedula`, `sexo`, `fecha_nacimiento`, `telefono`, `carrera`, `semestre`, `indice_global`, `email`, `municipio_residencia`, `ha_tenido_beca`, `beca_perdida`, `motivo_exclusion`) VALUES
+(10, 'Roy Vincent', 'Gomez Santana', '22652841', 'F', '1994-11-12', '04265860480', 'Ingeniería de Sistemas', 9, 20.00, 'Roy@unimar.edu.ve', 'Península de Macanao', 0, 0, NULL),
+(12, 'Juan', 'Perez', '22652842', 'M', '2026-02-10', '042658414', 'Ingeniería de Sistemas', 5, 20.00, 'juan@unimar.edu.ve', 'Marcano', 1, 0, NULL),
+(114, 'mario', 'gomez', '22652800', 'M', '2026-03-04', '04265860480', 'Ingeniería Industrial', 9, 20.00, 'mario@unimar.edu.ve', 'Marcano', 0, 0, NULL),
+(115, 'roys', 'gomes', '22652843', 'M', '2024-08-01', '0426586040', 'Ingeniería de Sistemas', 9, 20.00, 'roys@unimar.edu.ve', 'Tubores', 0, 0, NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `users`
+--
+
+CREATE TABLE `users` (
+  `id` int(11) NOT NULL,
+  `email` varchar(150) NOT NULL,
+  `password` varchar(255) NOT NULL,
+  `role` enum('estudiante','admin') DEFAULT 'estudiante',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `users`
+--
+
+INSERT INTO `users` (`id`, `email`, `password`, `role`, `created_at`) VALUES
+(0, 'sistema@unimar.edu.ve', 'SYSTEM_BOT_NO_LOGIN', 'admin', '2026-02-18 18:52:39'),
+(1, 'Admin@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'admin', '2026-02-12 05:17:42'),
+(10, 'Roy@unimar.edu.ve', '$2b$10$Mf0zMQTBQq5hNSwgy8cL4u9qPM1uzrI84Cgv34ayHSilo4QeukECq', 'estudiante', '2026-02-16 03:15:01'),
+(12, 'juan@unimar.edu.ve', '$2b$10$N98KOBodUhts7/9UrB/EQ.uCPispBch2MARnDuHCcjdxJcQH460iC', 'estudiante', '2026-02-21 01:42:00'),
+(114, 'mario@unimar.edu.ve', '$2b$10$I61aE0Cgupp8FhhsPcSx1eqVFr1ZMJgzl6Md4LM0txUd921gD7dtK', 'estudiante', '2026-03-04 06:52:03'),
+(115, 'roys@unimar.edu.ve', '$2b$10$sgG.L.6OCVv7JI9dxBBwo.hp53LWAyiSfaNHYcZzKt5SU7UPdBa9q', 'estudiante', '2026-08-06 15:53:19');
+
+--
+-- Índices para tablas volcadas
+--
+
+--
+-- Indices de la tabla `carreras`
+--
+ALTER TABLE `carreras`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `nombre` (`nombre`);
+
+--
+-- Indices de la tabla `estudios_socioeconomicos`
+--
+ALTER TABLE `estudios_socioeconomicos`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `idx_unico_por_tipo` (`student_id`,`tipo`),
+  ADD UNIQUE KEY `student_id` (`student_id`,`tipo`),
+  ADD UNIQUE KEY `unique_estudio_periodo` (`student_id`,`periodo_id`,`tipo`);
+
+--
+-- Indices de la tabla `historial_aprobaciones`
+--
+ALTER TABLE `historial_aprobaciones`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `token_verificacion` (`token_verificacion`),
+  ADD KEY `fk_historial_solicitud` (`solicitud_id`),
+  ADD KEY `fk_historial_periodo` (`periodo_id`),
+  ADD KEY `fk_historial_admin` (`admin_id`);
+
+--
+-- Indices de la tabla `pensum_materias`
+--
+ALTER TABLE `pensum_materias`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `carrera_id` (`carrera_id`);
+
+--
+-- Indices de la tabla `periodos_academicos`
+--
+ALTER TABLE `periodos_academicos`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indices de la tabla `sistema_config`
+--
+ALTER TABLE `sistema_config`
+  ADD PRIMARY KEY (`clave`);
+
+--
+-- Indices de la tabla `solicitudes`
+--
+ALTER TABLE `solicitudes`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `student_periodo_idx` (`user_id`,`periodo_id`),
+  ADD KEY `fk_solicitud_periodo` (`periodo_id`);
+
+--
+-- Indices de la tabla `students`
+--
+ALTER TABLE `students`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `cedula` (`cedula`),
+  ADD UNIQUE KEY `email` (`email`);
+
+--
+-- Indices de la tabla `users`
+--
+ALTER TABLE `users`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `email` (`email`);
+
+--
+-- AUTO_INCREMENT de las tablas volcadas
+--
+
+--
+-- AUTO_INCREMENT de la tabla `carreras`
+--
+ALTER TABLE `carreras`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+
+--
+-- AUTO_INCREMENT de la tabla `estudios_socioeconomicos`
+--
+ALTER TABLE `estudios_socioeconomicos`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=121;
+
+--
+-- AUTO_INCREMENT de la tabla `historial_aprobaciones`
+--
+ALTER TABLE `historial_aprobaciones`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=39;
+
+--
+-- AUTO_INCREMENT de la tabla `pensum_materias`
+--
+ALTER TABLE `pensum_materias`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=697;
+
+--
+-- AUTO_INCREMENT de la tabla `periodos_academicos`
+--
+ALTER TABLE `periodos_academicos`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+
+--
+-- AUTO_INCREMENT de la tabla `solicitudes`
+--
+ALTER TABLE `solicitudes`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=177;
+
+--
+-- AUTO_INCREMENT de la tabla `users`
+--
+ALTER TABLE `users`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=116;
+
+--
+-- Restricciones para tablas volcadas
+--
+
+--
+-- Filtros para la tabla `estudios_socioeconomicos`
+--
+ALTER TABLE `estudios_socioeconomicos`
+  ADD CONSTRAINT `estudios_socioeconomicos_ibfk_1` FOREIGN KEY (`student_id`) REFERENCES `students` (`id`);
+
+--
+-- Filtros para la tabla `historial_aprobaciones`
+--
+ALTER TABLE `historial_aprobaciones`
+  ADD CONSTRAINT `fk_historial_admin` FOREIGN KEY (`admin_id`) REFERENCES `users` (`id`),
+  ADD CONSTRAINT `fk_historial_periodo` FOREIGN KEY (`periodo_id`) REFERENCES `periodos_academicos` (`id`),
+  ADD CONSTRAINT `fk_historial_solicitud` FOREIGN KEY (`solicitud_id`) REFERENCES `solicitudes` (`id`) ON DELETE CASCADE;
+
+--
+-- Filtros para la tabla `pensum_materias`
+--
+ALTER TABLE `pensum_materias`
+  ADD CONSTRAINT `pensum_materias_ibfk_1` FOREIGN KEY (`carrera_id`) REFERENCES `carreras` (`id`);
+
+--
+-- Filtros para la tabla `solicitudes`
+--
+ALTER TABLE `solicitudes`
+  ADD CONSTRAINT `fk_solicitud_periodo` FOREIGN KEY (`periodo_id`) REFERENCES `periodos_academicos` (`id`),
+  ADD CONSTRAINT `solicitudes_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Filtros para la tabla `students`
+--
+ALTER TABLE `students`
+  ADD CONSTRAINT `students_ibfk_1` FOREIGN KEY (`id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+COMMIT;
+
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;

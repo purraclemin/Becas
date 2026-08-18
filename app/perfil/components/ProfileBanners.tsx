@@ -34,7 +34,7 @@ export function ActionBanner() {
           <p className="text-xs md:text-sm text-gray-500 font-medium mt-1">El proceso de solicitudes para el nuevo periodo está abierto.</p>
         </div>
       </div>
-      <Link href="/portulacion" className="w-full lg:w-auto">
+      <Link href="/postulacion" className="w-full lg:w-auto">
         <Button className="w-full bg-[#1e3a5f] text-[#d4a843] hover:bg-[#1a2744] transition-all font-black text-xs uppercase tracking-widest px-10 py-7 shadow-xl hover:scale-105 active:scale-95">
           Iniciar Solicitud
         </Button>

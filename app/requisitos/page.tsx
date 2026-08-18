@@ -64,19 +64,24 @@ const formatos = [
 
 export default function RequisitosPage() {
   return (
-    <main className="min-h-screen">
+    <main className="min-h-screen w-full flex flex-col bg-slate-50">
       <Navbar />
-      <PageHeader
-        title="Requisitos Normativos"
-        breadcrumbs={[
-          { label: "Inicio", href: "/" },
-          { label: "Requisitos" },
-        ]}
-      />
+      
+      {/* Contenedor del PageHeader con franja azul institucional y margen superior para evitar solapamiento */}
+      <div className="mt-[73px] sm:mt-[81px] w-full bg-[#1e3a5f] text-white py-8 sm:py-10">
+        <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 xl:px-10">
+          <h1 className="text-2xl font-extrabold font-serif sm:text-3xl md:text-4xl uppercase tracking-tight drop-shadow-lg text-white">
+            Requisitos Normativos
+          </h1>
+          <p className="mt-2 text-xs sm:text-sm md:text-base font-medium text-[#d1d9e6] max-w-2xl leading-relaxed">
+            Consulte los criterios de elegibilidad, documentación obligatoria y formatos oficiales establecidos por la Universidad de Margarita.
+          </p>
+        </div>
+      </div>
 
       {/* Requisitos Generales */}
-      <section className="bg-[#ffffff] py-12">
-        <div className="mx-auto max-w-7xl px-4">
+      <section className="bg-[#ffffff] py-12 w-full">
+        <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 xl:px-10">
           <div className="grid gap-10 lg:grid-cols-3">
             <div className="lg:col-span-2">
               <div className="mb-6 border-b-2 border-[#1e3a5f] pb-2">
@@ -126,8 +131,8 @@ export default function RequisitosPage() {
       </section>
 
       {/* Documentos requeridos */}
-      <section className="bg-[#f0f4f8] py-12">
-        <div className="mx-auto max-w-7xl px-4">
+      <section className="bg-[#f0f4f8] py-12 w-full">
+        <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 xl:px-10">
           <div className="mb-8 border-b-2 border-[#1e3a5f] pb-2">
             <h2 className="text-xl font-bold text-[#1e3a5f] font-serif">Documentación Obligatoria</h2>
           </div>
@@ -156,8 +161,8 @@ export default function RequisitosPage() {
       </section>
 
       {/* Descargar formatos */}
-      <section className="bg-[#ffffff] py-12">
-        <div className="mx-auto max-w-7xl px-4">
+      <section className="bg-[#ffffff] py-12 w-full">
+        <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 xl:px-10">
           <div className="mb-8 border-b-2 border-[#d4a843] pb-2">
             <h2 className="text-xl font-bold text-[#1e3a5f] font-serif">Formatos Oficiales</h2>
           </div>
@@ -182,23 +187,25 @@ export default function RequisitosPage() {
       </section>
 
       {/* CTA */}
-      <section className="bg-[#1e3a5f] py-10">
-        <div className="mx-auto max-w-3xl px-4 text-center">
-          <Upload className="mx-auto h-10 w-10 text-[#d4a843]" />
-          <h2 className="mt-4 text-xl font-bold text-[#ffffff] font-serif md:text-2xl">
-            ¿Listo para consignar tus recaudos?
-          </h2>
-          <p className="mt-3 text-sm text-[#8a9bbd]">
-            La recepción de documentos se realiza en el Departamento de Bienestar Estudiantil según el cronograma publicado.
-          </p>
-          <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link
-              href="/registro"
-              className="flex items-center gap-2 rounded-md bg-[#d4a843] px-6 py-2.5 text-sm font-semibold text-[#1e3a5f] transition-colors hover:bg-[#c49a3a]"
-            >
-              Iniciar Solicitud
-              <ArrowRight className="h-4 w-4" />
-            </Link>
+      <section className="bg-[#1e3a5f] py-10 w-full">
+        <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 xl:px-10 text-center">
+          <div className="mx-auto max-w-3xl">
+            <Upload className="mx-auto h-10 w-10 text-[#d4a843]" />
+            <h2 className="mt-4 text-xl font-bold text-[#ffffff] font-serif md:text-2xl">
+              ¿Listo para consignar tus recaudos?
+            </h2>
+            <p className="mt-3 text-sm text-[#8a9bbd]">
+              La recepción de documentos se realiza en el Departamento de Bienestar Estudiantil según el cronograma publicado.
+            </p>
+            <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <Link
+                href="/registro"
+                className="flex items-center gap-2 rounded-md bg-[#d4a843] px-6 py-2.5 text-sm font-semibold text-[#1e3a5f] transition-colors hover:bg-[#c49a3a]"
+              >
+                Iniciar Solicitud
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
           </div>
         </div>
       </section>

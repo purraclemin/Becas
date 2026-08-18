@@ -9,20 +9,31 @@ export async function getSession() {
   
   const cookieStore = await cookies()
   const sessionToken = cookieStore.get('session_token')?.value
-  const role = cookieStore.get('user_role')?.value
   
   // 1. Verificación básica de existencia
   if (!sessionToken) return { isLoggedIn: false }
 
   try {
-    // 2. Extracción de Identidad (ID del usuario)
-    const userId = sessionToken.split('_').pop(); 
+    // 2. Extracción y Validación Numérica de Identidad
+    const rawUserId = sessionToken.split('_').pop(); 
+    const userId = rawUserId ? parseInt(rawUserId, 10) : null;
 
-    if (!userId) return { isLoggedIn: false };
+    if (!userId || isNaN(userId)) return { isLoggedIn: false };
 
-    // 3. Recuperación de Datos según el Rol
-    if (role === 'estudiante') {
-      // Consulta optimizada: SOLO Identidad y Datos de Perfil
+    // 3. Validación Reales en la DB (Verificar que el usuario exista y obtener su ROL legítimo)
+    const [accountRows]: any = await db.execute(
+      'SELECT id, role FROM users WHERE id = ?',
+      [userId]
+    );
+
+    if (accountRows.length === 0) {
+      return { isLoggedIn: false };
+    }
+
+    const realRole = accountRows[0].role;
+
+    // 4. Recuperación de Datos según el Rol Oficial
+    if (realRole === 'estudiante') {
       const queryUser = `
         SELECT 
           st.id as student_pk, 
@@ -50,12 +61,12 @@ export async function getSession() {
       
       // Si el usuario existe en 'users' pero no tiene perfil en 'students'
       if (userRows.length === 0) {
-        return { isLoggedIn: true, role, id: userId, perfilIncompleto: true };
+        return { isLoggedIn: true, role: realRole, id: userId, perfilIncompleto: true };
       }
       
       const s = userRows[0];
 
-      // Parseo básico de materias para mostrar en el perfil (sin lógica de negocio)
+      // Parseo seguro del JSON de materias
       let materiasArray = [];
       try {
         materiasArray = s.materias_json ? JSON.parse(s.materias_json) : [];
@@ -63,7 +74,7 @@ export async function getSession() {
         materiasArray = [];
       }
 
-      // 4. Retorno de Objeto de Sesión Limpio
+      // 5. Retorno de Objeto de Sesión Limpio
       return { 
         isLoggedIn: true, 
         id: userId,
@@ -81,15 +92,15 @@ export async function getSession() {
         semestre: s.semestre,
         indiceGlobal: s.indice_global || 0,
         
-        // Estado Actual (Crudo de la BD, sin cálculos de fechas)
+        // Estado Actual
         estatus: s.estatus_reciente || 'ninguna',
         estatusBeca: s.estatus_reciente || 'ninguna',
         materias: materiasArray
       }
     }
 
-    // Caso Admin u otros roles
-    return { isLoggedIn: true, role, id: userId }
+    // Caso Admin u otros roles oficiales
+    return { isLoggedIn: true, role: realRole, id: userId }
     
   } catch (error) {
     console.error("❌ Error de sesión:", error)

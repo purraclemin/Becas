@@ -1,7 +1,7 @@
 "use client"
 
 import React from "react"
-import { Copy, ChevronRight, Check } from "lucide-react"
+import { Copy, ChevronRight } from "lucide-react"
 
 export function AuditSection({ icon: Icon, title, fields, formData, dataEstudiante, copyValue, setFormData }: any) {
   return (
@@ -15,8 +15,15 @@ export function AuditSection({ icon: Icon, title, fields, formData, dataEstudian
           const valEstudiante = dataEstudiante?.[f.name] ?? "No declarado";
           const valAdmin = formData[f.name];
           
+          // Normalización para visualización amigable de checkboxes o estados
+          const formatDisplayEstudiante = (val: any, tipo: string) => {
+            if (tipo === 'checkbox') {
+              return (val === 'on' || val === 'Posee' || val === 'Si' || val === 'Sí') ? 'SI' : 'NO';
+            }
+            return val;
+          };
+          
           // Normalización para comparación visual de inconsistencias (on/off, Si/No)
-          // Se agrega soporte para comparación numérica limpia
           const normalize = (v: any) => {
             if (v === 'on' || v === 'Posee' || v === 'Si' || v === 'Sí') return 'on_true';
             if (v === 'off' || v === 'No posee' || v === 'No') return 'off_false';
@@ -36,7 +43,7 @@ export function AuditSection({ icon: Icon, title, fields, formData, dataEstudian
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex items-center justify-between group">
                 <div className="min-w-0">
                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter mb-1">{f.label} (Declarado)</p>
-                  <p className="text-sm font-black text-[#1a2744] truncate uppercase italic">{valEstudiante}</p>
+                  <p className="text-sm font-black text-[#1a2744] truncate uppercase italic">{formatDisplayEstudiante(valEstudiante, f.type)}</p>
                 </div>
                 <button 
                   type="button" 
@@ -45,7 +52,7 @@ export function AuditSection({ icon: Icon, title, fields, formData, dataEstudian
                     let copyTarget = valEstudiante;
                     
                     if (f.type === 'checkbox') {
-                      copyTarget = (valEstudiante === 'Posee' || valEstudiante === 'on') ? 'on' : 'off';
+                      copyTarget = (valEstudiante === 'Posee' || valEstudiante === 'on' || valEstudiante === 'Si' || valEstudiante === 'Sí') ? 'on' : 'off';
                     } else if (f.name === 'salud_condicion_especial' || f.name === 'posee_empleo_aspirante') {
                       copyTarget = (valEstudiante === 'Si' || valEstudiante === 'Sí' || valEstudiante === 'on') ? 'Si' : 'No';
                     } else if (f.type === 'number') {
@@ -70,26 +77,31 @@ export function AuditSection({ icon: Icon, title, fields, formData, dataEstudian
                 </div>
 
                 {f.type === 'checkbox' ? (
-                  <div 
-                    onClick={() => setFormData((p:any) => ({...p, [f.name]: valAdmin === 'on' ? 'off' : 'on'}))}
-                    className={`w-full bg-white border-2 p-4 rounded-xl flex items-center justify-between cursor-pointer transition-all ${valAdmin === 'on' ? 'border-[#d4a843] bg-[#d4a843]/5' : 'border-slate-100 hover:border-slate-200'}`}
-                  >
-                    <span className={`text-sm font-bold uppercase ${valAdmin === 'on' ? 'text-[#1a2744]' : 'text-slate-400'}`}>
-                      {valAdmin === 'on' ? 'Posee / Activo' : 'No posee / Inactivo'}
-                    </span>
-                    <div className={`h-6 w-6 rounded-lg border-2 flex items-center justify-center transition-all ${valAdmin === 'on' ? 'bg-[#d4a843] border-[#d4a843]' : 'border-slate-200'}`}>
-                      {valAdmin === 'on' && <Check className="h-4 w-4 text-white" />}
-                    </div>
+                  <div className="relative">
+                    <select 
+                      name={f.name}
+                      value={valAdmin || ""} 
+                      onChange={(e) => setFormData((p:any) => ({...p, [f.name]: e.target.value}))} 
+                      className={`w-full bg-white border-2 p-4 rounded-xl text-sm font-bold text-[#1a2744] outline-none transition-all appearance-none ${isEmpty ? 'border-slate-100 focus:border-[#d4a843]' : isDifferent ? 'border-rose-200 bg-rose-50/30' : 'border-slate-100 focus:border-[#d4a843]'}`}
+                    >
+                      <option value="">Seleccione...</option>
+                      <option value="on">SI</option>
+                      <option value="off">NO</option>
+                    </select>
+                    <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300 rotate-90" />
                   </div>
                 ) : f.options ? (
-                  <select 
-                    name={f.name} value={valAdmin || ""} 
-                    onChange={(e) => setFormData((p:any) => ({...p, [f.name]: e.target.value}))} 
-                    className={`w-full bg-white border-2 p-4 rounded-xl text-sm font-bold text-[#1a2744] outline-none transition-all appearance-none ${isEmpty ? 'border-slate-100 focus:border-[#d4a843]' : isDifferent ? 'border-rose-200 bg-rose-50/30' : 'border-slate-100 focus:border-[#d4a843]'}`}
-                  >
-                    <option value="">Seleccione...</option>
-                    {f.options.map((o: string) => <option key={o} value={o}>{o}</option>)}
-                  </select>
+                  <div className="relative">
+                    <select 
+                      name={f.name} value={valAdmin || ""} 
+                      onChange={(e) => setFormData((p:any) => ({...p, [f.name]: e.target.value}))} 
+                      className={`w-full bg-white border-2 p-4 rounded-xl text-sm font-bold text-[#1a2744] outline-none transition-all appearance-none ${isEmpty ? 'border-slate-100 focus:border-[#d4a843]' : isDifferent ? 'border-rose-200 bg-rose-50/30' : 'border-slate-100 focus:border-[#d4a843]'}`}
+                    >
+                      <option value="">Seleccione...</option>
+                      {f.options.map((o: string) => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                    <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300 rotate-90" />
+                  </div>
                 ) : (
                   <input 
                     name={f.name} type={f.type || "text"} value={valAdmin || ""} 
@@ -98,7 +110,6 @@ export function AuditSection({ icon: Icon, title, fields, formData, dataEstudian
                     placeholder="Ingrese valor verificado..."
                   />
                 )}
-                {f.options && f.type !== 'checkbox' && <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300 rotate-90" />}
               </div>
             </div>
           );

@@ -66,8 +66,8 @@ export const SECCIONES_MAESTRAS = [
     titulo: "6. Vivienda y Egresos ($)",
     icon: Home,
     fields: [
-      { label: "Tipo de Estructura", name: "vivienda_tipo", options: ["Quinta", "Casa", "Apartamento", "Vivienda rural", "Otro"] },
-      { label: "Tenencia", name: "vivienda_estatus", options: ["Propia", "Alquilada", "Residencia", "Otro"] },
+      { label: "Tipo de Estructura", name: "vivienda_tipo", options: ["Quinta", "Casa", "Apartamento", "Vivienda rural", "Habitación", "Otro"] },
+      { label: "Tenencia", name: "vivienda_estatus", options: ["Propia", "Alquilada", "Residencia", "Prestada / Cedida", "Pagándose"] },
       { label: "Gasto Mercado", name: "monto_egreso_mercado", type: "number" },
       { label: "Gasto Vivienda", name: "monto_egreso_vivienda", type: "number" },
       { label: "Gasto Salud", name: "monto_egreso_salud", type: "number" },

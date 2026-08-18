@@ -1,119 +1,73 @@
-import { GraduationCap, Award, Trophy, Heart, ArrowRight } from "lucide-react"
+import { ArrowRight } from "lucide-react"
 import Link from "next/link"
-
-const noticias = [
-  {
-    title: "UNIMAR abre convocatoria de becas para el trimestre enero-abril 2026",
-    excerpt:
-      "La Universidad de Margarita invita a todos los estudiantes regulares de pregrado a participar en el proceso de solicitud de becas aprendizaje, sociales, de excelencia y ayudas económicas.",
-    date: "03 Feb 2026",
-  },
-  {
-    title: "Entrega de certificados a los ganadores de la Beca a la Excelencia Académica",
-    excerpt:
-      "Reconocimiento al mayor índice acumulado de cada carrera que haya cursado y aprobado al menos cuatro trimestres.",
-    date: "28 Ene 2026",
-  },
-  {
-    title: "Actualización de la Normativa de Becas y Ayudas Económicas",
-    excerpt:
-      "El Consejo Universitario ratifica las normas para el procesamiento y seguimiento de las subvenciones sobre el valor de la matrícula.",
-    date: "15 Ene 2026",
-  },
-]
-
-const becas = [
-  {
-    icon: GraduationCap,
-    title: "Beca Aprendizaje",
-    description: "Subvención del 70% de la matrícula para estudiantes con índice ≥ 16 pts que realicen apoyo administrativo.",
-  },
-  {
-    icon: Heart,
-    title: "Beca Social Aprendizaje",
-    description: "Exoneración total del costo de matrícula para bachilleres de planteles públicos con promedio ≥ 18 pts.",
-  },
-  {
-    icon: Trophy,
-    title: "Ayuda Económica",
-    description: "Beneficio parcial (hasta 30%) para casos de vulnerabilidad, grupos culturales o deportivos con índice ≥ 16 pts.",
-  },
-  {
-    icon: Award,
-    title: "Excelencia Académica",
-    description: "Exoneración total al mejor índice acumulado de la carrera (≥ 18 pts) a partir del 4to trimestre.",
-  },
-]
+import { BECAS_DATA } from "@/lib/scholarships-data"
 
 export function ScholarshipsSection() {
-  return (
-    <section id="becas" className="bg-[#f0f4f8] py-12">
-      <div className="mx-auto max-w-7xl px-4">
-        {/* Two-column portal layout: Noticias + Tipos de Becas */}
-        <div className="grid gap-8 lg:grid-cols-3">
-          {/* Noticias - Left column (2/3 width) */}
-          <div className="lg:col-span-2">
-            <div className="mb-6 flex items-center justify-between border-b-2 border-[#1e3a5f] pb-2">
-              <h2 className="text-xl font-bold text-[#1e3a5f] font-serif">Noticias</h2>
-              <Link href="/becas" className="flex items-center gap-1 text-sm font-medium text-[#1e3a5f] hover:text-[#d4a843]">
-                Ver mas <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
-            </div>
+  const featuredBecas = BECAS_DATA.filter((beca) => beca.featured)
 
-            <div className="flex flex-col gap-5">
-              {noticias.map((noticia) => (
-                <article
-                  key={noticia.title}
-                  className="flex flex-col gap-3 rounded-lg border border-[#e2e8f0] bg-[#ffffff] p-5 shadow-sm transition-shadow hover:shadow-md sm:flex-row"
-                >
-                  <div className="flex h-20 w-20 flex-shrink-0 items-center justify-center rounded-lg bg-[#1e3a5f]">
-                    <GraduationCap className="h-8 w-8 text-[#d4a843]" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-base font-bold text-[#1e3a5f] leading-snug">
-                      {noticia.title}
-                    </h3>
-                    <p className="mt-1.5 text-sm leading-relaxed text-[#6b7280]">
-                      {noticia.excerpt}
-                    </p>
-                    <span className="mt-2 inline-block text-xs font-medium text-[#9ca3af]">
-                      {noticia.date}
+  return (
+    <section id="becas" className="bg-[#f8fafc] py-6 sm:py-8 w-full">
+      <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 xl:px-10">
+        
+        {/* Encabezado Principal */}
+        <div className="mb-6 flex flex-col md:flex-row md:items-end md:justify-between border-b border-slate-200 pb-3">
+          <div>
+            <span className="text-xs font-bold uppercase tracking-widest text-[#d4a843]">
+              Programas Destacados
+            </span>
+            <h2 className="mt-1 text-2xl sm:text-3xl font-extrabold text-[#1e3a5f] font-serif">
+              Modalidades Principales de Becas
+            </h2>
+          </div>
+          <Link 
+            href="/becas" 
+            className="mt-3 md:mt-0 inline-flex items-center gap-1.5 text-sm font-semibold text-[#1e3a5f] transition-colors hover:text-[#d4a843]"
+          >
+            Ver todas las modalidades y ayudas <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+
+        {/* Grid de 4 Becas Principales (Tarjetas compactas) */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {featuredBecas.map((beca) => {
+            const Icon = beca.icon
+            return (
+              <div
+                key={beca.id}
+                className="group relative flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#1e3a5f]/20 hover:shadow-lg"
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#1e3a5f]/5 text-[#1e3a5f] transition-colors group-hover:bg-[#1e3a5f] group-hover:text-white">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <span className="rounded-full bg-[#d4a843]/15 px-2.5 py-0.5 text-[11px] font-bold text-[#1e3a5f]">
+                      {beca.badge}
                     </span>
                   </div>
-                </article>
-              ))}
-            </div>
-          </div>
 
-          {/* Tipos de Becas - Right column */}
-          <div>
-            <div className="mb-6 flex items-center justify-between border-b-2 border-[#d4a843] pb-2">
-              <h2 className="text-xl font-bold text-[#1e3a5f] font-serif">Modalidades</h2>
-              <Link href="/becas" className="flex items-center gap-1 text-sm font-medium text-[#1e3a5f] hover:text-[#d4a843]">
-                Ver mas <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
-            </div>
-
-            <div className="flex flex-col gap-4">
-              {becas.map((beca) => (
-                <div
-                  key={beca.title}
-                  className="flex items-start gap-3 rounded-lg border border-[#e2e8f0] bg-[#ffffff] p-4 shadow-sm transition-shadow hover:shadow-md"
-                >
-                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-[#1e3a5f]/10">
-                    <beca.icon className="h-5 w-5 text-[#1e3a5f]" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-[#1e3a5f]">{beca.title}</h3>
-                    <p className="mt-1 text-xs leading-relaxed text-[#6b7280]">
-                      {beca.description}
-                    </p>
-                  </div>
+                  <h3 className="text-base font-bold text-[#1e3a5f] font-serif mb-1.5 leading-snug">
+                    {beca.title}
+                  </h3>
+                  
+                  <p className="text-xs leading-relaxed text-slate-600 font-normal line-clamp-3">
+                    {beca.description}
+                  </p>
                 </div>
-              ))}
-            </div>
-          </div>
+
+                <div className="mt-4 pt-3 border-t border-slate-100">
+                  <Link
+                    href="/postulacion"
+                    className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-[#1e3a5f] transition-colors group-hover:text-[#d4a843]"
+                  >
+                    Postularme <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-1" />
+                  </Link>
+                </div>
+              </div>
+            )
+          })}
         </div>
+
       </div>
     </section>
   )

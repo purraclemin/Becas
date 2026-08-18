@@ -97,17 +97,17 @@ export function StepMaterias({
   };
 
   return (
-    <div className="space-y-3.5 animate-in fade-in duration-500 h-full flex flex-col">
+    <div className="space-y-4 animate-in fade-in duration-500 h-full flex flex-col pb-6 lg:pb-0">
 
       {/* 1. Sincronización de Trimestre para el Servidor */}
-      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shrink-0">
+      <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shrink-0">
         <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-lg bg-[#1e3a5f] flex items-center justify-center shadow-md">
+          <div className="h-8 w-8 rounded-lg bg-[#1e3a5f] flex items-center justify-center shadow-md shrink-0">
             <BookOpen className="h-4 w-4 text-[#d4a843]" />
           </div>
           <div>
             <h4 className="text-[#1e3a5f] font-black text-xs uppercase tracking-tight leading-none">Periodo Académico</h4>
-            <p className="text-slate-500 text-[8px] font-bold uppercase tracking-widest mt-0.5 leading-none">Trimestre activo asignado</p>
+            <p className="text-slate-500 text-[8px] font-bold uppercase tracking-widest mt-1 leading-none">Trimestre activo asignado</p>
           </div>
         </div>
 
@@ -121,8 +121,8 @@ export function StepMaterias({
         <input type="hidden" name="trimestre_seleccionado" value={trimestreActual} />
       </div>
 
-      <div className="flex-1 flex flex-col min-h-0">
-        <div className="flex items-center justify-between px-2 mb-2 shrink-0">
+      <div className="flex flex-col flex-1 min-h-0">
+        <div className="flex items-center justify-between px-1 mb-2.5 shrink-0">
           <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 leading-none">
             Unidades Curriculares del Pensum
           </Label>
@@ -133,13 +133,14 @@ export function StepMaterias({
         </div>
 
         {errores.length > 0 && (
-          <div className="bg-red-50 text-red-600 p-2 rounded-lg border border-red-200 flex items-center gap-2 text-[10px] font-bold mb-2 shrink-0 leading-none">
-            <AlertCircle className="h-3 w-3" />
+          <div className="bg-red-50 text-red-600 p-2.5 rounded-xl border border-red-200 flex items-center gap-2 text-[10px] font-bold mb-3 shrink-0 leading-none">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
             Existen materias con calificación en "0". Debes corregirlas para continuar.
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 overflow-y-auto pr-1 pb-1 custom-scrollbar">
+        {/* Cuadrícula Dinámica y Fluida (1 columna en móvil, 2 columnas en PC) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 overflow-y-auto pr-1 pb-2 custom-scrollbar">
           {materiasDelPensum.length > 0 ? (
             materiasDelPensum.map((materia, index) => {
               const tieneError = errores.includes(index);
@@ -150,7 +151,7 @@ export function StepMaterias({
                 <div 
                   key={`materia-row-${materia.id || index}`} 
                   className={cn(
-                    "group flex flex-row items-center justify-between p-3 bg-white border rounded-xl transition-all duration-300 shadow-sm",
+                    "group flex flex-row items-center justify-between p-3.5 bg-white border rounded-xl transition-all duration-300 shadow-sm",
                     tieneError ? "border-red-300 bg-red-50/30" : "border-slate-100 hover:border-[#1e3a5f]/20"
                   )}
                 >
@@ -181,7 +182,7 @@ export function StepMaterias({
                       value={notas[index] || ""}
                       onChange={(e) => handleNotaChange(index, e.target.value)}
                       className={cn(
-                        "w-16 h-9 text-center font-black text-xs rounded-lg transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                        "w-16 h-10 text-center font-black text-xs rounded-xl transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
                         tieneError 
                           ? "border-red-500 text-red-600 focus:border-red-600 bg-red-100" 
                           : "border-slate-200 bg-slate-50 focus:bg-white focus:border-[#1e3a5f] text-[#1e3a5f]"
@@ -197,10 +198,10 @@ export function StepMaterias({
               );
             })
           ) : (
-            <div className="col-span-full flex flex-col items-center justify-center py-6 bg-white border-2 border-dashed border-slate-200 rounded-2xl">
+            <div className="col-span-full flex flex-col items-center justify-center py-10 bg-white border-2 border-dashed border-slate-200 rounded-2xl">
               <AlertCircle className="h-6 w-6 text-slate-300 mb-2" />
               <p className="text-slate-400 text-[9px] font-bold uppercase tracking-widest leading-none">
-                No hay materias sugeridas
+                No hay materias sugeridas para este periodo
               </p>
             </div>
           )}

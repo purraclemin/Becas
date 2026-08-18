@@ -15,8 +15,9 @@ export function RiskIndicator({ color, label, range }: any) {
 }
 
 export const getColorByScore = (score: number) => {
-  if (score >= 70) return "bg-rose-600";
-  if (score >= 50) return "bg-orange-500";
-  if (score >= 25) return "bg-amber-500";
-  return "bg-emerald-500";
+  // Sincronizado con los umbrales originales de 70, 50, 25
+  if (score >= 70) return "bg-rose-600";    // Riesgo Crítico
+  if (score >= 50) return "bg-orange-500";  // Riesgo Alto
+  if (score >= 25) return "bg-amber-500";   // Riesgo Medio
+  return "bg-emerald-500";                  // Riesgo Bajo
 };

@@ -170,40 +170,42 @@ function SocioeconomicoContent() {
             />
         </section>
 
-        {/* LISTADO DE CANDIDATOS COMPACTO */}
+        {/* LISTADO DE CANDIDATOS AMPLIADO Y ESTÉTICO */}
         {candidates.length > 0 && !student && (
-          <div className="animate-in fade-in slide-in-from-top-2 duration-500 max-w-4xl mx-auto">
-            <div className="flex items-center gap-2 mb-4 px-1">
+          <div className="animate-in fade-in slide-in-from-top-2 duration-500 max-w-5xl mx-auto">
+            <div className="flex items-center gap-3 mb-5 px-1">
                 <div className="h-px flex-1 bg-slate-200"></div>
-                <h3 className="text-[8px] font-black text-slate-400 uppercase tracking-[0.3em]">
-                  Coincidencias ({candidates.length})
+                <h3 className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">
+                  Coincidencias Encontradas ({candidates.length})
                 </h3>
                 <div className="h-px flex-1 bg-slate-200"></div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {candidates.map((c: any) => (
                 <div 
                   key={c.id}
                   onClick={() => selectCandidate(c)}
-                  className="bg-white p-2.5 rounded-lg border border-slate-200 cursor-pointer hover:border-[#d4a843] hover:shadow-sm transition-all group flex items-center justify-between"
+                  className="bg-white p-3.5 rounded-xl border border-slate-200/80 cursor-pointer hover:border-[#d4a843] hover:shadow-md transition-all group flex items-center justify-between"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded bg-slate-50 border border-slate-100 flex items-center justify-center text-[#1e3a5f] font-bold text-[10px] group-hover:bg-[#1e3a5f] group-hover:text-[#d4a843] transition-colors">
+                  <div className="flex items-center gap-3.5">
+                    <div className="h-10 w-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-[#1e3a5f] font-bold text-xs group-hover:bg-[#1e3a5f] group-hover:text-[#d4a843] transition-colors shadow-sm">
                         {c.nombre?.[0]}{c.apellido?.[0]}
                     </div>
                     <div className="min-w-0">
-                      <h4 className="text-[10px] font-black text-[#1e3a5f] uppercase tracking-tight truncate">
+                      <h4 className="text-xs font-black text-[#1e3a5f] uppercase tracking-tight truncate group-hover:text-[#b8860b] transition-colors">
                         {c.nombre} {c.apellido}
                       </h4>
-                      <div className="flex items-center gap-2 text-[8px] font-bold text-slate-400 mt-0.5">
-                        <span className="text-[#d4a843]">V-{c.cedula}</span>
+                      <div className="flex items-center gap-2.5 text-[9px] font-bold text-slate-400 mt-1">
+                        <span className="text-[#d4a843] bg-amber-50 px-2 py-0.5 rounded-md border border-amber-100/50">V-{c.cedula}</span>
                         <span className="opacity-30">•</span>
-                        <span className="truncate max-w-[100px]">{c.email}</span>
+                        <span className="truncate max-w-[150px]">{c.email}</span>
                       </div>
                     </div>
                   </div>
-                  <ChevronRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-[#d4a843] group-hover:translate-x-0.5 transition-all" />
+                  <div className="h-8 w-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-[#1a2744] group-hover:text-[#d4a843] transition-all">
+                    <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+                  </div>
                 </div>
               ))}
             </div>

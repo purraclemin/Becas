@@ -11,7 +11,6 @@ import {
   CalendarClock, 
   Globe, 
   ShieldCheck,
-  Monitor,
   Info
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -23,22 +22,22 @@ export function StepEncuestaInfoUni({
   disabled: boolean;
   user: any;
 }) {
-  // Estilos ultra-compactos institucionales (idénticos a StepEncuestaPersonal)
-  const blockedClass = "h-8 bg-slate-100 border-slate-200 font-bold text-[#1e3a5f]/60 cursor-not-allowed text-[10px] shadow-none px-2";
-  const editableClass = "h-8 bg-white border-slate-200 font-bold text-[#1e3a5f] text-[10px] focus:ring-1 focus:ring-[#1e3a5f]/10 transition-all px-2";
+  // Estándar UNIMAR Academic Minimalist (Simetría unificada con StepEncuestaPersonal)
+  const blockedClass = "h-9 bg-slate-100 border-slate-200 font-bold text-[#1e3a5f]/60 cursor-not-allowed text-[11px] shadow-none px-3 rounded-xl";
+  const editableClass = "h-10 bg-slate-50 border-slate-200 font-bold text-[#1e3a5f] text-xs focus:bg-white focus:ring-2 focus:ring-[#1e3a5f]/5 transition-all px-3 rounded-xl";
 
   return (
-    <div className="flex flex-col gap-3 animate-in fade-in duration-500 overflow-hidden">
+    <div className="flex flex-col gap-3.5 animate-in fade-in duration-500 pb-4">
       
       {/* BLOQUE 1: DATOS ACADÉMICOS MAESTROS (BLOQUEADOS) */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-x-3 gap-y-2 p-3 bg-slate-50/50 rounded-xl border border-slate-100 relative overflow-hidden">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 p-3.5 bg-slate-50/70 rounded-2xl border border-slate-200/60 relative overflow-hidden shadow-sm">
         <div className="col-span-full flex items-center gap-2 mb-0.5">
-          <ShieldCheck className="h-3 w-3 text-slate-400" />
-          <span className="text-[8px] font-black uppercase tracking-[0.15em] text-slate-400">Registro Académico Oficial</span>
+          <ShieldCheck className="h-3.5 w-3.5 text-[#1e3a5f]" />
+          <span className="text-[9px] font-black uppercase tracking-[0.15em] text-[#1e3a5f]">Registro Académico Oficial</span>
         </div>
 
-        <div className="space-y-0.5 md:col-span-3">
-          <Label className="text-[7px] font-black uppercase text-slate-400 flex items-center gap-1"><GraduationCap className="h-2 w-2" /> Carrera que Cursa</Label>
+        <div className="space-y-1 sm:col-span-3">
+          <Label className="text-[8px] font-black uppercase text-slate-400 flex items-center gap-1.5"><GraduationCap className="h-2.5 w-2.5 text-[#d4a843]" /> Carrera que Cursa</Label>
           <Input 
             name="socio_carrera"
             readOnly 
@@ -48,8 +47,8 @@ export function StepEncuestaInfoUni({
           />
         </div>
 
-        <div className="space-y-0.5">
-          <Label className="text-[7px] font-black uppercase text-slate-400 flex items-center gap-1"><History className="h-2 w-2" /> Trimestre Actual</Label>
+        <div className="space-y-1">
+          <Label className="text-[8px] font-black uppercase text-slate-400 flex items-center gap-1.5"><History className="h-2.5 w-2.5 text-[#d4a843]" /> Trimestre Actual</Label>
           <Input 
             name="socio_trimestre"
             readOnly 
@@ -61,14 +60,14 @@ export function StepEncuestaInfoUni({
       </div>
 
       {/* BLOQUE 2: INFORMACIÓN DE PROCEDENCIA Y MODALIDAD (EDITABLES) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-x-3 gap-y-2 p-3 bg-white rounded-xl border border-[#1e3a5f]/10 shadow-sm relative">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 bg-white rounded-2xl border border-slate-200 shadow-sm relative">
         <div className="col-span-full flex items-center gap-2 mb-0.5">
-          <div className="h-1 w-1 rounded-full bg-[#d4a843]" />
-          <span className="text-[8px] font-black uppercase tracking-[0.15em] text-[#1e3a5f]">Detalles de Formación</span>
+          <div className="h-1.5 w-1.5 rounded-full bg-[#d4a843]" />
+          <span className="text-[9px] font-black uppercase tracking-[0.15em] text-[#1e3a5f]">Detalles de Formación</span>
         </div>
 
-        <div className="space-y-0.5 md:col-span-2">
-          <Label className="text-[7px] font-black uppercase text-slate-500 flex items-center gap-1"><School className="h-2 w-2 text-[#d4a843]" /> U.E. de Procedencia</Label>
+        <div className="space-y-1 sm:col-span-2">
+          <Label className="text-[8px] font-black uppercase text-slate-500 flex items-center gap-1.5"><School className="h-3 w-3 text-[#d4a843]" /> U.E. de Procedencia</Label>
           <Input 
             name="socio_ue_procedencia" 
             disabled={disabled} 
@@ -79,8 +78,8 @@ export function StepEncuestaInfoUni({
           />
         </div>
 
-        <div className="space-y-0.5">
-          <Label className="text-[7px] font-black uppercase text-slate-500 flex items-center gap-1"><CalendarClock className="h-2 w-2 text-[#d4a843]" /> Fecha Ingreso UNIMAR</Label>
+        <div className="space-y-1">
+          <Label className="text-[8px] font-black uppercase text-slate-500 flex items-center gap-1.5"><CalendarClock className="h-3 w-3 text-[#d4a843]" /> Fecha Ingreso UNIMAR</Label>
           <Input 
             name="socio_fecha_unimar" 
             type="date" 
@@ -91,8 +90,8 @@ export function StepEncuestaInfoUni({
           />
         </div>
 
-        <div className="space-y-0.5 col-span-full">
-          <Label className="text-[7px] font-black uppercase text-slate-500 flex items-center gap-1"><Info className="h-2 w-2 text-[#d4a843]" /> Otros Estudios Realizados</Label>
+        <div className="space-y-1 col-span-full">
+          <Label className="text-[8px] font-black uppercase text-slate-500 flex items-center gap-1.5"><Info className="h-3 w-3 text-[#d4a843]" /> Otros Estudios Realizados</Label>
           <Input 
             name="socio_otros_estudios" 
             disabled={disabled} 
@@ -102,24 +101,28 @@ export function StepEncuestaInfoUni({
           />
         </div>
 
-        {/* Modalidad de Estudio (Ultra-compacta) */}
+        {/* Modalidad de Estudio (Optimizada y responsiva) */}
         <div className="col-span-full space-y-1.5 mt-1">
-          <Label className="text-[7px] font-black uppercase text-slate-500 flex items-center gap-1"><Globe className="h-2 w-2 text-[#d4a843]" /> Modalidad de Estudio Elegida</Label>
+          <Label className="text-[8px] font-black uppercase text-slate-500 flex items-center gap-1.5"><Globe className="h-3 w-3 text-[#d4a843]" /> Modalidad de Estudio Elegida</Label>
           <RadioGroup 
             name="socio_modalidad" 
             defaultValue={user?.socio_modalidad || "P"} 
             disabled={disabled}
-            className="flex gap-2"
+            className="grid grid-cols-1 sm:grid-cols-3 gap-2"
           >
             {[
               { id: "mod_p", val: "P", label: "Presencial" },
               { id: "mod_s", val: "S", label: "Semipresencial" },
               { id: "mod_v", val: "V", label: "Virtual" }
             ].map((mod) => (
-              <div key={mod.id} className="flex-1 flex items-center gap-2 px-3 h-8 rounded-lg border border-slate-200 bg-slate-50/30 has-[:checked]:bg-[#1e3a5f]/5 has-[:checked]:border-[#1e3a5f] transition-all cursor-pointer">
-                <RadioGroupItem value={mod.val} id={mod.id} className="h-3 w-3" />
-                <Label htmlFor={mod.id} className="text-[9px] font-bold text-[#1e3a5f] cursor-pointer uppercase">{mod.label}</Label>
-              </div>
+              <label 
+                key={mod.id} 
+                htmlFor={mod.id}
+                className="flex items-center justify-center gap-2 px-4 h-10 rounded-xl border border-slate-200 bg-slate-50/50 has-[:checked]:bg-[#1e3a5f]/5 has-[:checked]:border-[#1e3a5f] transition-all cursor-pointer w-full"
+              >
+                <RadioGroupItem value={mod.val} id={mod.id} className="h-4 w-4 text-[#1e3a5f]" />
+                <span className="text-[10px] font-bold text-[#1e3a5f] cursor-pointer uppercase select-none">{mod.label}</span>
+              </label>
             ))}
           </RadioGroup>
         </div>
