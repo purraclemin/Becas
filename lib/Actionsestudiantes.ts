@@ -25,7 +25,9 @@ export async function obtenerEstudiantesConSolicitud(
 ) {
   try {
     const term = `%${busqueda.trim()}%`;
-    const offset = (page - 1) * limit;
+    const safeLimit = Number(limit) || 12;
+    const safePage = Number(page) || 1;
+    const offset = (safePage - 1) * safeLimit;
     
     // 1. CONDICIÓN DE BÚSQUEDA REUTILIZABLE (Optimizada con EXISTS para evitar duplicados y conflictos de grupo)
     const whereClause = `
@@ -45,7 +47,7 @@ export async function obtenerEstudiantesConSolicitud(
     const [countRows] = await db.execute<RowDataPacket[]>(countQuery, [term, term, term, term]);
     const totalRegistros = Number(countRows[0]?.total || 0);
 
-    // 3. CONSULTA DE DATOS (Con Límite y Offset seguros como enteros para TiDB)
+    // 3. CONSULTA DE DATOS (Inyectando LIMIT y OFFSET como números seguros para compatibilidad total con TiDB Cloud)
     const dataQuery = `
       SELECT 
         st.id, st.nombre, st.apellido, st.cedula, st.email, 
@@ -54,19 +56,17 @@ export async function obtenerEstudiantesConSolicitud(
       LEFT JOIN users u ON st.id = u.id
       ${whereClause}
       ORDER BY st.apellido ASC
-      LIMIT ? OFFSET ?
+      LIMIT ${safeLimit} OFFSET ${offset}
     `;
 
-    // Se pasan limit y offset estrictamente como números para compatibilidad con TiDB Cloud
+    // Se pasan únicamente los términos de búsqueda para proteger contra inyección SQL
     const [rows] = await db.execute<RowDataPacket[]>(dataQuery, [
-        term, term, term, term, 
-        limit, 
-        offset
+        term, term, term, term
     ]);
 
     return {
       estudiantes: rows as unknown as IEstudianteAdmin[],
-      totalPaginas: Math.ceil(totalRegistros / limit),
+      totalPaginas: Math.ceil(totalRegistros / safeLimit),
       totalRegistros: totalRegistros
     };
 
