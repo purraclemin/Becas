@@ -8,7 +8,7 @@ import {
 
 const COLORS = ['#1e3a5f', '#d4a843', '#2a6041', '#8b5cf6', '#ef4444', '#0ea5e9', '#f59e0b', '#6366f1'];
 
-// --- 1. GRÁFICO DE CARRERAS (BARRAS) ---
+// --- 1. GRÁFICO DE CARRERAS (BARRAS RESPONSIVO) ---
 interface CarreraBarChartProps {
   data: any[];
   onNavigate: (carrera: string) => void;
@@ -20,7 +20,9 @@ export function CarreraBarChart({ data, onNavigate }: CarreraBarChartProps) {
       <h3 className="font-black text-[#1e3a5f] mb-3 text-[9px] sm:text-[10px] uppercase tracking-widest">
         Solicitudes por Carrera
       </h3>
-      <div className="w-full h-64 sm:h-72 min-h-0">
+      
+      {/* ================= VISTA ESCRITORIO / PC (Columnas Verticales) ================= */}
+      <div className="hidden md:block w-full h-72 min-h-0">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart 
             data={data} 
@@ -44,7 +46,7 @@ export function CarreraBarChart({ data, onNavigate }: CarreraBarChartProps) {
               }}
             >
               {data.map((entry, i) => (
-                <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} />
+                <Cell key={`cell-pc-${i}`} fill={COLORS[i % COLORS.length]} />
               ))}
 
               <LabelList 
@@ -70,6 +72,51 @@ export function CarreraBarChart({ data, onNavigate }: CarreraBarChartProps) {
           </BarChart>
         </ResponsiveContainer>
       </div>
+
+      {/* ================= VISTA MÓVIL (Barras horizontales apiladas verticalmente) ================= */}
+      <div className="block md:hidden w-full h-80 min-h-0">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart 
+            layout="vertical"
+            data={data} 
+            margin={{ top: 5, right: 25, left: 10, bottom: 5 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+            <XAxis type="number" hide />
+            <YAxis 
+              dataKey="name" 
+              type="category" 
+              width={110} 
+              tick={{ fontSize: 8, fontWeight: 'bold', fill: '#1e3a5f' }} 
+            />
+            <Tooltip 
+              cursor={{ fill: '#f8fafc' }}
+              contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', fontSize: '10px', fontWeight: 'bold' }} 
+            />
+            
+            <Bar 
+              dataKey="value" 
+              radius={[0, 4, 4, 0]} 
+              className="cursor-pointer"
+              onClick={(entry: any) => {
+                const carrera = entry?.name || entry?.payload?.name;
+                if (carrera) onNavigate(carrera);
+              }}
+            >
+              {data.map((entry, i) => (
+                <Cell key={`cell-mob-${i}`} fill={COLORS[i % COLORS.length]} />
+              ))}
+
+              <LabelList 
+                dataKey="value" 
+                position="right" 
+                style={{ fill: '#1e3a5f', fontSize: '9px', fontWeight: '900' }} 
+              />
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
     </div>
   )
 }
@@ -131,7 +178,6 @@ export function BecaPieChart({ data, onNavigate }: BecaPieChartProps) {
         </div>
       </div>
       
-      {/* Leyenda Interactiva: Crece orgánicamente hasta 10 ítems (aprox 240px) y luego activa el scroll */}
       <div className="mt-2 space-y-1 overflow-y-auto max-h-[240px] pr-1 custom-scrollbar">
         {data?.map((item, i) => (
           <div 
