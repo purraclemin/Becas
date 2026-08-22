@@ -113,52 +113,24 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Grilla central balanceada de 12 columnas para alinear correctamente las tarjetas */}
+      {/* Grilla superior modificada: Solicitudes por Carrera ahora es más alargada (col-span-7) y Ranking en col-span-5 */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-stretch">
-        <div className="lg:col-span-5 bg-white rounded-xl border border-slate-200/80 p-3 shadow-sm flex flex-col">
+        <div className="lg:col-span-7 bg-white rounded-xl border border-slate-200/80 p-3 shadow-sm flex flex-col">
           <CarreraBarChart data={stats?.porCarrera || []} onNavigate={(c) => router.push(`/admin/solicitudes?carrera=${encodeURIComponent(c)}`)} />
         </div>
-        <div className="lg:col-span-4 bg-white rounded-xl border border-slate-200/80 p-3 shadow-sm flex flex-col">
+        <div className="lg:col-span-5 bg-white rounded-xl border border-slate-200/80 p-3 shadow-sm flex flex-col">
           <RankingPrioridad estudiantes={ranking} onNavigate={(q: string) => router.push(`/admin/solicitudes?search=${q}`)} />
-        </div>
-        <div className="lg:col-span-3 bg-white rounded-xl border border-slate-200/80 p-3 shadow-sm flex flex-col">
-          <BecaPieChart data={stats?.porTipo || []} onNavigate={(b) => router.push(`/admin/solicitudes?tipoBeca=${encodeURIComponent(b)}`)} />
         </div>
       </div>
 
-      {/* Bloque inferior: Salud operativa y distribución detallada */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 pb-4 items-start">
+      {/* Bloque inferior: Salud operativa a la izquierda y Distribución por Programa en el lugar de la tabla eliminada */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 pb-4 items-stretch">
         <div className="bg-white rounded-xl border border-slate-200/80 p-3 shadow-sm flex flex-col">
           <HealthStatus porEstatus={stats?.porEstatus || []} total={total} />
         </div>
         
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200/80 overflow-hidden flex flex-col h-fit">
-          <div className="bg-slate-50 px-4 py-2.5 border-b border-slate-100 flex justify-between items-center">
-            <h3 className="font-black text-[#1e3a5f] text-[9px] uppercase tracking-wider">Distribución Detallada</h3>
-            <button onClick={() => router.push('/admin/analiticas')} className="text-[8px] font-black text-[#1e3a5f] hover:text-[#d4a843] uppercase tracking-wider transition-colors">Ver Analíticas</button>
-          </div>
-          <div className="flex-1 bg-white">
-            <table className="w-full text-left border-collapse">
-              <tbody className="divide-y divide-slate-100">
-                {stats?.porTipo?.map((item: any, idx: number) => (
-                  <tr 
-                    key={idx} 
-                    onClick={() => router.push(`/admin/solicitudes?tipoBeca=${encodeURIComponent(item.tipo_beca)}`)} 
-                    className="hover:bg-slate-50 transition-all cursor-pointer group"
-                  >
-                    <td className="px-4 py-2 text-[9px] font-bold text-slate-600 uppercase group-hover:text-[#1e3a5f]">
-                      {item.tipo_beca}
-                    </td>
-                    <td className="px-4 py-2 text-right">
-                      <span className="bg-blue-50 text-[#1e3a5f] px-2 py-0.5 rounded-md text-[9px] font-black border border-blue-100/50">
-                        {item.total}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <div className="bg-white rounded-xl border border-slate-200/80 p-3 shadow-sm flex flex-col">
+          <BecaPieChart data={stats?.porTipo || []} onNavigate={(b) => router.push(`/admin/solicitudes?tipoBeca=${encodeURIComponent(b)}`)} />
         </div>
       </div>
 
