@@ -7,6 +7,8 @@ import { RowDataPacket } from 'mysql2/promise'
  * Consulta de búsqueda de contraste entre estudiante y administrador
  */
 export async function getContrasteEstudianteSQL(queryTerm: string) {
+  const searchTerm = queryTerm.toLowerCase();
+
   const [rows] = await db.execute<RowDataPacket[]>(
     `SELECT 
         s.id, s.nombre, s.apellido, s.cedula, s.sexo, s.fecha_nacimiento, s.telefono, 
@@ -65,11 +67,11 @@ export async function getContrasteEstudianteSQL(queryTerm: string) {
      INNER JOIN solicitudes sol ON s.id = sol.user_id
      LEFT JOIN estudios_socioeconomicos est ON s.id = est.student_id AND est.tipo = 'estudiante'
      LEFT JOIN estudios_socioeconomicos adm ON s.id = adm.student_id AND adm.tipo = 'administrador'
-     WHERE (s.cedula LIKE ?) OR (s.email LIKE ?) OR (s.nombre LIKE ?) OR (s.apellido LIKE ?)
+     WHERE (s.cedula LIKE ?) OR (LOWER(s.email) LIKE ?) OR (LOWER(s.nombre) LIKE ?) OR (LOWER(s.apellido) LIKE ?)
      GROUP BY s.id, sol.fecha_registro
      ORDER BY sol.fecha_registro DESC
      LIMIT 10`,
-    [queryTerm, queryTerm, queryTerm, queryTerm]
+    [queryTerm, searchTerm, searchTerm, searchTerm]
   );
   return rows || [];
 }
