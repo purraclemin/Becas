@@ -1,12 +1,13 @@
 'use server'
 
 import { db } from './db'
+import { RowDataPacket } from 'mysql2/promise'
 
 /**
  * Consulta de búsqueda de contraste entre estudiante y administrador
  */
 export async function getContrasteEstudianteSQL(queryTerm: string) {
-  const [rows]: any = await db.execute(
+  const [rows] = await db.execute<RowDataPacket[]>(
     `SELECT 
         s.id, s.nombre, s.apellido, s.cedula, s.sexo, s.fecha_nacimiento, s.telefono, 
         s.carrera, s.semestre, s.indice_global, s.email, s.municipio_residencia,
@@ -65,7 +66,7 @@ export async function getContrasteEstudianteSQL(queryTerm: string) {
      LEFT JOIN estudios_socioeconomicos est ON s.id = est.student_id AND est.tipo = 'estudiante'
      LEFT JOIN estudios_socioeconomicos adm ON s.id = adm.student_id AND adm.tipo = 'administrador'
      WHERE (s.cedula LIKE ?) OR (s.email LIKE ?) OR (CONCAT(s.nombre, ' ', s.apellido) LIKE ?)
-     GROUP BY s.id
+     GROUP BY s.id, sol.fecha_registro
      ORDER BY sol.fecha_registro DESC
      LIMIT 10`,
     [queryTerm, queryTerm, queryTerm]

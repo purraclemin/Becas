@@ -4,6 +4,7 @@ import { db } from './db'
 import { getSession } from './ActionsSession'
 import { obtenerOCrearPeriodoObjetivo } from './SolicitudAcademic'
 import { calcularPuntajeUnificado } from './MotorBaremoUnificado'
+import { RowDataPacket } from 'mysql2/promise'
 
 /**
  * Obtiene el estudio socioeconómico para el panel de administración.
@@ -20,7 +21,7 @@ export async function obtenerEstudioSocioeconomico(studentId: number) {
 
   try {
     // 1. Buscar si ya existe un registro previo de tipo 'administrador' para este periodo
-    const [rowsAdmin]: any = await connection.execute(
+    const [rowsAdmin] = await connection.execute<RowDataPacket[]>(
       `SELECT * FROM estudios_socioeconomicos WHERE student_id = ? AND periodo_id = ? AND tipo = 'administrador' LIMIT 1`,
       [studentId, periodoIdActual]
     );
@@ -30,7 +31,7 @@ export async function obtenerEstudioSocioeconomico(studentId: number) {
     }
 
     // 2. Si no hay de administrador, buscar y heredar el registro de tipo 'estudiante'
-    const [rowsEstudiante]: any = await connection.execute(
+    const [rowsEstudiante] = await connection.execute<RowDataPacket[]>(
       `SELECT * FROM estudios_socioeconomicos WHERE student_id = ? AND periodo_id = ? AND tipo = 'estudiante' LIMIT 1`,
       [studentId, periodoIdActual]
     );
@@ -53,7 +54,7 @@ export async function obtenerEstudioSocioeconomico(studentId: number) {
 /**
  * Lógica de negocio para procesar y guardar el estudio socioeconómico (Auditoría Admin)
  */
-export async function procesarGuardadoEstudio(data: any) {
+export async function procesarGuardadoEstudio(data: Record<string, any>) {
   const session = await getSession();
   const adminId = session.id;
   if (!adminId) throw new Error("Sesión no válida.");
@@ -61,7 +62,7 @@ export async function procesarGuardadoEstudio(data: any) {
   const periodoIdActual = await obtenerOCrearPeriodoObjetivo();
   
   // Normalización de switches para MariaDB (on/off)
-  const normalizeSwitch = (val: string) => 
+  const normalizeSwitch = (val: unknown) => 
     (val === 'Posee' || val === 'Si' || val === 'on' || val === 'on_true') ? 'on' : 'off';
 
   // 1. Ejecución del motor con los datos auditados
