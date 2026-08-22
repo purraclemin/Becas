@@ -62,14 +62,15 @@ export async function getContrasteEstudianteSQL(queryTerm: string) {
         est.puntaje as puntaje_estudiante,
         adm.puntaje as puntaje_admin, 
         adm.nivel_riesgo as nivel_admin,
-        sol.estatus as estatus_solicitud
+        (SELECT estatus FROM solicitudes WHERE user_id = s.id ORDER BY fecha_registro DESC LIMIT 1) as estatus_solicitud
      FROM students s
-     INNER JOIN solicitudes sol ON s.id = sol.user_id
      LEFT JOIN estudios_socioeconomicos est ON s.id = est.student_id AND est.tipo = 'estudiante'
      LEFT JOIN estudios_socioeconomicos adm ON s.id = adm.student_id AND adm.tipo = 'administrador'
-     WHERE (s.cedula LIKE ?) OR (LOWER(s.email) LIKE ?) OR (LOWER(s.nombre) LIKE ?) OR (LOWER(s.apellido) LIKE ?)
-     GROUP BY s.id, sol.fecha_registro
-     ORDER BY sol.fecha_registro DESC
+     WHERE EXISTS (
+        SELECT 1 FROM solicitudes sol WHERE sol.user_id = s.id
+     )
+     AND (s.cedula LIKE ? OR LOWER(s.email) LIKE ? OR LOWER(s.nombre) LIKE ? OR LOWER(s.apellido) LIKE ?)
+     ORDER BY s.apellido ASC
      LIMIT 10`,
     [queryTerm, searchTerm, searchTerm, searchTerm]
   );
