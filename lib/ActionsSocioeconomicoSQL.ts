@@ -65,11 +65,11 @@ export async function getContrasteEstudianteSQL(queryTerm: string) {
      INNER JOIN solicitudes sol ON s.id = sol.user_id
      LEFT JOIN estudios_socioeconomicos est ON s.id = est.student_id AND est.tipo = 'estudiante'
      LEFT JOIN estudios_socioeconomicos adm ON s.id = adm.student_id AND adm.tipo = 'administrador'
-     WHERE (s.cedula LIKE ?) OR (s.email LIKE ?) OR (CONCAT(s.nombre, ' ', s.apellido) LIKE ?)
+     WHERE (s.cedula LIKE ?) OR (s.email LIKE ?) OR (s.nombre LIKE ?) OR (s.apellido LIKE ?)
      GROUP BY s.id, sol.fecha_registro
      ORDER BY sol.fecha_registro DESC
      LIMIT 10`,
-    [queryTerm, queryTerm, queryTerm]
+    [queryTerm, queryTerm, queryTerm, queryTerm]
   );
   return rows || [];
 }
