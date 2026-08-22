@@ -14,12 +14,13 @@ import { StatCard } from "@/components/admin/dashboard/StatCard"
 import { RankingPrioridad } from "@/components/admin/dashboard/RankingPrioridad"
 import { CarreraBarChart, BecaPieChart } from "@/components/admin/dashboard/DashboardCharts"
 import { HealthStatus } from "@/components/admin/dashboard/OperationalStats"
-import AdminTestPanel from "@/components/admin/AdminTestPanel"
+import { ImprimirConIAModal } from "@/components/admin/ImprimirConIAModal"
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<any>(null)
   const [ranking, setRanking] = useState<any[]>([])
   const [loading, setLoading] = useState(true) 
+  const [isAIModalOpen, setIsAIModalOpen] = useState(false)
   const router = useRouter() 
 
   useEffect(() => {
@@ -67,30 +68,33 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-24">
+      <div className="flex flex-col items-center justify-center py-24 bg-slate-50 min-h-[60vh]">
         <Loader2 className="h-7 w-7 text-[#d4a843] animate-spin mb-3" />
-        <p className="text-slate-400 font-bold uppercase tracking-widest text-[8px]">Sincronizando...</p>
+        <p className="text-slate-400 font-bold uppercase tracking-widest text-[9px]">Sincronizando Sistema UNIMAR...</p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2 px-2 pt-0 pb-6 bg-[#f8fafc] min-h-screen">
+      {/* Cabecera Académica Minimalista con integración de IA */}
       <PageHeader 
         titulo="Panel de Control" 
         subtitulo="Métricas y Rendimiento Operativo"
         mostrarExportar={true}
+        onExport={() => setIsAIModalOpen(true)}
       />
 
+      {/* UF-Scale: Bloque superior adaptado con grilla fluida y compacta en escritorio */}
       <div className="flex justify-start">
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 animate-in fade-in slide-in-from-bottom-2 duration-500 w-fit">
-          <StatCard label="Total" value={total} icon={FileText} color="bg-blue-500" onClick={() => irAStatus('Todas')} />
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 animate-in fade-in slide-in-from-bottom-2 duration-500 w-full">
+          <StatCard label="Total" value={total} icon={FileText} color="bg-[#1e3a5f]" onClick={() => irAStatus('Todas')} />
           
           <StatCard 
             label="Renovación" 
             value={cantRenovaciones} 
             icon={RefreshCw} 
-            color="bg-indigo-500" 
+            color="bg-indigo-600" 
             onClick={() => irAStatus('Renovación')} 
           />
 
@@ -104,48 +108,49 @@ export default function AdminDashboard() {
 
           <StatCard label="Pendientes" value={cantPendientes} icon={Clock} color="bg-[#d4a843]" onClick={() => irAStatus('Pendiente')} />
           <StatCard label="En Revisión" value={cantEnRevision} icon={Clock} color="bg-blue-600" onClick={() => irAStatus('En Revisión')} />
-          <StatCard label="Aprobadas" value={cantAprobadas} icon={CheckCircle2} color="bg-emerald-500" onClick={() => irAStatus('Aprobada')} />
-          <StatCard label="Rechazadas" value={cantRechazadas} icon={XCircle} color="bg-rose-500" onClick={() => irAStatus('Rechazada')} />
+          <StatCard label="Aprobadas" value={cantAprobadas} icon={CheckCircle2} color="bg-emerald-600" onClick={() => irAStatus('Aprobada')} />
+          <StatCard label="Rechazadas" value={cantRechazadas} icon={XCircle} color="bg-rose-600" onClick={() => irAStatus('Rechazada')} />
         </div>
       </div>
 
-      <AdminTestPanel />
-
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-3">
-        <div className="h-72 order-1 xl:order-2">
-          <RankingPrioridad estudiantes={ranking} onNavigate={(q: string) => router.push(`/admin/solicitudes?search=${q}`)} />
-        </div>
-        <div className="order-2 xl:order-1">
+      {/* Grilla central balanceada de 12 columnas para alinear correctamente las tarjetas */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-stretch">
+        <div className="lg:col-span-5 bg-white rounded-xl border border-slate-200/80 p-3 shadow-sm flex flex-col">
           <CarreraBarChart data={stats?.porCarrera || []} onNavigate={(c) => router.push(`/admin/solicitudes?carrera=${encodeURIComponent(c)}`)} />
         </div>
-        <div className="order-3">
+        <div className="lg:col-span-4 bg-white rounded-xl border border-slate-200/80 p-3 shadow-sm flex flex-col">
+          <RankingPrioridad estudiantes={ranking} onNavigate={(q: string) => router.push(`/admin/solicitudes?search=${q}`)} />
+        </div>
+        <div className="lg:col-span-3 bg-white rounded-xl border border-slate-200/80 p-3 shadow-sm flex flex-col">
           <BecaPieChart data={stats?.porTipo || []} onNavigate={(b) => router.push(`/admin/solicitudes?tipoBeca=${encodeURIComponent(b)}`)} />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 pb-4">
-        <HealthStatus porEstatus={stats?.porEstatus || []} total={total} />
+      {/* Bloque inferior: Salud operativa y distribución detallada */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 pb-4 items-start">
+        <div className="bg-white rounded-xl border border-slate-200/80 p-3 shadow-sm flex flex-col">
+          <HealthStatus porEstatus={stats?.porEstatus || []} total={total} />
+        </div>
         
-        {/* TABLA OPTIMIZADA: h-fit elimina el espacio en blanco, sin max-h elimina el scroll */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-fit">
-          <div className="bg-slate-50 px-4 py-2 border-b flex justify-between items-center">
-            <h3 className="font-black text-[#1a2744] text-[9px] uppercase tracking-widest">Distribución Detallada</h3>
-            <button onClick={() => router.push('/admin/analiticas')} className="text-[8px] font-black text-blue-600 uppercase tracking-tighter">Ver Analíticas</button>
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200/80 overflow-hidden flex flex-col h-fit">
+          <div className="bg-slate-50 px-4 py-2.5 border-b border-slate-100 flex justify-between items-center">
+            <h3 className="font-black text-[#1e3a5f] text-[9px] uppercase tracking-wider">Distribución Detallada</h3>
+            <button onClick={() => router.push('/admin/analiticas')} className="text-[8px] font-black text-[#1e3a5f] hover:text-[#d4a843] uppercase tracking-wider transition-colors">Ver Analíticas</button>
           </div>
           <div className="flex-1 bg-white">
             <table className="w-full text-left border-collapse">
-              <tbody className="divide-y divide-slate-50">
+              <tbody className="divide-y divide-slate-100">
                 {stats?.porTipo?.map((item: any, idx: number) => (
                   <tr 
                     key={idx} 
                     onClick={() => router.push(`/admin/solicitudes?tipoBeca=${encodeURIComponent(item.tipo_beca)}`)} 
-                    className="hover:bg-blue-50/50 transition-all cursor-pointer group"
+                    className="hover:bg-slate-50 transition-all cursor-pointer group"
                   >
-                    <td className="px-4 py-2 text-[9px] font-bold text-slate-600 uppercase group-hover:text-[#1a2744]">
+                    <td className="px-4 py-2 text-[9px] font-bold text-slate-600 uppercase group-hover:text-[#1e3a5f]">
                       {item.tipo_beca}
                     </td>
                     <td className="px-4 py-2 text-right">
-                      <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-[9px] font-black">
+                      <span className="bg-blue-50 text-[#1e3a5f] px-2 py-0.5 rounded-md text-[9px] font-black border border-blue-100/50">
                         {item.total}
                       </span>
                     </td>
@@ -156,6 +161,14 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Modal de Informe Inteligente con Gemini */}
+      <ImprimirConIAModal 
+        isOpen={isAIModalOpen}
+        onClose={() => setIsAIModalOpen(false)}
+        stats={stats}
+        ranking={ranking}
+      />
     </div>
   )
 }

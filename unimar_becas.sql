@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 06-08-2026 a las 19:49:26
+-- Tiempo de generación: 20-08-2026 a las 03:38:18
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -114,9 +114,7 @@ CREATE TABLE `estudios_socioeconomicos` (
 --
 
 INSERT INTO `estudios_socioeconomicos` (`id`, `student_id`, `periodo_id`, `tipo`, `evaluador_id`, `socio_lugar_nac`, `socio_nacionalidad`, `socio_estado_civil`, `socio_telf_hab`, `direccion_completa`, `socio_trabajo_empresa`, `socio_trabajo_cargo`, `monto_ingreso_sueldo`, `monto_ingreso_extra`, `monto_ingreso_pension`, `monto_ingreso_ayuda`, `monto_ingreso_familiar`, `socio_ue_procedencia`, `socio_otros_estudios`, `socio_fecha_unimar`, `socio_modalidad`, `padre_nombre`, `padre_edad`, `padre_ocupacion`, `padre_trabajo`, `madre_nombre`, `madre_edad`, `madre_ocupacion`, `madre_trabajo`, `rango_ingreso_familiar`, `vivienda_tipo`, `vivienda_estatus`, `serv_internet`, `familia_num_hermanos`, `familia_hermanos_uni`, `monto_egreso_mercado`, `monto_egreso_vivienda`, `monto_egreso_salud`, `monto_egreso_servicios`, `situacion_laboral_jefe`, `salud_condicion_especial`, `serv_agua`, `serv_gas`, `serv_aseo`, `equip_lavadora`, `equip_nevera`, `serv_luz`, `equip_cable`, `salud_enfermedad_desc`, `salud_tratamiento`, `familia_relacion`, `puntaje`, `nivel_riesgo`, `created_at`) VALUES
-(106, 12, 2, 'estudiante', NULL, '', 'Venezolano/a', '', '', 'ffff', NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, '', '', '0000-00-00', 'P', '', 0, '', '', '', 0, '', '', '1', '', '', 'off', 0, 0, 0.00, 0.00, 0.00, 0.00, 'No', 'No', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, 'Buena', 25, 'Medio', '2026-02-21 02:53:17'),
-(109, 12, 1, 'administrador', 1, 'ddd', 'Venezolano/a', 'Casado/a', 'dddd', 'ffff', 'N/A', 'N/A', 0.00, 0.00, 0.00, 0.00, 0.00, 'ddd', 'Ninguno', '2026-02-11', 'P', 'dddddd', 0, 'ddd', 'dd', 'ddddd', 0, 'dddd', 'dddd', '1', 'Quinta', 'Propia', 'off', 0, 0, 0.00, 0.00, 0.00, 0.00, 'Si', 'No', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'N/A', 'N/A', 'Buena', 15, 'Bajo', '2026-02-21 04:28:34'),
-(116, 114, 2, 'estudiante', NULL, NULL, 'Venezolano/a', 'Divorciado/a', 'DDDDDDDD', 'DDDDDDDDDDD', NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, NULL, NULL, NULL, 'P', NULL, 0, NULL, NULL, NULL, 0, NULL, NULL, '1', NULL, NULL, 'off', 0, 0, 0.00, 0.00, 0.00, 0.00, 'No', 'No', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, 'Regular', 52, 'Alto', '2026-03-04 08:03:33');
+(192, 10, 2, 'estudiante', NULL, 'dddddd', 'Venezolano/a', 'Soltero/a', '0', 'ddddd', 'NO', 'NO', 0.00, 1.00, 1.00, 1.00, 1.00, 'dddd', 'dddd', '2026-08-12', 'P', 'ddddd', 33, 'ddd', 'ddd', 'dddd', 333, 'dd', 'ddd', '1', 'Apartamento', 'Residencia', 'off', 3, 3, 1.00, 1.00, 1.00, 1.00, 'No', 'No', 'off', 'on', 'on', 'off', 'on', 'on', 'off', 'NO', 'NO', 'Regular', 54, 'Alto', '2026-08-20 01:37:02');
 
 -- --------------------------------------------------------
 
@@ -144,20 +142,6 @@ CREATE TABLE `historial_aprobaciones` (
   `token_verificacion` varchar(255) DEFAULT NULL,
   `ip_accion` varchar(45) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Volcado de datos para la tabla `historial_aprobaciones`
---
-
-INSERT INTO `historial_aprobaciones` (`id`, `solicitud_id`, `user_id`, `periodo_id`, `admin_id`, `promedio_ciclo`, `trimestre`, `puntaje_baremo_`, `nivel_riesgo`, `tipo_beca_snapshot`, `estatus_previo`, `estatus_nuevo`, `observacion_admin`, `materias_snapshot_json`, `indice_global_snapshot`, `fecha_aprobacion`, `token_verificacion`, `ip_accion`) VALUES
-(26, 61, 12, 1, 1, 20.00, 5, 15, 'Bajo', 'BECA SOCIAL', 'En Revisión', 'Aprobada', NULL, '{\"trimestre\":4,\"materias\":[{\"codigo\":\"FIS0405341\",\"nombre\":\"FÍSICA II\",\"nota\":20},{\"codigo\":\"MAT0405341\",\"nombre\":\"MATEMÁTICA III\",\"nota\":20},{\"codigo\":\"INI0404341\",\"nombre\":\"INGLÉS INSTRUMENTAL II\",\"nota\":20},{\"codigo\":\"PRO0405341\",\"nombre\":\"PROGRAMACIÓN I\",\"nota\":20},{\"codigo\":\"LAF0403141\",\"nombre\":\"LABORATORIO DE FÍSICA I\",\"nota\":20},{\"codigo\":\"ESH0402201\",\"nombre\":\"ELECTIVA SOCIO-HUMANÍSTICA 2\",\"nota\":20}],\"fecha_proceso\":\"2026-02-21T02:53:17.309Z\"}', 20.00, '2026-02-21 16:05:42', 'd93e9a42-cba4-47e9-9710-efac5cfca827', '127.0.0.1'),
-(27, 61, 12, 1, 1, 20.00, 5, 15, 'Bajo', 'BECA SOCIAL', 'Aprobada', 'Rechazada', NULL, '{\"trimestre\":4,\"materias\":[{\"codigo\":\"FIS0405341\",\"nombre\":\"FÍSICA II\",\"nota\":20},{\"codigo\":\"MAT0405341\",\"nombre\":\"MATEMÁTICA III\",\"nota\":20},{\"codigo\":\"INI0404341\",\"nombre\":\"INGLÉS INSTRUMENTAL II\",\"nota\":20},{\"codigo\":\"PRO0405341\",\"nombre\":\"PROGRAMACIÓN I\",\"nota\":20},{\"codigo\":\"LAF0403141\",\"nombre\":\"LABORATORIO DE FÍSICA I\",\"nota\":20},{\"codigo\":\"ESH0402201\",\"nombre\":\"ELECTIVA SOCIO-HUMANÍSTICA 2\",\"nota\":20}],\"fecha_proceso\":\"2026-02-21T02:53:17.309Z\"}', 20.00, '2026-02-21 16:10:15', '1b158794-8e5c-4e19-a6cf-47eee0121d12', '127.0.0.1'),
-(28, 61, 12, 1, 1, 20.00, 5, 15, 'Bajo', 'BECA SOCIAL', 'Rechazada', 'Aprobada', NULL, '{\"trimestre\":4,\"materias\":[{\"codigo\":\"FIS0405341\",\"nombre\":\"FÍSICA II\",\"nota\":20},{\"codigo\":\"MAT0405341\",\"nombre\":\"MATEMÁTICA III\",\"nota\":20},{\"codigo\":\"INI0404341\",\"nombre\":\"INGLÉS INSTRUMENTAL II\",\"nota\":20},{\"codigo\":\"PRO0405341\",\"nombre\":\"PROGRAMACIÓN I\",\"nota\":20},{\"codigo\":\"LAF0403141\",\"nombre\":\"LABORATORIO DE FÍSICA I\",\"nota\":20},{\"codigo\":\"ESH0402201\",\"nombre\":\"ELECTIVA SOCIO-HUMANÍSTICA 2\",\"nota\":20}],\"fecha_proceso\":\"2026-02-21T02:53:17.309Z\"}', 20.00, '2026-02-21 16:10:21', '94b5ffc9-aa49-4ee1-aca0-81e12c5496ff', '127.0.0.1'),
-(33, 164, 12, 2, 0, 20.00, 5, 15, 'Bajo', 'BECA SOCIAL', 'Aprobada', 'Renovacion', 'Sistema: Habilitación por ventana de tiempo.', '[]', 20.00, '2026-02-21 20:40:23', '8c97d343-e3be-43ac-b1f7-9d6ccb04d0f7', '127.0.0.1'),
-(34, 164, 12, 2, 1, 20.00, 5, 15, 'Bajo', 'BECA SOCIAL', 'Pendiente', 'Aprobada', NULL, '{\"trimestre\":4,\"materias\":[{\"codigo\":\"FIS0405341\",\"nombre\":\"FÍSICA II\",\"nota\":20},{\"codigo\":\"MAT0405341\",\"nombre\":\"MATEMÁTICA III\",\"nota\":20},{\"codigo\":\"INI0404341\",\"nombre\":\"INGLÉS INSTRUMENTAL II\",\"nota\":20},{\"codigo\":\"PRO0405341\",\"nombre\":\"PROGRAMACIÓN I\",\"nota\":20},{\"codigo\":\"LAF0403141\",\"nombre\":\"LABORATORIO DE FÍSICA I\",\"nota\":20},{\"codigo\":\"ESH0402201\",\"nombre\":\"ELECTIVA SOCIO-HUMANÍSTICA 2\",\"nota\":20}],\"fecha_proceso\":\"2026-02-21T20:40:33.312Z\",\"audit_detecto_reprobadas\":false}', 20.00, '2026-02-21 20:42:14', 'f48a1fb3-574e-4acb-8009-977540b38afa', '127.0.0.1'),
-(35, 164, 12, 2, 1, 20.00, 5, 15, 'Bajo', 'BECA SOCIAL', 'Aprobada', 'En Revisión', NULL, '{\"trimestre\":4,\"materias\":[{\"codigo\":\"FIS0405341\",\"nombre\":\"FÍSICA II\",\"nota\":20},{\"codigo\":\"MAT0405341\",\"nombre\":\"MATEMÁTICA III\",\"nota\":20},{\"codigo\":\"INI0404341\",\"nombre\":\"INGLÉS INSTRUMENTAL II\",\"nota\":20},{\"codigo\":\"PRO0405341\",\"nombre\":\"PROGRAMACIÓN I\",\"nota\":20},{\"codigo\":\"LAF0403141\",\"nombre\":\"LABORATORIO DE FÍSICA I\",\"nota\":20},{\"codigo\":\"ESH0402201\",\"nombre\":\"ELECTIVA SOCIO-HUMANÍSTICA 2\",\"nota\":20}],\"fecha_proceso\":\"2026-02-21T20:40:33.312Z\",\"audit_detecto_reprobadas\":false}', 20.00, '2026-02-21 23:43:22', 'dc54db20-e705-4b49-85ea-4a667722857a', '127.0.0.1'),
-(37, 164, 12, 2, 1, 20.00, 5, 15, 'Bajo', 'BECA SOCIAL', 'En Revisión', 'Aprobada', NULL, '{\"trimestre\":4,\"materias\":[{\"codigo\":\"FIS0405341\",\"nombre\":\"FÍSICA II\",\"nota\":20},{\"codigo\":\"MAT0405341\",\"nombre\":\"MATEMÁTICA III\",\"nota\":20},{\"codigo\":\"INI0404341\",\"nombre\":\"INGLÉS INSTRUMENTAL II\",\"nota\":20},{\"codigo\":\"PRO0405341\",\"nombre\":\"PROGRAMACIÓN I\",\"nota\":20},{\"codigo\":\"LAF0403141\",\"nombre\":\"LABORATORIO DE FÍSICA I\",\"nota\":20},{\"codigo\":\"ESH0402201\",\"nombre\":\"ELECTIVA SOCIO-HUMANÍSTICA 2\",\"nota\":20}],\"fecha_proceso\":\"2026-02-21T20:40:33.312Z\",\"audit_detecto_reprobadas\":false}', 20.00, '2026-03-05 06:29:35', 'cd5c447c-c1ed-473d-8999-ee23b537b7f2', '127.0.0.1'),
-(38, 164, 12, 2, 1, 20.00, 5, 15, 'Bajo', 'BECA SOCIAL', 'Aprobada', 'Rechazada', NULL, '{\"trimestre\":4,\"materias\":[{\"codigo\":\"FIS0405341\",\"nombre\":\"FÍSICA II\",\"nota\":20},{\"codigo\":\"MAT0405341\",\"nombre\":\"MATEMÁTICA III\",\"nota\":20},{\"codigo\":\"INI0404341\",\"nombre\":\"INGLÉS INSTRUMENTAL II\",\"nota\":20},{\"codigo\":\"PRO0405341\",\"nombre\":\"PROGRAMACIÓN I\",\"nota\":20},{\"codigo\":\"LAF0403141\",\"nombre\":\"LABORATORIO DE FÍSICA I\",\"nota\":20},{\"codigo\":\"ESH0402201\",\"nombre\":\"ELECTIVA SOCIO-HUMANÍSTICA 2\",\"nota\":20}],\"fecha_proceso\":\"2026-02-21T20:40:33.312Z\",\"audit_detecto_reprobadas\":false}', 20.00, '2026-03-05 06:29:37', '0096e0ee-7ef0-405e-858d-0d39aa3ac85a', '127.0.0.1');
 
 -- --------------------------------------------------------
 
@@ -892,9 +876,7 @@ CREATE TABLE `solicitudes` (
 --
 
 INSERT INTO `solicitudes` (`id`, `user_id`, `periodo_id`, `email_institucional`, `tipo_beca`, `promedio_notas`, `motivo_solicitud`, `materias_json`, `estatus`, `fecha_registro`, `foto_carnet`, `copia_cedula`, `planilla_inscripcion`, `fecha_revision`, `fecha_decision`, `observaciones_admin`, `revisado_por`, `porcentaje_cobertura`, `categoria_rechazo`) VALUES
-(61, 12, 1, 'juan@unimar.edu.ve', 'BECA SOCIAL', 20.00, 'ffffff', '{\"trimestre\":4,\"materias\":[{\"codigo\":\"FIS0405341\",\"nombre\":\"FÍSICA II\",\"nota\":20},{\"codigo\":\"MAT0405341\",\"nombre\":\"MATEMÁTICA III\",\"nota\":20},{\"codigo\":\"INI0404341\",\"nombre\":\"INGLÉS INSTRUMENTAL II\",\"nota\":20},{\"codigo\":\"PRO0405341\",\"nombre\":\"PROGRAMACIÓN I\",\"nota\":20},{\"codigo\":\"LAF0403141\",\"nombre\":\"LABORATORIO DE FÍSICA I\",\"nota\":20},{\"codigo\":\"ESH0402201\",\"nombre\":\"ELECTIVA SOCIO-HUMANÍSTICA 2\",\"nota\":20}],\"fecha_proceso\":\"2026-02-21T02:53:17.309Z\"}', 'Aprobada', '2026-02-21 02:53:17', '/uploads/1771642397313-image.png', '/uploads/1771642397314-image.png', NULL, '2026-02-21 00:28:34', '2026-02-21 12:10:21', NULL, 1, 100, NULL),
-(164, 12, 2, 'juan@unimar.edu.ve', 'BECA SOCIAL', 20.00, 'ffffff', '{\"trimestre\":4,\"materias\":[{\"codigo\":\"FIS0405341\",\"nombre\":\"FÍSICA II\",\"nota\":20},{\"codigo\":\"MAT0405341\",\"nombre\":\"MATEMÁTICA III\",\"nota\":20},{\"codigo\":\"INI0404341\",\"nombre\":\"INGLÉS INSTRUMENTAL II\",\"nota\":20},{\"codigo\":\"PRO0405341\",\"nombre\":\"PROGRAMACIÓN I\",\"nota\":20},{\"codigo\":\"LAF0403141\",\"nombre\":\"LABORATORIO DE FÍSICA I\",\"nota\":20},{\"codigo\":\"ESH0402201\",\"nombre\":\"ELECTIVA SOCIO-HUMANÍSTICA 2\",\"nota\":20}],\"fecha_proceso\":\"2026-02-21T20:40:33.312Z\",\"audit_detecto_reprobadas\":false}', 'Rechazada', '2026-02-21 20:40:33', '/uploads/1771642397313-image.png', '/uploads/1771642397314-image.png', NULL, '2026-02-21 19:43:22', '2026-03-05 02:29:37', NULL, 1, 100, NULL),
-(175, 114, 2, 'mario@unimar.edu.ve', 'BECA APRENDIZAJE', 20.00, 'xxxxxxxxxxxx', '{\"trimestre\":8,\"materias\":[{\"codigo\":\"INV0804342\",\"nombre\":\"INVESTIGACIÓN DE OPERACIONES I\",\"nota\":20},{\"codigo\":\"PRM0805342\",\"nombre\":\"PROCESOS DE MANUFACTURA II\",\"nota\":20},{\"codigo\":\"IEM0804342\",\"nombre\":\"INGENIERÍA DE MÉTODOS I\",\"nota\":20},{\"codigo\":\"TRC0804342\",\"nombre\":\"TRANSFERENCIA DE CALOR\",\"nota\":20},{\"codigo\":\"ELI0805342\",\"nombre\":\"ELECTROTECNIA INDUSTRIAL\",\"nota\":20}],\"fecha_proceso\":\"2026-03-04T08:03:33.869Z\"}', 'Pendiente', '2026-03-04 08:03:33', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 100, NULL);
+(227, 10, 2, 'Roy@unimar.edu.ve', 'BECA A LA EXCELENCIA', 20.00, 'dddddddddddd', '{\"trimestre\":8,\"materias\":[{\"codigo\":\"INV0804341\",\"nombre\":\"INVESTIGACIÓN DE OPERACIONES\",\"nota\":20},{\"codigo\":\"SIS0805341\",\"nombre\":\"SISTEMAS DE INFORMACIÓN\",\"nota\":20},{\"codigo\":\"RED0805341\",\"nombre\":\"REDES DE DATOS I\",\"nota\":20}],\"fecha_proceso\":\"2026-08-20T01:37:02.429Z\"}', 'Pendiente', '2026-08-20 01:37:02', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 100, NULL);
 
 -- --------------------------------------------------------
 
@@ -928,7 +910,37 @@ INSERT INTO `students` (`id`, `nombre`, `apellido`, `cedula`, `sexo`, `fecha_nac
 (10, 'Roy Vincent', 'Gomez Santana', '22652841', 'F', '1994-11-12', '04265860480', 'Ingeniería de Sistemas', 9, 20.00, 'Roy@unimar.edu.ve', 'Península de Macanao', 0, 0, NULL),
 (12, 'Juan', 'Perez', '22652842', 'M', '2026-02-10', '042658414', 'Ingeniería de Sistemas', 5, 20.00, 'juan@unimar.edu.ve', 'Marcano', 1, 0, NULL),
 (114, 'mario', 'gomez', '22652800', 'M', '2026-03-04', '04265860480', 'Ingeniería Industrial', 9, 20.00, 'mario@unimar.edu.ve', 'Marcano', 0, 0, NULL),
-(115, 'roys', 'gomes', '22652843', 'M', '2024-08-01', '0426586040', 'Ingeniería de Sistemas', 9, 20.00, 'roys@unimar.edu.ve', 'Tubores', 0, 0, NULL);
+(115, 'roys', 'gomes', '22652843', 'M', '2024-08-01', '0426586040', 'Ingeniería de Sistemas', 9, 20.00, 'roys@unimar.edu.ve', 'Tubores', 1, 0, NULL),
+(116, 'Luis', 'Rodriguez', '28109105', 'M', '2000-04-17', '04145529291', 'Ingeniería de Sistemas', 4, 17.41, 'luis.rodriguez1@unimar.edu.ve', 'Maneiro', 0, 0, NULL),
+(117, 'Andres', 'Gomez', '27306689', 'M', '2005-01-18', '04143527811', 'Ingeniería de Sistemas', 7, 12.09, 'andres.gomez2@unimar.edu.ve', 'Maneiro', 0, 0, NULL),
+(118, 'Carlos', 'Flores', '29110816', 'M', '2001-06-02', '04146156645', 'Contaduría Pública', 1, 17.60, 'carlos.flores3@unimar.edu.ve', 'Arismendi', 0, 0, NULL),
+(119, 'Daniela', 'Rodriguez', '25280163', 'F', '2001-09-03', '04144481606', 'Artes mención Diseño Gráfico', 1, 11.99, 'daniela.rodriguez4@unimar.edu.ve', 'Marcano', 0, 0, NULL),
+(120, 'Carlos', 'Ramirez', '26127961', 'M', '2002-06-26', '04149956899', 'Ingeniería de Sistemas', 7, 10.01, 'carlos.ramirez5@unimar.edu.ve', 'Mariño', 0, 0, NULL),
+(121, 'Luis', 'Flores', '28898501', 'M', '2001-03-24', '04142409954', 'Artes mención Diseño Gráfico', 2, 11.28, 'luis.flores6@unimar.edu.ve', 'Mariño', 0, 0, NULL),
+(122, 'Daniel', 'Flores', '25109191', 'M', '2005-02-21', '04144254960', 'Administración', 10, 17.62, 'daniel.flores7@unimar.edu.ve', 'Marcano', 0, 0, NULL),
+(123, 'Luis', 'Rodriguez', '28476007', 'M', '2002-08-10', '04141173653', 'Artes mención Diseño Gráfico', 7, 15.97, 'luis.rodriguez8@unimar.edu.ve', 'Maneiro', 0, 0, NULL),
+(124, 'Alejandro', 'Ramirez', '26160436', 'M', '2003-03-31', '04148584377', 'Artes mención Diseño Gráfico', 5, 13.14, 'alejandro.ramirez9@unimar.edu.ve', 'Arismendi', 0, 0, NULL),
+(125, 'Alejandro', 'Hernandez', '26248512', 'M', '2001-09-16', '04148969414', 'Administración', 5, 13.83, 'alejandro.hernandez10@unimar.edu.ve', 'Marcano', 0, 0, NULL),
+(126, 'Sofia', 'Rodriguez', '26747507', 'F', '2002-04-06', '04146884495', 'Administración', 1, 13.14, 'sofia.rodriguez11@unimar.edu.ve', 'Mariño', 0, 0, NULL),
+(127, 'Gabriel', 'Gomez', '27815389', 'M', '2004-02-16', '04142574718', 'Artes mención Diseño Gráfico', 7, 19.67, 'gabriel.gomez12@unimar.edu.ve', 'Arismendi', 0, 0, NULL),
+(128, 'Mariana', 'Ramirez', '27480928', 'F', '2002-06-19', '04146383821', 'Administración', 7, 12.12, 'mariana.ramirez13@unimar.edu.ve', 'Maneiro', 0, 0, NULL),
+(129, 'Gabriel', 'Flores', '28033151', 'M', '2002-12-24', '04149403769', 'Administración', 1, 14.79, 'gabriel.flores14@unimar.edu.ve', 'Maneiro', 0, 0, NULL),
+(130, 'Valeria', 'Flores', '26503587', 'F', '2002-12-17', '04149248701', 'Psicología', 10, 18.13, 'valeria.flores15@unimar.edu.ve', 'Mariño', 0, 0, NULL),
+(131, 'Maria', 'Flores', '25755405', 'F', '2002-03-20', '04149930164', 'Ingeniería Industrial', 8, 14.38, 'maria.flores16@unimar.edu.ve', 'Marcano', 0, 0, NULL),
+(132, 'Alejandro', 'Diaz', '28946941', 'M', '2002-09-03', '04149630743', 'Psicología', 4, 12.16, 'alejandro.diaz17@unimar.edu.ve', 'Marcano', 0, 0, NULL),
+(133, 'Luis', 'Gomez', '26009393', 'M', '2005-01-15', '04144736397', 'Administración', 4, 17.98, 'luis.gomez18@unimar.edu.ve', 'Maneiro', 0, 0, NULL),
+(134, 'Gabriel', 'Vargas', '28696426', 'M', '2003-06-08', '04147545101', 'Contaduría Pública', 8, 17.96, 'gabriel.vargas19@unimar.edu.ve', 'Arismendi', 0, 0, NULL),
+(135, 'Maria', 'Torres', '28699735', 'F', '2001-02-24', '04141795553', 'Artes mención Diseño Gráfico', 9, 15.76, 'maria.torres20@unimar.edu.ve', 'Marcano', 0, 0, NULL),
+(136, 'Miguel', 'Torres', '29568056', 'M', '2001-05-08', '04147216849', 'Idiomas Modernos', 8, 14.42, 'miguel.torres21@unimar.edu.ve', 'Maneiro', 0, 0, NULL),
+(137, 'Miguel', 'Diaz', '29877569', 'M', '2001-09-08', '04149483044', 'Psicología', 8, 13.41, 'miguel.diaz22@unimar.edu.ve', 'Mariño', 0, 0, NULL),
+(138, 'Andres', 'Torres', '28004988', 'M', '2002-10-24', '04141809625', 'Derecho', 10, 13.16, 'andres.torres23@unimar.edu.ve', 'Maneiro', 0, 0, NULL),
+(139, 'Gabriela', 'Gomez', '26623762', 'F', '2002-11-07', '04147464619', 'Artes mención Diseño Gráfico', 1, 13.19, 'gabriela.gomez24@unimar.edu.ve', 'Marcano', 0, 0, NULL),
+(140, 'Andrea', 'Diaz', '25139368', 'F', '2004-02-21', '04144863298', 'Ingeniería Industrial', 9, 12.77, 'andrea.diaz25@unimar.edu.ve', 'Mariño', 0, 0, NULL),
+(141, 'Gabriela', 'Ramirez', '25746065', 'F', '2003-01-10', '04142858934', 'Contaduría Pública', 4, 19.03, 'gabriela.ramirez26@unimar.edu.ve', 'Maneiro', 0, 0, NULL),
+(142, 'Victoria', 'Torres', '29783725', 'F', '2000-07-13', '04146079620', 'Idiomas Modernos', 6, 14.80, 'victoria.torres27@unimar.edu.ve', 'Marcano', 0, 0, NULL),
+(143, 'Jose', 'Perez', '27470775', 'M', '2004-11-20', '04145563528', 'Ingeniería Industrial', 9, 11.23, 'jose.perez28@unimar.edu.ve', 'Marcano', 0, 0, NULL),
+(144, 'Miguel', 'Gomez', '26568530', 'M', '2001-05-25', '04142804116', 'Psicología', 3, 18.46, 'miguel.gomez29@unimar.edu.ve', 'Arismendi', 0, 0, NULL),
+(145, 'Gabriel', 'Gomez', '28018184', 'M', '2001-08-26', '04147877255', 'Administración', 10, 13.13, 'gabriel.gomez30@unimar.edu.ve', 'Maneiro', 0, 0, NULL);
 
 -- --------------------------------------------------------
 
@@ -954,7 +966,37 @@ INSERT INTO `users` (`id`, `email`, `password`, `role`, `created_at`) VALUES
 (10, 'Roy@unimar.edu.ve', '$2b$10$Mf0zMQTBQq5hNSwgy8cL4u9qPM1uzrI84Cgv34ayHSilo4QeukECq', 'estudiante', '2026-02-16 03:15:01'),
 (12, 'juan@unimar.edu.ve', '$2b$10$N98KOBodUhts7/9UrB/EQ.uCPispBch2MARnDuHCcjdxJcQH460iC', 'estudiante', '2026-02-21 01:42:00'),
 (114, 'mario@unimar.edu.ve', '$2b$10$I61aE0Cgupp8FhhsPcSx1eqVFr1ZMJgzl6Md4LM0txUd921gD7dtK', 'estudiante', '2026-03-04 06:52:03'),
-(115, 'roys@unimar.edu.ve', '$2b$10$sgG.L.6OCVv7JI9dxBBwo.hp53LWAyiSfaNHYcZzKt5SU7UPdBa9q', 'estudiante', '2026-08-06 15:53:19');
+(115, 'roys@unimar.edu.ve', '$2b$10$sgG.L.6OCVv7JI9dxBBwo.hp53LWAyiSfaNHYcZzKt5SU7UPdBa9q', 'estudiante', '2026-08-06 15:53:19'),
+(116, 'luis.rodriguez1@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
+(117, 'andres.gomez2@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
+(118, 'carlos.flores3@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
+(119, 'daniela.rodriguez4@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
+(120, 'carlos.ramirez5@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
+(121, 'luis.flores6@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
+(122, 'daniel.flores7@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
+(123, 'luis.rodriguez8@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
+(124, 'alejandro.ramirez9@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
+(125, 'alejandro.hernandez10@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
+(126, 'sofia.rodriguez11@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
+(127, 'gabriel.gomez12@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
+(128, 'mariana.ramirez13@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
+(129, 'gabriel.flores14@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
+(130, 'valeria.flores15@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
+(131, 'maria.flores16@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
+(132, 'alejandro.diaz17@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
+(133, 'luis.gomez18@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
+(134, 'gabriel.vargas19@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
+(135, 'maria.torres20@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
+(136, 'miguel.torres21@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
+(137, 'miguel.diaz22@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
+(138, 'andres.torres23@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
+(139, 'gabriela.gomez24@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
+(140, 'andrea.diaz25@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
+(141, 'gabriela.ramirez26@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
+(142, 'victoria.torres27@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
+(143, 'jose.perez28@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
+(144, 'miguel.gomez29@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
+(145, 'gabriel.gomez30@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28');
 
 --
 -- Índices para tablas volcadas
@@ -1042,13 +1084,13 @@ ALTER TABLE `carreras`
 -- AUTO_INCREMENT de la tabla `estudios_socioeconomicos`
 --
 ALTER TABLE `estudios_socioeconomicos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=121;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=193;
 
 --
 -- AUTO_INCREMENT de la tabla `historial_aprobaciones`
 --
 ALTER TABLE `historial_aprobaciones`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=39;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=41;
 
 --
 -- AUTO_INCREMENT de la tabla `pensum_materias`
@@ -1066,13 +1108,13 @@ ALTER TABLE `periodos_academicos`
 -- AUTO_INCREMENT de la tabla `solicitudes`
 --
 ALTER TABLE `solicitudes`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=177;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=228;
 
 --
 -- AUTO_INCREMENT de la tabla `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=116;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=146;
 
 --
 -- Restricciones para tablas volcadas

@@ -36,7 +36,9 @@ export function PostulacionContainer({
   const {
     pasoActual, isPending, promedio, materiasValidas, detallesValidos, encuestaValida,
     tipoBecaSeleccionada, formData, activeEncuestaTab, progreso,
+    personalValido, uniValido, familiaValido, laboralValido, ingresosValido, hogarValido, saludValido,
     setMateriasValidas, setDetallesValidos, setEncuestaValida, setTipoBecaSeleccionada, setActiveEncuestaTab,
+    setPersonalValido, setUniValido, setFamiliaValido, setLaboralValido, setIngresosValido, setHogarValido, setSaludValido,
     handleSiguiente, handleAnterior, handleTrimestreChange, handleMateriasChange, handleSubmit
   } = formHook;
 
@@ -73,11 +75,10 @@ export function PostulacionContainer({
           </div>
         )}
 
-        {/* 3. CONTENEDOR CENTRAL DE PASOS (Formulario Activo sin caja interna) */}
+        {/* 3. CONTENEDOR CENTRAL DE PASOS */}
         <form id="form-postulacion" noValidate onSubmit={(e) => e.preventDefault()} className="flex-1 flex flex-col bg-white">
           <div className="flex-1 flex flex-col p-4 sm:p-6 lg:p-8">
             
-            {/* Los componentes se mantienen renderizados pero ocultos (hidden) para no perder los datos del FormData nativo */}
             <div className={cn("flex-1 flex-col", pasoActual === 1 ? "flex" : "hidden")}>
               <StepMaterias 
                 disabled={isPending} 
@@ -109,6 +110,13 @@ export function PostulacionContainer({
                 activeTab={activeEncuestaTab}
                 onTabChange={setActiveEncuestaTab}
                 onValidationChange={setEncuestaValida}
+                onPersonalValidationChange={setPersonalValido}
+                onUniValidationChange={setUniValido}
+                onFamiliaValidationChange={setFamiliaValido}
+                onLaboralValidationChange={setLaboralValido}
+                onIngresosValidationChange={setIngresosValido}
+                onHogareValidationChange={setHogarValido}
+                onSaludValidationChange={setSaludValido}
               />
             </div>
 
@@ -127,7 +135,7 @@ export function PostulacionContainer({
           </div>
         </form>
 
-        {/* 4. FOOTER (Controles de Navegación) */}
+        {/* 4. FOOTER */}
         <PostulacionFooter 
           pasoActual={pasoActual}
           totalPasos={TOTAL_PASOS}

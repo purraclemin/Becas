@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react"
 import { Loader2 } from "lucide-react"
-import { ResultCard } from "@/components/socioeconomico/ResultCard"
+import { ResultCard } from "@/components/admin/socioeconomico/ResultCard"
 import { buscarEstudianteConEstudio } from "@/lib/ActionsSocioeconomico" 
 import { validarCuposYRequisitos, DiagnosticoBeca } from "@/lib/ActionsBecaValidators"
 
@@ -83,11 +83,7 @@ export function SolicitudAuditoriaPanel({ solicitud, onStatusChange, onClose, pe
       </div>
 
       <div className="w-full lg:w-[400px] space-y-6">
-        <SolicitudAuditoriaPanelInfo 
-          solicitud={solicitud} 
-          sinEstudio={!tieneEstudioAdmin}
-        />
-        
+        {/* Panel de decisión (Ahora arriba) */}
         <SolicitudAuditoriaPanelDecision 
           solicitud={solicitud}
           esPeriodoActual={esPeriodoActual}
@@ -97,6 +93,12 @@ export function SolicitudAuditoriaPanel({ solicitud, onStatusChange, onClose, pe
           onStatusChange={onStatusChange}
           onClose={onClose}
           bloqueadoPorEstudio={!tieneEstudioAdmin}
+        />
+
+        {/* Resumen académico / Info (Ahora abajo) */}
+        <SolicitudAuditoriaPanelInfo 
+          solicitud={solicitud} 
+          sinEstudio={!tieneEstudioAdmin}
         />
 
         <SolicitudAuditoriaPanelTrace solicitud={solicitud} />

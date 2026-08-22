@@ -1,6 +1,6 @@
 "use client"
 import React, { useState } from "react"
-import { Eye, Check, X, Clock, Undo2, Activity, GraduationCap, History, MapPin, Hash, ClipboardList } from "lucide-react"
+import { Eye, Check, Undo2, Activity, MapPin, ClipboardList } from "lucide-react"
 import { getBadgeColor, getRiskDetails, getAvgStyle } from "./SolicitudesUtils"
 
 export function SolicitudesTableRow({ s, onView, onViewHistorial, onStatusChange, periodoActualId }: any) {
@@ -18,15 +18,27 @@ export function SolicitudesTableRow({ s, onView, onViewHistorial, onStatusChange
   // Solo bloqueamos si EXISTE un periodo actual cargado y este es DIFERENTE al de la solicitud
   const esPeriodoActual = valPeriodoActual === 0 || valPeriodoSolicitud === valPeriodoActual;
 
-  const handleActionClick = (action: string) => {
-    setPendingAction(action)
-    setIsConfirming(true)
+  const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value
+    if (!value) return
+
+    if (value === "ver_detalles") {
+      onView(s)
+    } else if (value === "ver_historial") {
+      onViewHistorial(s)
+    } else {
+      setPendingAction(value)
+      setIsConfirming(true)
+    }
+    // Reiniciar el select
+    e.target.value = ""
   }
 
   const confirmAction = () => {
     if (pendingAction) {
         onStatusChange(s.id, pendingAction)
         setIsConfirming(false)
+        setPendingAction(null)
     }
   }
 
@@ -105,54 +117,44 @@ export function SolicitudesTableRow({ s, onView, onViewHistorial, onStatusChange
         </span>
       </td>
 
-      {/* ACCIONES DINÁMICAS */}
+      {/* ACCIONES - SELECT DINÁMICO DISCRETO */}
       <td className="px-2 py-4 text-right">
         {isConfirming ? (
           <div className="flex items-center justify-end gap-1">
             <button onClick={confirmAction} className="h-7 w-7 rounded-full bg-[#1a2744] text-[#d4a843] flex items-center justify-center shadow-md">
               <Check className="h-3 w-3" />
             </button>
-            <button onClick={() => setIsConfirming(false)} className="h-7 w-7 rounded-full bg-white border border-slate-200 text-slate-400 flex items-center justify-center">
+            <button onClick={() => { setIsConfirming(false); setPendingAction(null); }} className="h-7 w-7 rounded-full bg-white border border-slate-200 text-slate-400 flex items-center justify-center">
               <Undo2 className="h-3 w-3" />
             </button>
           </div>
         ) : (
-          <div className="flex items-center justify-end gap-0.5">
-            <button 
-              onClick={() => onViewHistorial(s)} 
-              className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" 
-              title="Historial de Materias"
+          <div className="flex items-center justify-end">
+            <select
+              defaultValue=""
+              onChange={handleSelectChange}
+              className="bg-slate-50 border border-slate-200 text-slate-600 text-[10px] font-bold rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-[#1a2744] cursor-pointer hover:bg-slate-100 transition-colors"
             >
-              <ClipboardList className="h-3.5 w-3.5" />
-            </button>
-
-            <button onClick={() => onView(s)} className="p-1.5 text-slate-400 hover:text-[#1a2744] hover:bg-slate-100 rounded-lg" title="Detalles">
-              <Eye className="h-3.5 w-3.5" />
-            </button>
-
-            {esPeriodoActual ? (
-              <div className="flex items-center gap-0.5">
-                {s.estatus !== 'En Revisión' && (
-                  <button onClick={() => handleActionClick('En Revisión')} className="p-1.5 text-blue-300 hover:text-blue-600 hover:bg-blue-50 rounded-lg">
-                    <Clock className="h-3.5 w-3.5" />
-                  </button>
-                )}
-                {s.estatus !== 'Rechazada' && (
-                  <button onClick={() => handleActionClick('Rechazada')} className="p-1.5 text-rose-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg">
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                )}
-                {s.estatus !== 'Aprobada' && (
-                  <button onClick={() => handleActionClick('Aprobada')} className="p-1.5 text-emerald-300 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg">
-                    <Check className="h-3.5 w-3.5" />
-                  </button>
-                )}
-              </div>
-            ) : (
-              <span className="text-[8px] font-black text-slate-300 uppercase italic px-1">
-                Histórico
-              </span>
-            )}
+              <option value="" disabled>Acciones...</option>
+              <option value="ver_detalles">👁️ Ver Detalles</option>
+              <option value="ver_historial">📋 Historial Materias</option>
+              
+              {esPeriodoActual ? (
+                <>
+                  {s.estatus !== 'En Revisión' && (
+                    <option value="En Revisión">⏳ En Revisión</option>
+                  )}
+                  {s.estatus !== 'Rechazada' && (
+                    <option value="Rechazada">❌ Rechazar</option>
+                  )}
+                  {s.estatus !== 'Aprobada' && (
+                    <option value="Aprobada">✅ Aprobar</option>
+                  )}
+                </>
+              ) : (
+                <option value="" disabled>🔒 Registro Histórico</option>
+              )}
+            </select>
           </div>
         )}
       </td>

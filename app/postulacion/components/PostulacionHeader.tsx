@@ -1,4 +1,7 @@
+"use client"
+
 import React from "react"
+import { cn } from "@/lib/utils"
 
 export interface PostulacionHeaderProps {
   tituloPaso?: string;
@@ -11,26 +14,53 @@ export function PostulacionHeader({
   periodoIngreso, 
   promedio 
 }: PostulacionHeaderProps) {
+  
+  // Lógica de estado del promedio
+  const valorPromedio = parseFloat(promedio || "0");
+  const esBajo = valorPromedio < 16;
+
   return (
-    <header className="w-full bg-white border-b border-[#e2e8f0] px-4 sm:px-6 py-4 flex flex-row items-center justify-between flex-shrink-0 transition-all">
+    <header className="w-full bg-white/50 backdrop-blur-xl border-b border-slate-200/60 px-6 py-4 flex items-center justify-between flex-shrink-0 transition-all">
       
-      {/* Información del Paso Actual */}
-      <div className="flex flex-col pr-4">
-        <h1 className="text-[#1e3a5f] font-serif font-extrabold uppercase tracking-tight text-sm sm:text-base leading-none">
-          {tituloPaso}
-        </h1>
-        <p className="text-[#6b7280] text-[9px] sm:text-[10px] font-bold uppercase tracking-widest leading-none mt-1.5">
-          {periodoIngreso || 'Postulación Institucional'}
-        </p>
+      {/* Lado Izquierdo: Identidad del Paso */}
+      <div className="flex items-center gap-4">
+        <div className="h-10 w-1 rounded-full bg-[#1e3a5f]" />
+        <div className="flex flex-col">
+          <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#d4a843]">
+            Proceso Actual
+          </span>
+          <h1 className="text-[#1e3a5f] font-black uppercase tracking-tight text-sm leading-tight mt-0.5">
+            {tituloPaso}
+          </h1>
+        </div>
       </div>
 
-      {/* Indicador de Promedio Académico */}
-      <div className="flex items-center shrink-0">
-        <div className="px-3 py-1.5 bg-[#f8fafc] rounded-lg border border-[#e2e8f0] text-center min-w-[72px] shadow-sm transition-all hover:shadow-md">
-          <span className="block text-[8px] font-black text-[#6b7280] uppercase tracking-wider leading-none mb-1">
-            Promedio
+      {/* Lado Derecho: Cápsula de Datos */}
+      <div className="flex items-center gap-3">
+        {/* Periodo - Estilo Cápsula */}
+        <div className="hidden sm:flex items-center px-4 py-1.5 rounded-full bg-slate-100 border border-slate-200">
+           <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">
+             {periodoIngreso || 'Periodo Institucional'}
+           </span>
+        </div>
+
+        {/* Promedio - Estilo Dinámico */}
+        <div className={cn(
+          "flex items-center gap-3 px-4 py-1.5 rounded-full shadow-lg transition-all duration-300",
+          esBajo 
+            ? "bg-red-600 shadow-red-500/20" 
+            : "bg-[#1e3a5f] shadow-[#1e3a5f]/20"
+        )}>
+          <span className={cn(
+            "text-[8px] font-black uppercase tracking-widest",
+            esBajo ? "text-white" : "text-[#d4a843]"
+          )}>
+            {esBajo ? "Promedio Bajo" : "Promedio"}
           </span>
-          <span className="block text-xs font-black text-[#1e3a5f] leading-none">
+          <span className={cn(
+            "text-sm font-black leading-none",
+            esBajo ? "text-white" : "text-emerald-400"
+          )}>
             {promedio}
           </span>
         </div>

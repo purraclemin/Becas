@@ -18,12 +18,21 @@ export function usePostulacionForm({ user, trimestreActual }: UsePostulacionForm
   const [pasoActual, setPasoActual] = useState(1);
   const [isPending, setIsPending] = useState(false);
   
-  // Estados de valores y validaciones
+  // Estados de valores y validaciones generales
   const [promedio, setPromedio] = useState(user?.promedio_notas?.toString() || "0.00");
   const [materiasValidas, setMateriasValidas] = useState(false);
   const [detallesValidos, setDetallesValidos] = useState(false);
   const [encuestaValida, setEncuestaValida] = useState(false);
   const [tipoBecaSeleccionada, setTipoBecaSeleccionada] = useState<string>(user?.tipo_beca || "");
+
+  // 🟢 Estados individuales de validación para cada sub-pestaña de la Encuesta Socioeconómica
+  const [personalValido, setPersonalValido] = useState(false);
+  const [uniValido, setUniValido] = useState(true);
+  const [familiaValido, setFamiliaValido] = useState(true);
+  const [laboralValido, setLaboralValido] = useState(true);
+  const [ingresosValido, setIngresosValido] = useState(true);
+  const [hogarValido, setHogarValido] = useState(true);
+  const [saludValido, setSaludValido] = useState(true);
   
   // Estado maestro para la persistencia de datos y control de pestañas
   const [formData, setFormData] = useState<any>(user || {});
@@ -47,12 +56,41 @@ export function usePostulacionForm({ user, trimestreActual }: UsePostulacionForm
     }
   }, [formData]);
 
-  // Lógica de Navegación Inteligente
+  // Lógica de Navegación Inteligente con feedback visual directo en los inputs
   const handleSiguiente = useCallback(() => {
     syncFormData();
 
-    // Gestión de sub-pestañas en el Paso 3 (Estudio Social)
+    // Gestión de sub-pestañas en el Paso 3 (Estudio Social) con bloqueo y marcado visual
     if (pasoActual === 3) {
+      if (activeEncuestaTab === "personal" && !personalValido) {
+        window.dispatchEvent(new CustomEvent('intentar-avanzar-personal'));
+        return;
+      }
+      if (activeEncuestaTab === "uni" && !uniValido) {
+        window.dispatchEvent(new CustomEvent('intentar-avanzar-uni'));
+        return;
+      }
+      if (activeEncuestaTab === "familia" && !familiaValido) {
+        window.dispatchEvent(new CustomEvent('intentar-avanzar-familia'));
+        return;
+      }
+      if (activeEncuestaTab === "laboral" && !laboralValido) {
+        window.dispatchEvent(new CustomEvent('intentar-avanzar-laboral'));
+        return;
+      }
+      if (activeEncuestaTab === "ingresos" && !ingresosValido) {
+        window.dispatchEvent(new CustomEvent('intentar-avanzar-ingresos'));
+        return;
+      }
+      if (activeEncuestaTab === "hogar" && !hogarValido) {
+        window.dispatchEvent(new CustomEvent('intentar-avanzar-hogar'));
+        return;
+      }
+      if (activeEncuestaTab === "salud" && !saludValido) {
+        window.dispatchEvent(new CustomEvent('intentar-avanzar-salud'));
+        return;
+      }
+
       const currentIndex = TABS_ENCUESTA.indexOf(activeEncuestaTab);
       if (currentIndex < TABS_ENCUESTA.length - 1) {
         setActiveEncuestaTab(TABS_ENCUESTA[currentIndex + 1]);
@@ -61,7 +99,18 @@ export function usePostulacionForm({ user, trimestreActual }: UsePostulacionForm
     }
     
     if (pasoActual < TOTAL_PASOS) setPasoActual(prev => prev + 1);
-  }, [pasoActual, activeEncuestaTab, syncFormData]);
+  }, [
+    pasoActual, 
+    activeEncuestaTab, 
+    personalValido, 
+    uniValido, 
+    familiaValido, 
+    laboralValido, 
+    ingresosValido, 
+    hogarValido, 
+    saludValido, 
+    syncFormData
+  ]);
 
   const handleAnterior = useCallback(() => {
     syncFormData();
@@ -133,12 +182,28 @@ export function usePostulacionForm({ user, trimestreActual }: UsePostulacionForm
     activeEncuestaTab,
     progreso,
 
+    // Estados de sub-pestañas
+    personalValido,
+    uniValido,
+    familiaValido,
+    laboralValido,
+    ingresosValido,
+    hogarValido,
+    saludValido,
+
     // Setters
     setMateriasValidas,
     setDetallesValidos,
     setEncuestaValida,
     setTipoBecaSeleccionada,
     setActiveEncuestaTab,
+    setPersonalValido,
+    setUniValido,
+    setFamiliaValido,
+    setLaboralValido,
+    setIngresosValido,
+    setHogarValido,
+    setSaludValido,
 
     // Actions
     handleSiguiente,

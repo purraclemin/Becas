@@ -58,3 +58,40 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* Regla optimizada para que el reporte suba al tope y elimine páginas vacías */
+@media print {
+  /* Forzamos al navegador a eliminar sus márgenes por defecto y usar los nuestros */
+  @page {
+    size: letter;
+    margin: 8mm; /* Margen general de la hoja de impresión */
+  }
+
+  /* Ocultamos todo lo demás de la aplicación */
+  body * {
+    visibility: hidden !important;
+  }
+  
+  /* Hacemos visible únicamente la sección de impresión */
+  #print-section, #print-section * {
+    visibility: visible !important;
+  }
+
+  /* Alineamos el reporte exactamente en la esquina superior */
+  #print-section {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    display: block !important;
+  }
+
+  /* Evitamos que bloques internos fuercen saltos de página extra al final */
+  #print-section div {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+}

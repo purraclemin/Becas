@@ -2,14 +2,16 @@
 
 import React, { useState, useEffect, Suspense, useCallback } from "react"
 import { useSearchParams } from "next/navigation"
-import { CheckCircle2, AlertCircle, Loader2, ChevronRight, Mail, Fingerprint } from "lucide-react"
+import { CheckCircle2, AlertCircle, Loader2, ChevronRight, Fingerprint } from "lucide-react"
 import { buscarEstudianteConEstudio, guardarOActualizarEstudio, borrarEstudio } from "@/lib/ActionsSocioeconomico"
+import { generarAnalisisIaEstudio } from "@/lib/diagnosticoIA"
 
 // Componentes modulares unificados
 import { PageHeader } from "@/components/admin/PageHeader"
-import { ResultCard } from "@/components/socioeconomico/ResultCard"
-import { StepForm } from "@/components/socioeconomico/StepForm"
-import { StudentIdentity } from "@/components/socioeconomico/StudentIdentity"
+import { ResultCard } from "@/components/admin/socioeconomico/ResultCard"
+import { StepForm } from "@/components/admin/socioeconomico/StepForm"
+import { StudentIdentity } from "@/components/admin/socioeconomico/StudentIdentity"
+import { AnalisisIA } from "@/components/admin/socioeconomico/AnalisisIA"
 
 function SocioeconomicoContent() {
   const searchParams = useSearchParams();
@@ -23,6 +25,10 @@ function SocioeconomicoContent() {
   const [mostrarResultado, setMostrarResultado] = useState(false)
   const [notificacion, setNotificacion] = useState<{msg: string, tipo: 'success' | 'error'} | null>(null)
   
+  // Estados para la IA real
+  const [cargandoIA, setCargandoIA] = useState(false)
+  const [resumenIA, setResumenIA] = useState("")
+
   const initialFormState = {
     socio_estado_civil: "",
     socio_municipio: "",
@@ -60,6 +66,7 @@ function SocioeconomicoContent() {
   const selectCandidate = (selected: any) => {
     setStudent(selected);
     setCandidates([]); 
+    setResumenIA(""); // Resetear IA al cambiar de estudiante
     
     if (selected.puntaje_admin !== null && selected.puntaje_admin !== undefined) {
       setFormData({ ...initialFormState, ...selected });
@@ -132,6 +139,29 @@ function SocioeconomicoContent() {
     setLoading(false);
   };
 
+  // Conexión real con la Server Action de Gemini (Corregido para manejar string | undefined)
+  const handleGenerarAnalisisIA = async () => {
+    if (!student?.id) return;
+    
+    setCargandoIA(true);
+    setResumenIA("");
+
+    try {
+      const res = await generarAnalisisIaEstudio(student.id);
+
+      if (res && res.success) {
+        setResumenIA(res.analisis ?? "");
+      } else {
+        setResumenIA(res.error ?? "No se pudo generar el diagnóstico ejecutivo.");
+      }
+    } catch (error) {
+      console.error("Error al invocar la API de IA:", error);
+      setResumenIA("Ocurrió un error inesperado al procesar la inteligencia artificial.");
+    } finally {
+      setCargandoIA(false);
+    }
+  };
+
   return (
     <div className="space-y-4 relative">
       
@@ -142,7 +172,7 @@ function SocioeconomicoContent() {
            }`}>
             {notificacion.tipo === 'success' ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertCircle className="h-3.5 w-3.5" />}
             <p className="text-[9px] font-black uppercase tracking-widest">{notificacion.msg}</p>
-          </div>
+           </div>
         </div>
       )}
 
@@ -154,7 +184,7 @@ function SocioeconomicoContent() {
 
       <main className="space-y-6 pb-10">
         
-        {/* BUSCADOR E IDENTIDAD - ESCALA REDUCIDA */}
+        {/* BUSCADOR E IDENTIDAD */}
         <section className="bg-white rounded-xl shadow-sm border border-slate-200/60 overflow-hidden">
             <StudentIdentity 
               student={student} 
@@ -170,7 +200,7 @@ function SocioeconomicoContent() {
             />
         </section>
 
-        {/* LISTADO DE CANDIDATOS AMPLIADO Y ESTÉTICO */}
+        {/* LISTADO DE CANDIDATOS */}
         {candidates.length > 0 && !student && (
           <div className="animate-in fade-in slide-in-from-top-2 duration-500 max-w-5xl mx-auto">
             <div className="flex items-center gap-3 mb-5 px-1">
@@ -214,9 +244,18 @@ function SocioeconomicoContent() {
 
         {/* ÁREA DE TRABAJO (FORMULARIO O RESULTADO) */}
         {student ? (
-          <div className="animate-in fade-in slide-in-from-bottom-2 duration-700 max-w-4xl mx-auto">
+          <div className="animate-in fade-in slide-in-from-bottom-2 duration-700 max-w-4xl mx-auto space-y-4">
             {mostrarResultado ? (
-              <ResultCard student={student} formData={formData} />
+              <>
+                {/* COMPONENTE ANALISIS IA REAL INTEGRADO */}
+                <AnalisisIA 
+                  onGenerarAnalisisIA={handleGenerarAnalisisIA}
+                  cargandoIA={cargandoIA}
+                  resumenIA={resumenIA}
+                />
+
+                <ResultCard student={student} formData={formData} />
+              </>
             ) : (
               <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                 <div className="bg-[#1e3a5f] h-1 w-full"></div>

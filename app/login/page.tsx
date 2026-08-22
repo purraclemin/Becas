@@ -53,7 +53,7 @@ export default function LoginPage() {
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1e3a5f] shadow-sm">
               <span className="text-sm font-extrabold text-[#d4a843] font-serif">U</span>
             </div>
-            <span className="text-sm font-bold tracking-wide text-[#ffffff] font-serif uppercase tracking-widest">UNIMAR</span>
+            <span className="text-sm font-bold tracking-wide text-[#ffffff] font-serif uppercase ">UNIMAR</span>
           </Link>
           <Link
             href="/"

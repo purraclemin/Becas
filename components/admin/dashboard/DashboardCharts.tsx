@@ -16,11 +16,11 @@ interface CarreraBarChartProps {
 
 export function CarreraBarChart({ data, onNavigate }: CarreraBarChartProps) {
   return (
-    <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 h-72 flex flex-col">
-      <h3 className="font-black text-[#1a2744] mb-3 text-[9px] uppercase tracking-widest">
+    <div className="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200/80 min-h-[320px] flex flex-col flex-1">
+      <h3 className="font-black text-[#1e3a5f] mb-3 text-[9px] sm:text-[10px] uppercase tracking-widest">
         Solicitudes por Carrera
       </h3>
-      <div className="flex-1 w-full min-h-0">
+      <div className="w-full h-64 sm:h-72 min-h-0">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart 
             data={data} 
@@ -31,7 +31,7 @@ export function CarreraBarChart({ data, onNavigate }: CarreraBarChartProps) {
             <YAxis hide />
             <Tooltip 
               cursor={{ fill: '#f8fafc' }}
-              contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', fontSize: '10px' }} 
+              contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', fontSize: '10px', fontWeight: 'bold' }} 
             />
             
             <Bar 
@@ -50,7 +50,7 @@ export function CarreraBarChart({ data, onNavigate }: CarreraBarChartProps) {
               <LabelList 
                 dataKey="value" 
                 position="top" 
-                style={{ fill: '#1a2744', fontSize: '10px', fontWeight: '900' }} 
+                style={{ fill: '#1e3a5f', fontSize: '10px', fontWeight: '900' }} 
               />
 
               <LabelList 
@@ -87,12 +87,12 @@ export function BecaPieChart({ data, onNavigate }: BecaPieChartProps) {
   })) : []
   
   return (
-    <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 h-72 flex flex-col">
-      <h3 className="font-black text-[#1a2744] mb-2 text-[9px] uppercase tracking-widest text-center">
+    <div className="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200/80 min-h-[320px] flex flex-col flex-1">
+      <h3 className="font-black text-[#1e3a5f] mb-2 text-[9px] sm:text-[10px] uppercase tracking-widest text-center">
         Distribución por Programa
       </h3>
       
-      <div className="flex-1 min-h-0 relative">
+      <div className="w-full h-48 sm:h-52 min-h-0 relative">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie 
@@ -116,36 +116,36 @@ export function BecaPieChart({ data, onNavigate }: BecaPieChartProps) {
               ))}
             </Pie>
             <Tooltip 
-                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', fontSize: '10px' }}
+                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', fontSize: '10px', fontWeight: 'bold' }}
             />
           </PieChart>
         </ResponsiveContainer>
         
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
              <div className="text-center">
-                <span className="block text-xl font-black text-[#1a2744] leading-none">
+                <span className="block text-xl font-black text-[#1e3a5f] leading-none">
                     {chartData.reduce((acc, curr) => acc + curr.value, 0)}
                 </span>
-                <span className="block text-[7px] uppercase font-black text-slate-400 mt-0.5">Total</span>
+                <span className="block text-[8px] uppercase font-black text-slate-400 mt-0.5">Total</span>
              </div>
         </div>
       </div>
       
-      {/* Leyenda Interactiva Reducida */}
-      <div className="mt-3 space-y-1 overflow-y-auto max-h-20 pr-1 custom-scrollbar">
+      {/* Leyenda Interactiva: Crece orgánicamente hasta 10 ítems (aprox 240px) y luego activa el scroll */}
+      <div className="mt-2 space-y-1 overflow-y-auto max-h-[240px] pr-1 custom-scrollbar">
         {data?.map((item, i) => (
           <div 
             key={i} 
             onClick={() => onNavigate(item.tipo_beca)}
-            className="flex justify-between items-center text-[8px] font-black uppercase text-slate-500 border-b border-slate-50 pb-1 cursor-pointer hover:bg-blue-50 transition-all rounded px-1 group"
+            className="flex justify-between items-center text-[8px] sm:text-[9px] font-black uppercase text-slate-600 border-b border-slate-50 py-1.5 cursor-pointer hover:bg-slate-50 transition-all rounded px-1 group"
           >
             <div className="flex items-center gap-1.5 overflow-hidden">
               <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }}></div>
-              <span className="truncate group-hover:text-[#1a2744] transition-colors" title={item.tipo_beca}>
+              <span className="truncate group-hover:text-[#1e3a5f] transition-colors" title={item.tipo_beca}>
                 {item.tipo_beca}
               </span>
             </div>
-            <span className="text-[#1a2744] font-black bg-slate-100 px-1.5 py-0.5 rounded leading-none">
+            <span className="text-[#1e3a5f] font-black bg-slate-100 px-1.5 py-0.5 rounded leading-none">
                 {item.total}
             </span>
           </div>

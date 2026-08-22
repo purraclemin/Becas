@@ -7,7 +7,6 @@ import {
   BookOpen, 
   HeartPulse, 
   Wallet, 
-  Home,
   FileCheck,
   Briefcase,
   AlertCircle,
@@ -51,8 +50,8 @@ export function StepResumen({
   };
 
   const ingresoTotalFam = getMonto(user?.monto_ingreso_sueldo) + getMonto(user?.monto_ingreso_familiar) + 
-                          getMonto(user?.monto_ingreso_extra) + getMonto(user?.monto_ingreso_pension) + 
-                          getMonto(user?.monto_ingreso_ayuda);
+                         getMonto(user?.monto_ingreso_extra) + getMonto(user?.monto_ingreso_pension) + 
+                         getMonto(user?.monto_ingreso_ayuda);
 
   const egresoTotalFam = getMonto(user?.monto_egreso_mercado) + getMonto(user?.monto_egreso_vivienda) + 
                          getMonto(user?.monto_egreso_salud) + getMonto(user?.monto_egreso_servicios);
@@ -136,70 +135,68 @@ export function StepResumen({
   ];
 
   return (
-    <div className="flex flex-col gap-4 animate-in fade-in duration-500 h-full pb-4">
+    <div className="flex flex-col gap-2.5 animate-in fade-in duration-500 pb-12 lg:pb-0">
       
-      {/* Banner de Verificación */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 shrink-0">
-        <div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0 border border-emerald-200">
-          <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+      {/* Banner de Verificación Compacto */}
+      <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3 shrink-0">
+        <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0 border border-emerald-200">
+          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
         </div>
         <div>
-          <h3 className="text-[#1e3a5f] font-black text-xs uppercase tracking-tight leading-none">Auditoría de Postulación</h3>
-          <p className="text-slate-400 text-[8px] font-bold uppercase tracking-widest mt-1.5 leading-none">Datos consolidados de los pasos previos.</p>
+          <h3 className="text-[#1e3a5f] font-black text-[10px] uppercase tracking-tight leading-none">Auditoría de Postulación</h3>
+          <p className="text-slate-400 text-[8px] font-bold uppercase tracking-widest mt-1 leading-none">Datos consolidados de los pasos previos.</p>
         </div>
       </div>
 
-      {/* Grid de Auditoría */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar pr-1">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {secciones.map((sec) => (
-            <div key={sec.titulo} className={cn("p-4 rounded-2xl border border-slate-200 flex flex-col gap-3 shadow-sm", sec.bg)}>
-              <div className="flex items-center gap-2 border-b border-black/5 pb-2">
-                <sec.icon className={cn("h-4 w-4", sec.color)} />
-                <h4 className={cn("font-black text-[9px] uppercase tracking-widest", sec.color)}>{sec.titulo}</h4>
-              </div>
-              <div className="space-y-2">
-                {sec.items.map((item) => (
-                  <div key={item.label} className="flex justify-between items-center gap-2">
-                    <span className="text-[8px] font-black text-slate-500 uppercase leading-none">{item.label}</span>
-                    <span className={cn(
-                      "text-[9px] font-black uppercase leading-none text-right truncate max-w-[55%]",
-                      item.highlight ? "text-[#1e3a5f]" : "text-slate-600"
-                    )}>
-                      {item.value}
-                    </span>
-                  </div>
-                ))}
-              </div>
+      {/* Grid de Auditoría sin scroll */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+        {secciones.map((sec) => (
+          <div key={sec.titulo} className={cn("p-2.5 rounded-xl border border-slate-200 flex flex-col gap-2 shadow-sm", sec.bg)}>
+            <div className="flex items-center gap-1.5 border-b border-black/5 pb-1.5">
+              <sec.icon className={cn("h-3.5 w-3.5", sec.color)} />
+              <h4 className={cn("font-black text-[8.5px] uppercase tracking-widest", sec.color)}>{sec.titulo}</h4>
             </div>
-          ))}
-
-          {/* Justificación */}
-          <div className="col-span-full bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-2">
-            <div className="flex items-center gap-2">
-              <FileText className="h-4 w-4 text-[#d4a843]" />
-              <h4 className="font-black text-[9px] uppercase tracking-widest text-[#1e3a5f]">Justificación de la Solicitud</h4>
+            <div className="space-y-1.5">
+              {sec.items.map((item) => (
+                <div key={item.label} className="flex justify-between items-center gap-2">
+                  <span className="text-[7.5px] font-black text-slate-500 uppercase leading-none">{item.label}</span>
+                  <span className={cn(
+                    "text-[8.5px] font-black uppercase leading-none text-right truncate max-w-[55%]",
+                    item.highlight ? "text-[#1e3a5f]" : "text-slate-600"
+                  )}>
+                    {item.value}
+                  </span>
+                </div>
+              ))}
             </div>
-            <p className="text-[10px] text-slate-600 font-medium leading-relaxed italic bg-slate-50 p-3 rounded-xl border border-slate-100">
-              "{user?.motivo_solicitud || "No se registró exposición de motivos."}"
-            </p>
           </div>
+        ))}
+
+        {/* Justificación Compacta */}
+        <div className="col-span-full bg-white p-2.5 rounded-xl border border-slate-200 shadow-sm space-y-1">
+          <div className="flex items-center gap-1.5">
+            <FileText className="h-3.5 w-3.5 text-[#d4a843]" />
+            <h4 className="font-black text-[8.5px] uppercase tracking-widest text-[#1e3a5f]">Justificación de la Solicitud</h4>
+          </div>
+          <p className="text-[9px] text-slate-600 font-medium leading-relaxed italic bg-slate-50 p-2 rounded-lg border border-slate-100">
+            "{user?.motivo_solicitud || "No se registró exposición de motivos."}"
+          </p>
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 shrink-0">
-        <div className="p-3 rounded-2xl border border-slate-200 bg-white flex items-center gap-3 shadow-sm">
-          <FileCheck className="h-5 w-5 text-emerald-500 shrink-0" />
+      {/* Footer Compacto */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 shrink-0">
+        <div className="p-2.5 rounded-xl border border-slate-200 bg-white flex items-center gap-2.5 shadow-sm">
+          <FileCheck className="h-4 w-4 text-emerald-500 shrink-0" />
           <div>
-            <p className="text-[9px] font-black text-[#1e3a5f] uppercase">Expediente Completo</p>
-            <p className="text-[7px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Datos verificados y listos para envío</p>
+            <p className="text-[8.5px] font-black text-[#1e3a5f] uppercase leading-none">Expediente Completo</p>
+            <p className="text-[7px] font-bold text-slate-400 uppercase tracking-widest mt-1 leading-none">Datos verificados y listos para envío</p>
           </div>
         </div>
 
-        <div className="p-3 rounded-2xl bg-[#1e3a5f] text-white shadow-md flex items-center gap-3">
-          <AlertCircle className="h-5 w-5 text-[#d4a843] shrink-0" />
-          <p className="text-[8px] leading-snug font-bold uppercase tracking-tight opacity-90">
+        <div className="p-2.5 rounded-xl bg-[#1e3a5f] text-white shadow-sm flex items-center gap-2.5">
+          <AlertCircle className="h-4 w-4 text-[#d4a843] shrink-0" />
+          <p className="text-[7.5px] leading-snug font-bold uppercase tracking-tight opacity-90">
             La falsedad en estos datos anula la solicitud inmediatamente.
           </p>
         </div>

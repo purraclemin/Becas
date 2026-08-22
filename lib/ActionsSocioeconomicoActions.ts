@@ -81,7 +81,6 @@ export async function procesarGuardadoEstudio(data: any) {
     equip_lavadora: normalizeSwitch(data.equip_lavadora),
     equip_nevera: normalizeSwitch(data.equip_nevera),
     equip_cable: normalizeSwitch(data.equip_cable),
-    // Priorizamos la carga de discapacidad si existe
     salud_condicion_especial: data.carga_familiar_discapacidad || data.salud_condicion_especial || 'No'
   });
 
@@ -94,7 +93,6 @@ export async function procesarGuardadoEstudio(data: any) {
 
     const fechaUnimar = (data?.socio_fecha_unimar && data.socio_fecha_unimar !== "") ? data.socio_fecha_unimar : null;
 
-    // rawParams: Lista exacta de 53 valores correspondientes a los 53 campos del INSERT
     const rawParams = [
       data?.student_id ?? null, 
       periodoIdActual ?? null, 
@@ -151,7 +149,6 @@ export async function procesarGuardadoEstudio(data: any) {
       new Date()
     ];
 
-    // Sanitización absoluta para eliminar cualquier valor 'undefined' y evitar el error de mysql2
     const safeParams = rawParams.map(param => (param === undefined ? null : param));
 
     await connection.execute(
@@ -186,7 +183,6 @@ export async function procesarGuardadoEstudio(data: any) {
       safeParams
     );
 
-    // 2. Actualización de estatus de la solicitud
     await connection.execute(
       `UPDATE solicitudes SET estatus = 'En Revisión', fecha_revision = NOW() WHERE user_id = ? AND estatus = 'Pendiente'`,
       [data?.student_id ?? null]
