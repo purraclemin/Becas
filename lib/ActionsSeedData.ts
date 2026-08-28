@@ -13,6 +13,16 @@ export async function seedDatabase() {
   try {
     await connection.beginTransaction();
 
+    // 🟢 Obtener dinámicamente el periodo académico activo actual
+    const [periodoRes]: any = await connection.execute(
+      `SELECT id FROM periodos_academicos WHERE es_actual = 1 LIMIT 1`
+    );
+    const periodoId = periodoRes?.[0]?.id;
+
+    if (!periodoId) {
+      throw new Error("No se encontró ningún periodo académico activo (es_actual = 1) en la base de datos.");
+    }
+
     const municipios = [
       "Arismendi", "Antolín del Campo", "Díaz", "García", "Gómez", 
       "Maneiro", "Marcano", "Mariño", "Península de Macanao", "Tubores", "Villalba"
@@ -27,9 +37,8 @@ export async function seedDatabase() {
     const estatusPosibles = ["Pendiente", "En Revisión", "Aprobada", "Rechazada"];
     
     const passwordHash = await bcrypt.hash("estudiante123", 10);
-    const periodoId = 1; 
 
-    console.log("⏳ Iniciando inserción de 100 registros...");
+    console.log(`⏳ Iniciando inserción de 100 registros en el periodo ID: ${periodoId}...`);
 
     for (let i = 1; i <= 100; i++) {
       const cedula = (30000000 + i).toString();
@@ -78,7 +87,7 @@ export async function seedDatabase() {
     }
 
     await connection.commit();
-    return { success: true, message: "100 estudiantes y solicitudes creados exitosamente" };
+    return { success: true, message: `100 estudiantes y solicitudes creados exitosamente en el periodo actual (ID: ${periodoId})` };
 
   } catch (error: any) {
     await connection.rollback();
@@ -90,8 +99,8 @@ export async function seedDatabase() {
 }
 
 /**
- * 🧹 LIMPIEZA DE DATOS: Borra los estudiantes y solicitudes de prueba.
- * Excluye explícitamente los IDs 10 y 12.
+ * 🧹 LIMPIEZA DE DATOS: Borra los estudiantes, estudios socioeconómicos y solicitudes de prueba.
+ * Excluye explícitamente los IDs 10 y 12 para proteger registros manuales.
  */
 export async function cleanSeedData() {
   const connection = await db.getConnection();
@@ -101,8 +110,7 @@ export async function cleanSeedData() {
 
     console.log("⏳ Iniciando limpieza de datos de prueba...");
 
-    // 1. Identificar IDs de usuarios que son de prueba (test_user%) 
-    // pero EXCLUYENDO el 10 y el 12.
+    // 1. Identificar IDs de usuarios de prueba (test_user%) excluyendo IDs manuales (10 y 12)
     const [rows]: any = await connection.execute(
       `SELECT id FROM users 
        WHERE email LIKE 'test_user%' 
@@ -115,16 +123,22 @@ export async function cleanSeedData() {
       return { success: true, message: "No se encontraron registros de prueba para eliminar." };
     }
 
-    // 2. Borrar de la tabla USERS. 
-    // Gracias a ON DELETE CASCADE esto borrará automáticamente students y solicitudes.
     const placeholders = idsToDelete.map(() => '?').join(',');
+
+    // 2. Borrar primero los estudios socioeconómicos asociados estrictamente a estos IDs de prueba
+    await connection.execute(
+      `DELETE FROM estudios_socioeconomicos WHERE student_id IN (${placeholders})`,
+      idsToDelete
+    );
+
+    // 3. Borrar de la tabla USERS (por cascada eliminará students y solicitudes de prueba)
     await connection.execute(
       `DELETE FROM users WHERE id IN (${placeholders})`,
       idsToDelete
     );
 
     await connection.commit();
-    return { success: true, message: `${idsToDelete.length} registros eliminados correctamente (IDs 10 y 12 protegidos).` };
+    return { success: true, message: `${idsToDelete.length} registros de prueba y sus estudios socioeconómicos fueron eliminados correctamente (IDs 10 y 12 protegidos).` };
 
   } catch (error: any) {
     await connection.rollback();

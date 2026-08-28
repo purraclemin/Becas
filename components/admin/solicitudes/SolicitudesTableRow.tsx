@@ -1,7 +1,7 @@
 "use client"
 import React, { useState } from "react"
 import { Eye, Check, Undo2, Activity, MapPin, ClipboardList } from "lucide-react"
-import { getBadgeColor, getRiskDetails, getAvgStyle } from "./SolicitudesUtils"
+import { getBadgeColor, getRiskDetails, getAvgStyle } from "../../../app/admin/validarBeca/lib/ValidarBecaUtils"
 
 export function SolicitudesTableRow({ s, onView, onViewHistorial, onStatusChange, periodoActualId }: any) {
   const [isConfirming, setIsConfirming] = useState(false)

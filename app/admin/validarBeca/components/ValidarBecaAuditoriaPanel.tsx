@@ -4,21 +4,21 @@ import React, { useState, useEffect } from "react"
 import { Loader2 } from "lucide-react"
 import { ResultCard } from "@/components/admin/socioeconomico/ResultCard"
 import { buscarEstudianteConEstudio } from "@/lib/ActionsSocioeconomico" 
-import { validarCuposYRequisitos, DiagnosticoBeca } from "@/lib/ActionsBecaValidators"
+import { DiagnosticoBeca } from "@/lib/ActionsBecaValidators"
 
-import { ValidarBecaInfo } from "../../../app/admin/validarBeca/components/ValidarBecaInfo"
-import { SolicitudAuditoriaPanelDecision } from "./SolicitudAuditoriaPanelDecision"
-import { ValidarBecaTrace } from "../../../app/admin/validarBeca/components/ValidarBecaTrace"
+// Importaciones locales y autónomas dentro del módulo validarBeca
+import { ValidarBecaDecisionBox } from "./ValidarBecaDecisionBox"
+import { ValidarBecaInfo } from "@/app/admin/validarBeca/components/ValidarBecaInfo"
+import {ValidarBecaTrace } from "@/app/admin/validarBeca/components/ValidarBecaTrace"
 
-
-interface AuditoriaPanelProps {
-  solicitud: any
-  onStatusChange: (id: number, status: string, observaciones?: string, confirmacionEspecial?: boolean) => void
-  onClose: () => void
-  periodoActualId: number | null
+interface ValidarBecaAuditoriaPanelProps {
+  solicitud: any;
+  onStatusChange: (id: number, status: string, observaciones?: string, confirmacionEspecial?: boolean) => void;
+  onClose: () => void;
+  periodoActualId: number | null;
 }
 
-export function SolicitudAuditoriaPanel({ solicitud, onStatusChange, onClose, periodoActualId }: AuditoriaPanelProps) {
+export function ValidarBecaAuditoriaPanel({ solicitud, onStatusChange, onClose, periodoActualId }: ValidarBecaAuditoriaPanelProps) {
   const [observaciones, setObservaciones] = useState("")
   const [expedienteDetallado, setExpedienteDetallado] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -65,7 +65,7 @@ export function SolicitudAuditoriaPanel({ solicitud, onStatusChange, onClose, pe
     cargarDetalleSocioeconomico();
   }, [solicitud]);
 
-  /** * 🟢 SENSOR DE SEGURIDAD CORREGIDO: 
+  /** * 🟢 SENSOR DE SEGURIDAD: 
    * Garantiza el desbloqueo si se detectó la existencia de un baremo oficial.
    */
   const tieneEstudioAdmin = expedienteDetallado?.es_estudio_oficial === true;
@@ -84,8 +84,8 @@ export function SolicitudAuditoriaPanel({ solicitud, onStatusChange, onClose, pe
       </div>
 
       <div className="w-full lg:w-[400px] space-y-6">
-        {/* Panel de decisión (Ahora arriba) */}
-        <SolicitudAuditoriaPanelDecision 
+        {/* Panel de decisión unificado y adaptado */}
+        <ValidarBecaDecisionBox 
           solicitud={solicitud}
           esPeriodoActual={esPeriodoActual}
           periodoActualId={periodoActualId}
@@ -96,7 +96,7 @@ export function SolicitudAuditoriaPanel({ solicitud, onStatusChange, onClose, pe
           bloqueadoPorEstudio={!tieneEstudioAdmin}
         />
 
-        {/* Resumen académico / Info (Ahora abajo) */}
+        {/* Resumen académico / Info */}
         <ValidarBecaInfo 
           solicitud={solicitud} 
           sinEstudio={!tieneEstudioAdmin}

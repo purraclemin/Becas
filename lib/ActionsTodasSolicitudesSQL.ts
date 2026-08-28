@@ -1,14 +1,30 @@
 'use server'
 
 import { db } from './db'
+import { aplicarFiltroEstudioAdmin } from '@/app/admin/validarBeca/lib/ValidarEstudioHecho'
 
-/**
- * Procesa la lógica de construcción de query y filtros para MariaDB.
- * Sincronizado con la lógica de Beneficiarios Totales (Viejos vs Nuevos).
- */
-export async function fetchSolicitudesDesdeDB(filtros: any = {}) {
+interface FiltrosDB {
+  search?: string;
+  status?: string;
+  municipio?: string;
+  carrera?: string;
+  trimestre?: string;
+  tipoBeca?: string;
+  vulnerabilidad?: string;
+  es_renovacion?: string;
+  vulnerabilidadMin?: string;
+  tendencia?: string;
+  scope?: string;
+  estadoEstudio?: string;
+  filtroPromedio?: string;
+  promedioMin?: string;
+  rankingElite?: boolean | string; // Mantenido solo en la interfaz por tipado, sin efecto SQL
+  page?: number | string;
+  limit?: number | string;
+}
+
+export async function fetchSolicitudesDesdeDB(filtros: FiltrosDB = {}) {
   try {
-    // 0. Obtener Periodo Actual y Anterior Estricto
     const [periodoRes]: any = await db.execute(`SELECT id FROM periodos_academicos WHERE es_actual = 1 LIMIT 1`);
     const pId = periodoRes?.[0]?.id || 0;
 
@@ -22,7 +38,7 @@ export async function fetchSolicitudesDesdeDB(filtros: any = {}) {
     let whereClause = ` WHERE 1=1`;
     const params: any[] = [];
 
-    // --- FILTROS DINÁMICOS ESTÁNDAR ---
+    // --- FILTROS ESTÁNDAR Y DEL EMBUDO (Intactos) ---
     if (filtros.search) {
       whereClause += ` AND (st.nombre LIKE ? OR st.apellido LIKE ? OR st.cedula LIKE ?)`;
       const term = `%${filtros.search}%`;
@@ -54,9 +70,6 @@ export async function fetchSolicitudesDesdeDB(filtros: any = {}) {
       params.push(filtros.tipoBeca);
     }
 
-    // --- LÓGICA QUIRÚRGICA DEL EMBUDO ---
-
-    // 1. SUPERVIVENCIA: Periodo anterior aprobado + Promedio actual >= 16
     if (filtros.es_renovacion === 'true' || filtros.vulnerabilidadMin || filtros.tendencia === 'descenso') {
        whereClause += ` AND s.periodo_id = ${pId} AND EXISTS (
         SELECT 1 FROM solicitudes s_old 
@@ -70,13 +83,19 @@ export async function fetchSolicitudesDesdeDB(filtros: any = {}) {
       }
     }
 
-    // 2. PRIORIDAD CRÍTICA: Vulnerabilidad actual >= 60
-    if (filtros.vulnerabilidadMin) {
+    if (filtros.vulnerabilidad) {
+      const riesgo = filtros.vulnerabilidad.toLowerCase();
+      if (riesgo === 'critico') whereClause += ` AND e.puntaje >= 70`;
+      else if (riesgo === 'alto') whereClause += ` AND e.puntaje BETWEEN 50 AND 69`;
+      else if (riesgo === 'medio') whereClause += ` AND e.puntaje BETWEEN 25 AND 49`;
+      else if (riesgo === 'bajo') whereClause += ` AND e.puntaje BETWEEN 0 AND 24`;
+    }
+
+    if (filtros.vulnerabilidadMin && !filtros.vulnerabilidad) {
       whereClause += ` AND e.puntaje >= ?`;
       params.push(Number(filtros.vulnerabilidadMin));
     }
 
-    // 3. ALERTA DE DESCENSO: Comparación con promedio anterior aprobado
     if (filtros.tendencia === 'descenso') {
       whereClause += ` AND e.puntaje >= 60 AND s.promedio_notas < (
         SELECT s_ant.promedio_notas 
@@ -88,10 +107,8 @@ export async function fetchSolicitudesDesdeDB(filtros: any = {}) {
       )`;
     }
 
-    // 4. BENEFICIARIOS TOTALES (Barra 5): Continuidad y Nuevos Aprobados
     if (filtros.scope === 'total_beneficiarios') {
       whereClause += ` AND s.periodo_id = ${pId} AND s.estatus = 'Aprobada' AND (
-        -- Caso A: Estudiantes con periodo anterior aprobado
         EXISTS (
           SELECT 1 FROM solicitudes s_old 
           WHERE s_old.user_id = s.user_id 
@@ -99,7 +116,6 @@ export async function fetchSolicitudesDesdeDB(filtros: any = {}) {
           AND s_old.periodo_id = ${prevPId}
         )
         OR 
-        -- Caso B: Estudiantes sin registro en el periodo anterior (Nuevos)
         NOT EXISTS (
           SELECT 1 FROM solicitudes s_none
           WHERE s_none.user_id = s.user_id 
@@ -108,12 +124,13 @@ export async function fetchSolicitudesDesdeDB(filtros: any = {}) {
       )`;
     }
 
-    // --- FILTROS DE INTERFAZ ORIGINALES ---
-    if (filtros.estadoEstudio) {
-      switch (filtros.estadoEstudio) {
-        case "Hecho": whereClause += ` AND e.id IS NOT NULL`; break;
-        case "Pendiente": whereClause += ` AND e.id IS NULL`; break;
-      }
+    console.log("🔍 Filtro estadoEstudio recibido:", JSON.stringify(filtros.estadoEstudio));
+    
+    // --- APLICACIÓN DEL MÓDULO DE ESTUDIO (HECHO / PENDIENTE) ---
+    const filtroEstudio = aplicarFiltroEstudioAdmin(filtros.estadoEstudio, pId);
+    if (filtroEstudio.condition) {
+      whereClause += filtroEstudio.condition;
+      params.push(...filtroEstudio.param);
     }
 
     if (filtros.filtroPromedio && !filtros.promedioMin) {
@@ -122,18 +139,17 @@ export async function fetchSolicitudesDesdeDB(filtros: any = {}) {
       else if (filtros.filtroPromedio === "10-15") whereClause += ` AND s.promedio_notas BETWEEN 10 AND 15.99`;
     }
 
-    // --- CONTEO PARA PAGINACIÓN ---
+    // --- CONTEO Y CONSULTA PRINCIPAL ---
     const countQuery = `
       SELECT COUNT(*) as total 
       FROM solicitudes s
       JOIN students st ON s.user_id = st.id
-      LEFT JOIN estudios_socioeconomicos e ON st.id = e.student_id AND e.tipo = 'administrador'
+      LEFT JOIN estudios_socioeconomicos e ON st.id = e.student_id AND e.tipo = 'administrador' AND e.periodo_id = ${pId}
       ${whereClause}
     `;
     const [countRows]: any = await db.execute(countQuery, params);
     const totalRegistros = countRows[0]?.total || 0;
 
-    // --- CONSULTA DE DATOS ---
     let query = `
       SELECT 
         s.id, s.user_id, s.tipo_beca, s.estatus, s.promedio_notas, s.fecha_registro, 
@@ -149,10 +165,11 @@ export async function fetchSolicitudesDesdeDB(filtros: any = {}) {
         ) as promedio_historico
       FROM solicitudes s
       JOIN students st ON s.user_id = st.id
-      LEFT JOIN estudios_socioeconomicos e ON st.id = e.student_id AND e.tipo = 'administrador'
+      LEFT JOIN estudios_socioeconomicos e ON st.id = e.student_id AND e.tipo = 'administrador' AND e.periodo_id = ${pId}
       ${whereClause}
     `;
 
+    // 🟢 ORDENAMIENTO ESTÁNDAR PURIFICADO (Sin lógica de aptos antigua)
     query += ` ORDER BY s.fecha_registro DESC`;
 
     const page = Math.max(1, Number(filtros.page) || 1);

@@ -25,7 +25,7 @@ export function AdminSidebar({ onLogout, isCollapsed, onToggleCollapse }: Sideba
   const links: SidebarLink[] = [
     { href: "/admin/dashboard", label: "Inicio", icon: Settings },
     { href: "/admin/actividad", label: "Actividad", icon: Clock },
-    { href: "/admin/solicitudes", label: "Validar", icon: ClipboardCheck },
+    { href: "/admin/validarBeca", label: "Validar", icon: ClipboardCheck },
     { href: "/admin/analiticas", label: "Analíticas", icon: BarChart3 },
     { href: "/admin/estudiantes", label: "Estudiantes", icon: Users },
     { href: "/admin/estudio-socioeconomico", label: "Socioecon.", icon: ClipboardList },
