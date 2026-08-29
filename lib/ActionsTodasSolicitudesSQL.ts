@@ -1,6 +1,7 @@
 'use server'
 
 import { db } from './db'
+import { RowDataPacket } from 'mysql2/promise'
 import { aplicarFiltroEstudioAdmin } from '@/app/admin/validarBeca/lib/ValidarEstudioHecho'
 
 interface FiltrosDB {
@@ -18,7 +19,7 @@ interface FiltrosDB {
   estadoEstudio?: string;
   filtroPromedio?: string;
   promedioMin?: string;
-  rankingElite?: boolean | string; // Mantenido solo en la interfaz por tipado, sin efecto SQL
+  rankingElite?: boolean | string; 
   page?: number | string;
   limit?: number | string;
 }
@@ -169,8 +170,24 @@ export async function fetchSolicitudesDesdeDB(filtros: FiltrosDB = {}) {
       ${whereClause}
     `;
 
-    // 🟢 ORDENAMIENTO ESTÁNDAR PURIFICADO (Sin lógica de aptos antigua)
-    query += ` ORDER BY s.fecha_registro DESC`;
+    // 🟢 ORDENAMIENTO INTELIGENTE BASADO EN JERARQUÍA INSTITUCIONAL DE UNIMAR
+    // 1. Renovación (Cupos limitados / continuidad)
+    // 2. Pendientes (Nuevas por atender)
+    // 3. En Revisión (En proceso activo de baremo)
+    // 4. Revisión Especial (Promedio bajo con vulnerabilidad alta)
+    // 5. Aprobada / Rechazada (Casos cerrados al fondo)
+    query += ` ORDER BY 
+      CASE 
+        WHEN s.estatus = 'Renovacion' OR s.estatus = 'Renovación' THEN 1
+        WHEN s.estatus = 'Pendiente' THEN 2
+        WHEN s.estatus = 'En Revisión' OR s.estatus = 'En revision' THEN 3
+        WHEN s.estatus = 'Revisión Especial' OR s.estatus = 'Revision especial' THEN 4
+        WHEN s.estatus = 'Aprobada' OR s.estatus = 'Aprobado' THEN 5
+        WHEN s.estatus = 'Rechazada' THEN 6
+        ELSE 7 
+      END ASC, 
+      s.promedio_notas DESC, 
+      s.id DESC`;
 
     const page = Math.max(1, Number(filtros.page) || 1);
     const limit = Math.max(1, Number(filtros.limit) || 7);

@@ -12,7 +12,7 @@ import { ValidarBecaViewAcademic } from "@/app/admin/validarBeca/components/Vali
 import { ValidarBecaViewAuditoria } from "@/app/admin/validarBeca/components/ValidarBecaViewAuditoria"
 import { ValidarBecaHeader } from "@/app/admin/validarBeca/components/ValidarBecaHeader"
 import { ValidarBecaFilters } from "@/app/admin/validarBeca/components/ValidarBecaFilters"
-import { ValidarBecaTable } from "@/app/admin/validarBeca/components/ValidarBecaTable"
+import { ValidarBecaTable } from "@/app/admin/validarBeca/components/ValidarBecaTablePC"
 import { AptoIA } from "@/app/admin/validarBeca/components/AptoIA"
 
 interface FiltrosValidacion {

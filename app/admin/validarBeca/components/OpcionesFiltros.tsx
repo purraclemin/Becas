@@ -1,7 +1,7 @@
 "use client"
 
 import React from "react"
-import { ArrowDown10, MapPin, GraduationCap, Hash, History, TrendingDown, Sparkles, RotateCcw } from "lucide-react"
+import { ArrowDown10, MapPin, GraduationCap, Hash, History, TrendingDown } from "lucide-react"
 
 interface OpcionesFiltrosProps {
   filters: {
@@ -13,7 +13,7 @@ interface OpcionesFiltrosProps {
     vulnerabilidad: string;
     filtroPromedio: string;
     estadoEstudio: string;
-    rankingElite?: boolean; // Mantenido opcional por compatibilidad de tipos
+    rankingElite?: boolean;
     es_renovacion?: string;
     vulnerabilidadMin?: string;
     promedioMin?: string;
@@ -21,7 +21,7 @@ interface OpcionesFiltrosProps {
   };
   handleInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
   resetFilters: () => void;
-  onOpenAptoIA: () => void; // 👈 Nueva prop para disparar el modal de IA
+  onOpenAptoIA: () => void;
 }
 
 export function OpcionesFiltros({ filters, handleInputChange, resetFilters, onOpenAptoIA }: OpcionesFiltrosProps) {
@@ -31,7 +31,8 @@ export function OpcionesFiltros({ filters, handleInputChange, resetFilters, onOp
 
   return (
     <div className="bg-slate-50/30 p-3">
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-9 gap-2 items-center">
+      {/* 🟢 Ajustado a 8 columnas exactas para que los filtros ocupen todo el ancho de manera uniforme tras remover el botón */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2 items-center">
         
         {/* Estatus */}
         <div className="relative">
@@ -150,23 +151,6 @@ export function OpcionesFiltros({ filters, handleInputChange, resetFilters, onOp
             <option value="Hecho">Hecho</option>
             <option value="Pendiente">Pendiente</option>
           </select>
-        </div>
-
-        {/* Botón Escudo IA "APTOS" y Restablecer individual */}
-        <div className="flex items-center gap-1">
-          <button 
-            type="button"
-            onClick={onOpenAptoIA}
-            className="flex-1 flex items-center justify-center gap-1.5 h-full rounded-xl bg-[#1e3a5f] hover:bg-[#162c4a] text-white border border-[#d4a843]/60 shadow-md hover:shadow-lg transition-all cursor-pointer group px-2"
-            title="Selección Inteligente por IA (Aptos)"
-          >
-            <Sparkles className="h-3.5 w-3.5 text-[#d4a843] group-hover:scale-110 transition-transform animate-pulse" />
-            <span className="text-[9px] font-black uppercase tracking-widest text-[#d4a843]">Aptos</span>
-          </button>
-          
-          <button onClick={resetFilters} className="flex items-center justify-center h-full px-2.5 bg-slate-100 text-slate-500 rounded-xl border border-slate-200 hover:bg-slate-200 cursor-pointer transition-colors" title="Restablecer filtros">
-            <RotateCcw className="h-3.5 w-3.5" />
-          </button>
         </div>
 
       </div>

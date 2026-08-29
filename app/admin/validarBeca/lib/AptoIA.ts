@@ -97,7 +97,7 @@ export async function generarRankingAptoIA(): Promise<{ success: boolean; data: 
     `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3.5-flash', // Cambiado a modelo estable optimizado para evitar errores 503 de alta demanda
+      model: 'gemini-3.6-flash', // Cambiado a modelo estable optimizado para evitar errores 503 de alta demanda
       contents: prompt,
       config: {
         responseMimeType: 'application/json',

@@ -3,27 +3,11 @@
 import React, { useState } from "react"
 import { 
   MoreHorizontal, ArrowUpDown, ArrowUp, ArrowDown, 
-  Loader2, Check, Undo2, Activity, MapPin 
+  Loader2, Check, Undo2, Activity, MapPin, Calendar 
 } from "lucide-react"
 import { getBadgeColor, getRiskDetails, getAvgStyle } from "@/app/admin/validarBeca/lib/ValidarBecaUtils"
-
-interface SolicitudItem {
-  id: number | string;
-  nombre?: string;
-  apellido?: string;
-  cedula?: string;
-  municipio_residencia?: string;
-  carrera?: string;
-  tipo_beca?: string;
-  semestre?: number | string;
-  trimestre?: number | string;
-  puntaje?: number | null;
-  promedio_notas?: number | string;
-  promedio_historico?: number | string;
-  indice_global?: number | string;
-  estatus?: string;
-  periodo_id?: number | string;
-}
+import { SolicitudItem, SortConfig, ordenarSolicitudes, formatearFechaEnvio } from "@/app/admin/validarBeca/lib/ProcesadorDatosValidarBeca"
+import { ValidarBecaCardItem } from "./ValidarBecaTableMobil"
 
 interface ValidarBecaTableProps {
   solicitudes?: SolicitudItem[];
@@ -55,7 +39,7 @@ export function ValidarBecaTable({
   
   const listaDatos = solicitudes || data || [];
 
-  const [sortConfig, setSortConfig] = useState<{ key: string | null; direction: 'asc' | 'desc' }>({
+  const [sortConfig, setSortConfig] = useState<SortConfig>({
     key: null,
     direction: 'asc',
   })
@@ -69,32 +53,7 @@ export function ValidarBecaTable({
   }
 
   const sortedData = React.useMemo(() => {
-    if (!sortConfig.key) return listaDatos
-    return [...listaDatos].sort((a: SolicitudItem, b: SolicitudItem) => {
-      let aValue: any = a[sortConfig.key as keyof SolicitudItem]
-      let bValue: any = b[sortConfig.key as keyof SolicitudItem]
-
-      if (sortConfig.key === 'estudiante') {
-        aValue = `${a.nombre || ''} ${a.apellido || ''}`.toLowerCase()
-        bValue = `${b.nombre || ''} ${b.apellido || ''}`.toLowerCase()
-      } else if (sortConfig.key === 'vulnerabilidad') {
-        aValue = Number(a.puntaje || 0)
-        bValue = Number(b.puntaje || 0)
-      } else if (sortConfig.key === 'promedio') {
-        aValue = Number(a.promedio_notas || 0)
-        bValue = Number(b.promedio_notas || 0)
-      } else if (sortConfig.key === 'trimestre') {
-        aValue = Number(a.semestre || a.trimestre || 0)
-        bValue = Number(b.semestre || b.trimestre || 0)
-      } else if (typeof aValue === 'string') {
-        aValue = aValue.toLowerCase()
-        bValue = bValue.toLowerCase()
-      }
-
-      if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1
-      if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1
-      return 0
-    })
+    return ordenarSolicitudes(listaDatos, sortConfig)
   }, [listaDatos, sortConfig])
 
   const getSortIcon = (columnKey: string) => {
@@ -121,12 +80,13 @@ export function ValidarBecaTable({
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-      <div className="overflow-x-auto">
+      {/* VISTA ESCRITORIO (PC / LAPTOP): Alta densidad espacial corporativa (h-9, text-xs) */}
+      <div className="hidden md:block overflow-x-auto">
         <table className="w-full border-collapse">
           <thead className="bg-[#1e3a5f] text-white">
             <tr>
-              <th className={`${thClass} text-left w-16`} onClick={() => handleSort('id')}>
-                <div className="flex items-center gap-1">ID {getSortIcon('id')}</div>
+              <th className={`${thClass} text-left w-20`} onClick={() => handleSort('id')}>
+                <div className="flex items-center gap-1">ID / Fecha {getSortIcon('id')}</div>
               </th>
               <th className={`${thClass} text-left`} onClick={() => handleSort('estudiante')}>
                 <div className="flex items-center gap-1">Estudiante {getSortIcon('estudiante')}</div>
@@ -137,7 +97,7 @@ export function ValidarBecaTable({
               <th className={`${thClass} text-left hidden md:table-cell`} onClick={() => handleSort('carrera')}>
                 <div className="flex items-center gap-1">Carrera / Becas {getSortIcon('carrera')}</div>
               </th>
-              <th className={`${thClass} text-center hidden lg:table-cell`} onClick={() => handleSort('trimestre')}>
+              <th className={`${thClass} text-center`} onClick={() => handleSort('trimestre')}>
                 <div className="flex items-center justify-center gap-1">Trim. {getSortIcon('trimestre')}</div>
               </th>
               <th className={`${thClass} text-center hidden lg:table-cell`} onClick={() => handleSort('vulnerabilidad')}>
@@ -168,6 +128,20 @@ export function ValidarBecaTable({
           </tbody>
         </table>
       </div>
+
+      {/* VISTA MÓVIL Y TABLET: Renderizado delegado al archivo móvil */}
+      <div className="block md:hidden divide-y divide-slate-100 p-3 space-y-3">
+        {sortedData.map((s: SolicitudItem, index: number) => (
+          <ValidarBecaCardItem 
+            key={`mobile-${s.id}-${index}`} 
+            s={s} 
+            onView={onViewAuditoria} 
+            onViewHistorial={onViewAcademic} 
+            onStatusChange={onStatusChange} 
+            periodoActualId={periodoActualId}
+          />
+        ))}
+      </div>
     </div>
   )
 }
@@ -180,6 +154,8 @@ function ValidarBecaFila({ s, onView, onViewHistorial, onStatusChange, periodoAc
   const valPeriodoSolicitud = s.periodo_id ? Number(s.periodo_id) : 0;
   const valPeriodoActual = periodoActualId ? Number(periodoActualId) : 0;
   const esPeriodoActual = valPeriodoActual === 0 || valPeriodoSolicitud === valPeriodoActual;
+
+  const fechaEnvio = formatearFechaEnvio(s);
 
   const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value
@@ -205,8 +181,13 @@ function ValidarBecaFila({ s, onView, onViewHistorial, onStatusChange, periodoAc
 
   return (
     <tr className="hover:bg-slate-50 transition-colors group">
-      <td className="px-2 md:px-4 py-4 font-mono text-[10px] md:text-xs font-bold text-slate-400">
-        #{s.id?.toString().padStart(4, '0') || '0000'}
+      <td className="px-2 md:px-4 py-4">
+        <span className="font-mono text-[10px] md:text-xs font-bold text-slate-400 block">
+          #{s.id?.toString().padStart(4, '0') || '0000'}
+        </span>
+        <span className="text-[8px] font-medium text-slate-400 flex items-center gap-0.5 mt-0.5">
+          <Calendar className="h-2.5 w-2.5 text-slate-300" /> {fechaEnvio}
+        </span>
       </td>
       <td className="px-2 py-4">
         <div className="flex items-center gap-2">
@@ -231,7 +212,7 @@ function ValidarBecaFila({ s, onView, onViewHistorial, onStatusChange, periodoAc
         <p className="text-[10px] font-bold text-slate-700 truncate max-w-[120px] uppercase leading-tight">{s.carrera || "S/I"}</p>
         <p className="text-[8px] text-[#d4a843] font-black uppercase tracking-widest mt-0.5">{s.tipo_beca || "S/I"}</p>
       </td>
-      <td className="px-2 py-4 text-center hidden lg:table-cell">
+      <td className="px-2 py-4 text-center">
         <span className="text-xs font-black text-[#1e3a5f]">{s.semestre || s.trimestre || "0"}</span>
       </td>
       <td className="px-2 py-4 hidden lg:table-cell text-center">
