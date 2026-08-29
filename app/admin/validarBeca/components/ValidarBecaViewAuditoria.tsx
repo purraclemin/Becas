@@ -3,6 +3,7 @@
 import React from "react"
 import { ArrowLeft, ShieldCheck, Award } from "lucide-react"
 import { ValidarBecaAuditoriaPanel } from "./ValidarBecaAuditoriaPanel"
+import { getBadgeColor } from "@/app/admin/validarBeca/lib/ValidarBecaUtils"
 
 interface SolicitudAuditoriaView {
   nombre?: string;
@@ -26,31 +27,35 @@ export function ValidarBecaViewAuditoria({
   periodoActualId 
 }: ValidarBecaViewAuditoriaProps) {
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 w-full max-w-[1600px] mx-auto px-4 md:px-8 py-6">
-      {/* CABECERA DE AUDITORÍA */}
-      <div className="bg-[#1e3a5f] rounded-2xl p-6 text-white shadow-lg border border-[#1e3a5f]/20 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
+    <div className="space-y-4 animate-in fade-in duration-500 w-full max-w-[1600px] mx-auto px-4 md:px-8 py-4">
+      {/* CABECERA DE AUDITORÍA: Estandarizada al tamaño de ValidarBecaHeader */}
+      <div className="bg-[#1e3a5f] rounded-2xl px-5 py-4 text-white shadow-sm border border-slate-200 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
           <button 
             onClick={onClose}
-            className="p-2.5 bg-white/10 hover:bg-white/20 rounded-xl text-[#d4a843] transition-all"
+            className="h-9 w-9 bg-white/10 hover:bg-white/20 rounded-xl text-[#d4a843] flex items-center justify-center transition-all shrink-0"
             title="Volver a la lista"
           >
-            <ArrowLeft className="h-5 w-5" />
+            <ArrowLeft className="h-4 w-4" />
           </button>
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <ShieldCheck className="h-5 w-5 text-[#d4a843]" />
-              <h1 className="text-lg font-black tracking-wider uppercase">Auditoría y Validación de Beca</h1>
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <ShieldCheck className="h-4 w-4 text-[#d4a843]" />
+              <h1 className="text-xs md:text-sm font-black tracking-wider uppercase text-white">Auditoría y Validación de Beca</h1>
             </div>
-            <p className="text-xs text-slate-300">
+            <p className="text-[10px] text-slate-300 font-medium">
               {selectedSolicitud?.nombre || ""} {selectedSolicitud?.apellido || ""} • V-{selectedSolicitud?.cedula || ""}
             </p>
           </div>
         </div>
 
-        <div className="hidden md:flex items-center gap-3 px-4 py-2 bg-[#172e4d] rounded-xl border border-white/10">
-          <Award className="h-4 w-4 text-[#d4a843]" />
-          <span className="text-[10px] font-black uppercase tracking-wider">Estatus Actual: {selectedSolicitud?.estatus || "S/I"}</span>
+        {/* Estatus Actual con el color predeterminado idéntico al de la tabla */}
+        <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-[#172e4d] rounded-xl border border-white/10 shrink-0">
+          <Award className="h-3.5 w-3.5 text-[#d4a843]" />
+          <span className="text-[9px] font-black uppercase tracking-wider text-slate-300">Estatus:</span>
+          <span className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest border ${getBadgeColor(selectedSolicitud?.estatus || '')}`}>
+            {selectedSolicitud?.estatus || "S/I"}
+          </span>
         </div>
       </div>
 
