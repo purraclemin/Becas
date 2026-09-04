@@ -1,22 +1,33 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useMemo } from "react"
 import { 
   Info, Mail, GraduationCap, Star, Hash, BookOpen, 
-  FileText, ImageIcon, Paperclip, X, ExternalLink,
-  ShieldAlert
+  FileText, ImageIcon, X, ExternalLink,
+  ShieldAlert, CreditCard, Phone
 } from "lucide-react"
 
 interface SolicitudAuditoria {
+  cedula?: string | null;
+  telefono?: string | null;
+  telefono_movil?: string | null;
   foto_carnet?: string | null;
   copia_cedula?: string | null;
-  planilla_inscripcion?: string | null;
   tipo_beca?: string | null;
   semestre?: number | string | null;
   trimestre?: number | string | null;
   promedio_notas?: number | string | null;
   carrera?: string | null;
   email_institucional?: string | null;
+  constancia_notas?: string | null;
+  notas_certificadas?: string | null;
+  informe_medico?: string | null;
+  carnet_discapacidad?: string | null;
+  documentos_filiacion?: string | null;
+  constancia_club?: string | null;
+  constancia_residencia?: string | null;
+  declaracion_manutencion?: string | null;
+  [key: string]: any; 
 }
 
 interface ValidarBecaInfoProps {
@@ -27,11 +38,72 @@ interface ValidarBecaInfoProps {
 export function ValidarBecaInfo({ solicitud, sinEstudio }: ValidarBecaInfoProps) {
   const [imgPreview, setImgPreview] = useState<string | null>(null);
 
-  const documentos = [
-    { label: 'Foto Carnet', url: solicitud.foto_carnet, icon: ImageIcon },
-    { label: 'Cédula', url: solicitud.copia_cedula, icon: FileText },
-    { label: 'Planilla', url: solicitud.planilla_inscripcion, icon: Paperclip }
-  ];
+  // Mapeo dinámico completo de documentos según los tipos de becas y ayudas de la institución
+  const documentos = useMemo(() => {
+    const esPrimerTrimestre = Number(solicitud.semestre || solicitud.trimestre) === 1;
+    const tipoBeca = solicitud.tipo_beca?.trim();
+
+    // Documentos base obligatorios para todas las solicitudes
+    const baseDocs = [
+      { label: 'Foto Carnet', url: solicitud.foto_carnet, icon: ImageIcon },
+      { label: 'Cédula', url: solicitud.copia_cedula, icon: FileText }
+    ];
+
+    const extraDocs: Record<string, Array<{ label: string; url?: string | null; icon: any }>> = {
+      "BECA SOCIAL": [
+        { label: 'Constancia Residencia', url: solicitud.constancia_residencia, icon: FileText },
+        { label: 'Declaración Jurada', url: solicitud.declaracion_manutencion, icon: FileText },
+        ...(esPrimerTrimestre ? [{ label: 'Notas Certificadas', url: solicitud.notas_certificadas, icon: FileText }] : [])
+      ],
+      "BECA APRENDIZAJE": [
+        { label: 'Constancia Residencia', url: solicitud.constancia_residencia, icon: FileText },
+        { label: 'Declaración Jurada', url: solicitud.declaracion_manutencion, icon: FileText },
+        { label: 'Constancia Notas', url: solicitud.constancia_notas, icon: FileText }
+      ],
+      "BECA POR DISCAPACIDAD": [
+        { label: 'Constancia Residencia', url: solicitud.constancia_residencia, icon: FileText },
+        { label: 'Declaración Jurada', url: solicitud.declaracion_manutencion, icon: FileText },
+        ...(esPrimerTrimestre ? [{ label: 'Notas Certificadas', url: solicitud.notas_certificadas, icon: FileText }] : []),
+        { label: 'Informe Médico', url: solicitud.informe_medico, icon: FileText },
+        { label: 'Carnet Discapacidad', url: solicitud.carnet_discapacidad, icon: FileText }
+      ],
+      "BECA A LA EXCELENCIA": [
+        { label: 'Constancia Notas', url: solicitud.constancia_notas, icon: FileText }
+      ],
+      "BECA A LA EXCELENCIA ACADÉMICA": [
+        { label: 'Constancia Notas', url: solicitud.constancia_notas, icon: FileText }
+      ],
+      "AYUDA ECONÓMICA GENERAL": [
+        // Utiliza solo los documentos base comunes
+      ],
+      "AYUDA ECONÓMICA FAMILIAR": [
+        { label: 'Doc. Filiación', url: solicitud.documentos_filiacion, icon: FileText }
+      ],
+      "Ayuda Económica Familiar": [
+        { label: 'Doc. Filiación', url: solicitud.documentos_filiacion, icon: FileText }
+      ],
+      "AYUDA ECONÓMICA PARA TRABAJADORES": [
+        // Utiliza solo los documentos base comunes
+      ],
+      "AYUDA ECONÓMICA PARA HIJOS DE TRABAJADORES": [
+        { label: 'Doc. Filiación', url: solicitud.documentos_filiacion, icon: FileText }
+      ],
+      "Ayuda Económica para Hijos de Trabajadores": [
+        { label: 'Doc. Filiación', url: solicitud.documentos_filiacion, icon: FileText }
+      ],
+      "AYUDA ECONÓMICA PARA ESTUDIANTES PREPARADORES": [
+        // Utiliza solo los documentos base comunes
+      ],
+      "AYUDA ECONÓMICA POR ACTIVIDADES EXTRACURRICULARES": [
+        { label: 'Constancia Club', url: solicitud.constancia_club, icon: FileText }
+      ],
+      "Ayuda Económica por Actividades Extracurriculares": [
+        { label: 'Constancia Club', url: solicitud.constancia_club, icon: FileText }
+      ]
+    };
+
+    return [...baseDocs, ...(tipoBeca && extraDocs[tipoBeca] ? extraDocs[tipoBeca] : [])];
+  }, [solicitud]);
 
   return (
     <div className="space-y-4">
@@ -54,6 +126,7 @@ export function ValidarBecaInfo({ solicitud, sinEstudio }: ValidarBecaInfoProps)
         
         {/* Cuerpo con densidad espacial compacta corporativa */}
         <div className="p-4 space-y-3">
+          {/* Tipo de Beca Solicitada */}
           <div className="flex items-center gap-2.5 p-2.5 bg-slate-50/70 rounded-xl border border-slate-100">
             <Star className="h-3.5 w-3.5 text-[#d4a843]" />
             <div className="min-w-0">
@@ -62,6 +135,25 @@ export function ValidarBecaInfo({ solicitud, sinEstudio }: ValidarBecaInfoProps)
             </div>
           </div>
 
+          {/* Cédula y Teléfono */}
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="flex items-center gap-2.5 p-2.5 bg-slate-50/70 rounded-xl border border-slate-100">
+              <CreditCard className="h-3.5 w-3.5 text-[#d4a843]" />
+              <div className="min-w-0">
+                <p className="text-[7px] font-black text-slate-400 uppercase tracking-wider">Cédula</p>
+                <p className="text-xs font-bold text-[#1e3a5f]">V-{solicitud.cedula || "---"}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2.5 p-2.5 bg-slate-50/70 rounded-xl border border-slate-100">
+              <Phone className="h-3.5 w-3.5 text-[#d4a843]" />
+              <div className="min-w-0">
+                <p className="text-[7px] font-black text-slate-400 uppercase tracking-wider">Teléfono</p>
+                <p className="text-xs font-bold text-[#1e3a5f] truncate">{solicitud.telefono_movil || solicitud.telefono || "---"}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Trimestre / Semestre y Promedio */}
           <div className="grid grid-cols-2 gap-2.5">
             <div className="flex items-center gap-2.5 p-2.5 bg-slate-50/70 rounded-xl border border-slate-100">
               <Hash className="h-3.5 w-3.5 text-[#d4a843]" />
@@ -79,14 +171,16 @@ export function ValidarBecaInfo({ solicitud, sinEstudio }: ValidarBecaInfoProps)
             </div>
           </div>
 
+          {/* Carrera */}
           <div className="flex items-center gap-2.5 p-2.5 bg-slate-50/70 rounded-xl border border-slate-100">
             <GraduationCap className="h-3.5 w-3.5 text-[#d4a843]" />
             <div className="min-w-0">
               <p className="text-[7px] font-black text-slate-400 uppercase tracking-wider">Carrera</p>
-              <p className="text-xs font-bold text-[#1e3a5f] truncate uppercase">{solicitud.carrera}</p>
+              <p className="text-xs font-bold text-[#1e3a5f] truncate uppercase">{solicitud.carrera || "No especificada"}</p>
             </div>
           </div>
 
+          {/* Correo Institucional */}
           <div className="flex items-center gap-2.5 p-2.5 bg-slate-50/70 rounded-xl border border-slate-100">
             <Mail className="h-3.5 w-3.5 text-[#d4a843]" />
             <div className="min-w-0">
@@ -95,6 +189,7 @@ export function ValidarBecaInfo({ solicitud, sinEstudio }: ValidarBecaInfoProps)
             </div>
           </div>
 
+          {/* Documentación Adjunta Dinámica */}
           <div className="pt-3 border-t border-slate-100">
             <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-2.5 px-0.5">Documentación Adjunta</p>
             <div className="grid grid-cols-3 gap-2">

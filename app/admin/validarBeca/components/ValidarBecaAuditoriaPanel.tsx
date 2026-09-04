@@ -9,17 +9,18 @@ import { DiagnosticoBeca } from "@/lib/ActionsBecaValidators"
 // Importaciones locales y autónomas dentro del módulo validarBeca
 import { ValidarBecaDecisionBox } from "./ValidarBecaDecisionBox"
 import { ValidarBecaInfo } from "@/app/admin/validarBeca/components/ValidarBecaInfo"
-import {ValidarBecaTrace } from "@/app/admin/validarBeca/components/ValidarBecaTrace"
+import { ValidarBecaTrace } from "@/app/admin/validarBeca/components/ValidarBecaTrace"
 
 interface ValidarBecaAuditoriaPanelProps {
   solicitud: any;
-  onStatusChange: (id: number, status: string, observaciones?: string, confirmacionEspecial?: boolean) => void;
+  onStatusChange: (id: number, status: string, observaciones?: string, confirmacionEspecial?: boolean, departamentoAsignado?: string) => void;
   onClose: () => void;
   periodoActualId: number | null;
 }
 
 export function ValidarBecaAuditoriaPanel({ solicitud, onStatusChange, onClose, periodoActualId }: ValidarBecaAuditoriaPanelProps) {
   const [observaciones, setObservaciones] = useState("")
+  const [departamentoAsignado, setDepartamentoAsignado] = useState("") // 🟢 Estado local añadido
   const [expedienteDetallado, setExpedienteDetallado] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [diagnostico, setDiagnostico] = useState<DiagnosticoBeca | null>(null)
@@ -91,6 +92,8 @@ export function ValidarBecaAuditoriaPanel({ solicitud, onStatusChange, onClose, 
           periodoActualId={periodoActualId}
           observaciones={observaciones}
           setObservaciones={setObservaciones}
+          departamentoAsignado={departamentoAsignado}         
+          setDepartamentoAsignado={setDepartamentoAsignado} 
           onStatusChange={onStatusChange}
           onClose={onClose}
           bloqueadoPorEstudio={!tieneEstudioAdmin}

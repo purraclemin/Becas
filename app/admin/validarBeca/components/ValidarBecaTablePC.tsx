@@ -258,7 +258,7 @@ function ValidarBecaFila({ s, onView, onViewHistorial, onStatusChange, periodoAc
             >
               <option value="" disabled>Validar...</option>
               <option value="ver_detalles">👁️ Ver Expediente</option>
-              <option value="ver_historial">📋 Kardex Académico</option>
+              <option value="ver_historial">📋  Materia Historia</option>
               {esPeriodoActual ? (
                 <>
                   {s.estatus !== 'En Revisión' && <option value="En Revisión">⏳ En Revisión</option>}

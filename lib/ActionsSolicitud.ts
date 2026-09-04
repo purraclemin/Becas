@@ -68,12 +68,34 @@ export async function enviarSolicitud(formData: FormData) {
     // 4. SINCRONIZACIÓN DE PERIODO
     let periodoId = await obtenerOCrearPeriodoObjetivo();
 
-    // 5. CARGA DE ARCHIVOS
+    // 5. CARGA DE ARCHIVOS (Base + Nuevos Documentos institucionales)
     await mkdir(path.join(process.cwd(), 'public', 'uploads'), { recursive: true }).catch(() => {})
-    const [rutaFoto, rutaCedula] = await Promise.all([
+    
+    const [
+      rutaFoto, 
+      rutaCedula,
+      rutaConstanciaResidencia,
+      rutaDeclaracionManutencion,
+      rutaInformeMedico,
+      rutaPartidaNacimiento,
+      rutaConstanciaClub,
+      rutaConstanciaNotas,
+      rutaNotasCertificadas,
+      rutaCarnetDiscapacidad,
+      rutaDocumentosFiliacion
+    ] = await Promise.all([
       guardarArchivo(formData.get('foto_carnet') as File),
-      guardarArchivo(formData.get('copia_cedula') as File)
-    ])
+      guardarArchivo(formData.get('copia_cedula') as File),
+      guardarArchivo(formData.get('constancia_residencia') as File),
+      guardarArchivo(formData.get('declaracion_manutencion') as File),
+      guardarArchivo(formData.get('informe_medico') as File),
+      guardarArchivo(formData.get('partida_nacimiento') as File),
+      guardarArchivo(formData.get('constancia_club') as File),
+      guardarArchivo(formData.get('constancia_notas') as File),
+      guardarArchivo(formData.get('notas_certificadas') as File),
+      guardarArchivo(formData.get('carnet_discapacidad') as File),
+      guardarArchivo(formData.get('documentos_filiacion') as File),
+    ]);
 
     // --- CÁLCULO DE INGRESOS (Sincronizado con nombres reales de columnas) ---
     const sueldoReal = parseFloat(formData.get('monto_ingreso_sueldo') as string || "0");
@@ -115,7 +137,7 @@ export async function enviarSolicitud(formData: FormData) {
 
     try {
       const [solicitudExistente]: any = await connection.execute(
-          'SELECT id, estatus, foto_carnet, copia_cedula FROM solicitudes WHERE user_id = ? AND periodo_id = ?',
+          'SELECT id, estatus, foto_carnet, copia_cedula, constancia_residencia, declaracion_manutencion, informe_medico, partida_nacimiento, constancia_club, constancia_notas, notas_certificadas, carnet_discapacidad, documentos_filiacion FROM solicitudes WHERE user_id = ? AND periodo_id = ?',
           [userIdNum, periodoId]
       );
 
@@ -124,8 +146,12 @@ export async function enviarSolicitud(formData: FormData) {
           await connection.execute(`
               UPDATE solicitudes SET 
                   email_institucional = ?, tipo_beca = ?, promedio_notas = ?, 
-                  motivo_solicitud = ?, materias_json = ?, 
-                  estatus = ?, foto_carnet = ?, copia_cedula = ?, fecha_registro = NOW()
+                  motivo_solicitud = ?, materias_json = ?, estatus = ?, 
+                  foto_carnet = ?, copia_cedula = ?, 
+                  constancia_residencia = ?, declaracion_manutencion = ?, informe_medico = ?, 
+                  partida_nacimiento = ?, constancia_club = ?, constancia_notas = ?, 
+                  notas_certificadas = ?, carnet_discapacidad = ?, documentos_filiacion = ?, 
+                  fecha_registro = NOW()
               WHERE id = ?
           `, [
             emailInstitucional || null, 
@@ -135,7 +161,16 @@ export async function enviarSolicitud(formData: FormData) {
             materiasJsonString || null, 
             estatusFinal || 'Pendiente', 
             rutaFoto || existente.foto_carnet, 
-            rutaCedula || existente.copia_cedula, 
+            rutaCedula || existente.copia_cedula,
+            rutaConstanciaResidencia || existente.constancia_residencia,
+            rutaDeclaracionManutencion || existente.declaracion_manutencion,
+            rutaInformeMedico || existente.informe_medico,
+            rutaPartidaNacimiento || existente.partida_nacimiento,
+            rutaConstanciaClub || existente.constancia_club,
+            rutaConstanciaNotas || existente.constancia_notas,
+            rutaNotasCertificadas || existente.notas_certificadas,
+            rutaCarnetDiscapacidad || existente.carnet_discapacidad,
+            rutaDocumentosFiliacion || existente.documentos_filiacion,
             existente.id
           ]);
       } else {
@@ -143,8 +178,10 @@ export async function enviarSolicitud(formData: FormData) {
             INSERT INTO solicitudes (
               user_id, periodo_id, email_institucional, tipo_beca, promedio_notas, 
               motivo_solicitud, materias_json, estatus, 
-              foto_carnet, copia_cedula, fecha_registro
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+              foto_carnet, copia_cedula, constancia_residencia, declaracion_manutencion, 
+              informe_medico, partida_nacimiento, constancia_club, constancia_notas, 
+              notas_certificadas, carnet_discapacidad, documentos_filiacion, fecha_registro
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
           `, [
             userIdNum, 
             periodoId, 
@@ -155,7 +192,16 @@ export async function enviarSolicitud(formData: FormData) {
             materiasJsonString || null, 
             estatusFinal || 'Pendiente', 
             rutaFoto || null, 
-            rutaCedula || null
+            rutaCedula || null,
+            rutaConstanciaResidencia || null,
+            rutaDeclaracionManutencion || null,
+            rutaInformeMedico || null,
+            rutaPartidaNacimiento || null,
+            rutaConstanciaClub || null,
+            rutaConstanciaNotas || null,
+            rutaNotasCertificadas || null,
+            rutaCarnetDiscapacidad || null,
+            rutaDocumentosFiliacion || null
           ]);
       }
 

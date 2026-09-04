@@ -5,13 +5,15 @@ import { useRouter } from "next/navigation"
 import { 
   ShieldCheck, MessageSquare, ShieldAlert, 
   CheckCircle2, Loader2, Lock, ArrowRight,
-  ClipboardEdit
+  ClipboardEdit, Building2
 } from "lucide-react"
 import { validarCuposYRequisitos, DiagnosticoBeca } from "@/lib/ActionsBecaValidators"
 
 interface SolicitudDecision {
   id: number | string;
   cedula: string;
+  estatus?: string; 
+  departamento_asignado?: string; // <--- Añadido opcional por si ya viene cargado
 }
 
 interface ValidarBecaDecisionBoxProps {
@@ -20,7 +22,9 @@ interface ValidarBecaDecisionBoxProps {
   periodoActualId: number | null;
   observaciones: string;
   setObservaciones: (obs: string) => void;
-  onStatusChange: (id: number, status: string, observaciones?: string, confirmacionEspecial?: boolean) => void;
+  departamentoAsignado: string; // <--- Nuevo prop para manejar el estado del departamento
+  setDepartamentoAsignado: (dept: string) => void; // <--- Nuevo setter
+  onStatusChange: (id: number, status: string, observaciones?: string, confirmacionEspecial?: boolean, departamentoAsignado?: string) => void;
   onClose: () => void;
   bloqueadoPorEstudio: boolean;
 }
@@ -31,6 +35,8 @@ export function ValidarBecaDecisionBox({
   periodoActualId, 
   observaciones, 
   setObservaciones, 
+  departamentoAsignado,
+  setDepartamentoAsignado,
   onStatusChange, 
   onClose,
   bloqueadoPorEstudio 
@@ -42,8 +48,11 @@ export function ValidarBecaDecisionBox({
   const [mostrarAdvertencia, setMostrarAdvertencia] = useState(false)
   const [responsabilidadAceptada, setResponsabilidadAceptada] = useState(false)
 
+  // Evaluamos el estatus actual limpio para las comparaciones
+  const estatusActual = solicitud.estatus?.trim() || "";
+
   const handleAprobarClick = async () => {
-    if (bloqueadoPorEstudio) return;
+    if (bloqueadoPorEstudio || estatusActual === 'Aprobada') return;
 
     setValidandoCupo(true);
     setMostrarAdvertencia(false);
@@ -126,7 +135,8 @@ export function ValidarBecaDecisionBox({
                   </div>
                 )}
 
-                <div className="space-y-1.5 mb-4">
+                {/* Campo de Observaciones */}
+                <div className="space-y-1.5 mb-3">
                   <div className="flex items-center gap-1.5 px-0.5">
                     <MessageSquare className="h-3 w-3 text-slate-400" />
                     <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Observaciones</span>
@@ -135,8 +145,29 @@ export function ValidarBecaDecisionBox({
                     value={observaciones} 
                     onChange={(e) => setObservaciones(e.target.value)}
                     placeholder="Indique los motivos de su decisión..."
-                    className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-xs text-white outline-none focus:border-[#d4a843] transition-all resize-none h-20 placeholder:text-white/20"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-xs text-white outline-none focus:border-[#d4a843] transition-all resize-none h-16 placeholder:text-white/20"
                   />
+                </div>
+
+                {/* NUEVO: Campo Select de Departamento Asignado */}
+                <div className="space-y-1.5 mb-4">
+                  <div className="flex items-center gap-1.5 px-0.5">
+                    <Building2 className="h-3 w-3 text-slate-400" />
+                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Departamento Asignado</span>
+                  </div>
+                  <select
+                    value={departamentoAsignado}
+                    onChange={(e) => setDepartamentoAsignado(e.target.value)}
+                    className="w-full bg-[#1e3a5f] border border-white/10 rounded-xl p-2.5 text-xs text-white outline-none focus:border-[#d4a843] transition-all"
+                  >
+                    <option value="" disabled className="bg-[#1e3a5f] text-slate-400">Seleccione un departamento...</option>
+                    <option value="Bienestar Estudiantil" className="bg-[#1e3a5f] text-white">Bienestar Estudiantil</option>
+                    <option value="Secretaría General" className="bg-[#1e3a5f] text-white">Secretaría General</option>
+                    <option value="Control de Estudios" className="bg-[#1e3a5f] text-white">Control de Estudios</option>
+                    <option value="Decanato de Investigación" className="bg-[#1e3a5f] text-white">Decanato de Investigación</option>
+                    <option value="Biblioteca" className="bg-[#1e3a5f] text-white">Biblioteca</option>
+                    <option value="Centro de Tecnologías" className="bg-[#1e3a5f] text-white">Centro de Tecnologías</option>
+                  </select>
                 </div>
 
                 <div className="grid gap-2.5">
@@ -150,7 +181,10 @@ export function ValidarBecaDecisionBox({
                       </button>
                       <button 
                         disabled={mostrarAdvertencia && !responsabilidadAceptada}
-                        onClick={() => { onStatusChange(Number(solicitud.id), confirmando, observaciones, mostrarAdvertencia); onClose(); }}
+                        onClick={() => { 
+                          onStatusChange(Number(solicitud.id), confirmando, observaciones, mostrarAdvertencia, departamentoAsignado); 
+                          onClose(); 
+                        }}
                         className={`flex-1 py-2.5 rounded-xl text-[9px] font-black uppercase shadow-md transition-all disabled:opacity-30 ${
                           confirmando === 'Aprobada' ? 'bg-emerald-500 shadow-emerald-500/20' : 'bg-rose-500 shadow-rose-500/20'
                         } text-white`}
@@ -162,22 +196,26 @@ export function ValidarBecaDecisionBox({
                     <div className="flex flex-col gap-2.5">
                       <div className="grid grid-cols-2 gap-2">
                         <button 
+                          disabled={estatusActual === 'En Revisión'}
                           onClick={() => setConfirmando('En Revisión')} 
-                          className="py-2.5 rounded-xl bg-white/5 text-blue-400 text-[8px] font-black uppercase border border-blue-500/20 hover:bg-blue-500/10 transition-all tracking-widest"
+                          className="py-2.5 rounded-xl bg-white/5 text-blue-400 text-[8px] font-black uppercase border border-blue-500/20 hover:bg-blue-500/10 transition-all tracking-widest disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-white/2"
                         >
                           A Revisión
                         </button>
+                        
                         <button 
+                          disabled={estatusActual === 'Rechazada'}
                           onClick={() => setConfirmando('Rechazada')} 
-                          className="py-2.5 rounded-xl bg-white/5 text-rose-400 text-[8px] font-black uppercase border border-rose-500/20 hover:bg-rose-500/10 transition-all tracking-widest"
+                          className="py-2.5 rounded-xl bg-white/5 text-rose-400 text-[8px] font-black uppercase border border-rose-500/20 hover:bg-rose-500/10 transition-all tracking-widest disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-white/2"
                         >
                           Rechazar
                         </button>
                       </div>
+
                       <button 
-                        disabled={validandoCupo} 
+                        disabled={validandoCupo || estatusActual === 'Aprobada'} 
                         onClick={handleAprobarClick} 
-                        className="py-3 rounded-xl bg-[#d4a843] text-[#1e3a5f] text-[9px] font-black uppercase tracking-widest hover:bg-[#c2983a] transition-all disabled:opacity-50 shadow-md"
+                        className="py-3 rounded-xl bg-[#d4a843] text-[#1e3a5f] text-[9px] font-black uppercase tracking-widest hover:bg-[#c2983a] transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-md"
                       >
                         {validandoCupo ? (
                           <div className="flex items-center justify-center gap-1.5">

@@ -121,7 +121,11 @@ export function PostulacionContainer({
             </div>
 
             <div className={cn("flex-1 flex-col", pasoActual === 4 ? "flex" : "hidden")}>
-              <StepArchivos disabled={isPending} tipoBeca={tipoBecaSeleccionada} />
+              <StepArchivos 
+                disabled={isPending} 
+                tipoBeca={tipoBecaSeleccionada} 
+                semestre={user?.semestre || trimestreActual} 
+              />
             </div>
 
             <div className={cn("flex-1 flex-col", pasoActual === 5 ? "flex" : "hidden")}>

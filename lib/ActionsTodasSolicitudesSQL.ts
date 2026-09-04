@@ -125,8 +125,6 @@ export async function fetchSolicitudesDesdeDB(filtros: FiltrosDB = {}) {
       )`;
     }
 
-    console.log("🔍 Filtro estadoEstudio recibido:", JSON.stringify(filtros.estadoEstudio));
-    
     // --- APLICACIÓN DEL MÓDULO DE ESTUDIO (HECHO / PENDIENTE) ---
     const filtroEstudio = aplicarFiltroEstudioAdmin(filtros.estadoEstudio, pId);
     if (filtroEstudio.condition) {
@@ -155,6 +153,9 @@ export async function fetchSolicitudesDesdeDB(filtros: FiltrosDB = {}) {
       SELECT 
         s.id, s.user_id, s.tipo_beca, s.estatus, s.promedio_notas, s.fecha_registro, 
         s.motivo_solicitud, s.foto_carnet, s.copia_cedula, s.planilla_inscripcion,
+        s.constancia_residencia, s.declaracion_manutencion, s.informe_medico, 
+        s.partida_nacimiento, s.constancia_club, s.constancia_notas, 
+        s.notas_certificadas, s.carnet_discapacidad, s.documentos_filiacion,
         s.email_institucional, s.periodo_id,
         st.nombre, st.apellido, st.cedula, st.carrera, st.telefono,
         st.semestre, st.municipio_residencia,
@@ -171,11 +172,6 @@ export async function fetchSolicitudesDesdeDB(filtros: FiltrosDB = {}) {
     `;
 
     // 🟢 ORDENAMIENTO INTELIGENTE BASADO EN JERARQUÍA INSTITUCIONAL DE UNIMAR
-    // 1. Renovación (Cupos limitados / continuidad)
-    // 2. Pendientes (Nuevas por atender)
-    // 3. En Revisión (En proceso activo de baremo)
-    // 4. Revisión Especial (Promedio bajo con vulnerabilidad alta)
-    // 5. Aprobada / Rechazada (Casos cerrados al fondo)
     query += ` ORDER BY 
       CASE 
         WHEN s.estatus = 'Renovacion' OR s.estatus = 'Renovación' THEN 1

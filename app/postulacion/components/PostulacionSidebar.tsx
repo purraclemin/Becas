@@ -17,7 +17,7 @@ export const PASOS = [
   { id: 1, titulo: "Carga Académica", icon: BookOpen },
   { id: 2, titulo: "Detalles Beca", icon: LayoutDashboard },
   { id: 3, titulo: "Estudio Social", icon: ClipboardList },
-  { id: 4, titulo: "Documentación", icon: Upload },
+  { id: 4, titulo: "Documentación3", icon: Upload },
   { id: 5, titulo: "Resumen y Envío", icon: Eye },
 ]
 

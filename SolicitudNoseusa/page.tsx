@@ -5,13 +5,13 @@
 import Link from "next/link"
 import { getSession } from "@/lib/ActionsSession"
 import { getStudentAcademicStatus } from "@/lib/ActionsStudent" 
-import { SolicitudForm } from "@/app/Solicitud/components/SolicitudFormFields" 
+import { SolicitudForm } from "@/SolicitudNoseusa/components/SolicitudFormFields" 
 import { Card, CardContent, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, FileText } from "lucide-react"
 import { db } from "@/lib/db"
 import { mapSolicitudData } from "@/lib/solicitudMappers"
-import { RestrictedAccessCard, StatusCard } from "@/app/Solicitud/components/SolicitudStatusUI"
+import { RestrictedAccessCard, StatusCard } from "@/SolicitudNoseusa/components/SolicitudStatusUI"
 
 // Configuración de SSR
 export const dynamic = 'force-dynamic';

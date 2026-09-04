@@ -54,9 +54,9 @@ export async function validarCuposYRequisitos(
     // 2. REGLAMENTO INSTITUCIONAL
     const REGLAMENTO: Record<string, any> = {
       'BECA APRENDIZAJE': { cupoMaximo: 25, indiceMinimo: 16, trimestreMinimo: 1 },
-      'BECA SOCIAL': { cupoMaximo: 40, indiceMinimo: 18, trimestreMinimo: 1 }, 
+      'BECA SOCIAL': { cupoMaximo: 7, indiceMinimo: 18, trimestreMinimo: 1 }, 
       'BECA POR DISCAPACIDAD': { cupoMaximo: 20, indiceMinimo: 16, trimestreMinimo: 1 },
-      'BECA A LA EXCELENCIA': { cupoMaximo: 8, indiceMinimo: 18, trimestreMinimo: 4 }
+      'BECA A LA EXCELENCIA': { cupoMaximo: 1, indiceMinimo: 18, trimestreMinimo: 4 }
     };
 
     const regla = REGLAMENTO[tipoBecaRaw];
@@ -74,7 +74,7 @@ export async function validarCuposYRequisitos(
       return {
         apto: false,
         codigo: 'TRIMESTRE_INSUFICIENTE',
-        mensaje: `Esta beca exige trimestre ${regla.trimestreMinimo}. El estudiante está en el ${trimestreReal}.`,
+        mensaje: `Esta beca exige cursar a partir del trimestre ${regla.trimestreMinimo}. El estudiante está cursando el trimestre ${trimestreReal}.`,
       };
     }
 
@@ -94,7 +94,7 @@ export async function validarCuposYRequisitos(
       JOIN students st ON s.user_id = st.id
       WHERE s.periodo_id = ? 
         AND UPPER(TRIM(s.tipo_beca)) = ? 
-        AND s.estatus NOT IN ('Rechazada')
+        AND s.estatus NOT IN ('Aprobada', 'Renovación')
         AND s.id != ?
     `;
     
@@ -114,7 +114,7 @@ export async function validarCuposYRequisitos(
       return {
         apto: false,
         codigo: 'CUPO_EXCEDIDO',
-        mensaje: `Cupo comprometido: Ya existen ${cupoOcupado} solicitudes activas para ${tipoBecaRaw}.`,
+        mensaje: `Cupo comprometido: Ya existen ${cupoOcupado} solicitudes activas para ${tipoBecaRaw}${tipoBecaRaw === 'BECA A LA EXCELENCIA' ? ' en esta carrera' : ''}.`,
         detalles: { 
           actual: cupoOcupado, 
           maximo: regla.cupoMaximo, 
@@ -129,5 +129,47 @@ export async function validarCuposYRequisitos(
   } catch (error) {
     console.error("❌ Error en validador de becas:", error);
     return { apto: false, codigo: 'ERROR', mensaje: "Error interno al verificar el reglamento." };
+  }
+}
+
+/**
+ * 🟢 ACTUALIZACIÓN DE ESTATUS Y DEPARTAMENTO ASIGNADO
+ * Guarda el departamento asignado únicamente si la beca es aprobada. 
+ * Lo limpia si se rechaza o pasa a revisión.
+ */
+export async function actualizarEstadoSolicitud(
+  solicitudId: number,
+  nuevoEstatus: string,
+  observaciones: string,
+  departamentoAsignado?: string
+) {
+  const connection = await db.getConnection();
+  
+  try {
+    await connection.beginTransaction();
+
+    // Si está aprobada se guarda el departamento, de lo contrario se asigna NULL
+    const deptAGuardar = nuevoEstatus === 'Aprobada' ? (departamentoAsignado || null) : null;
+
+    await connection.execute(
+      `UPDATE solicitudes 
+       SET estatus = ?, 
+           observaciones_admin = ?, 
+           departamento_asignado = ?, 
+           fecha_decision = CASE WHEN ? IN ('Aprobada', 'Rechazada') THEN NOW() ELSE fecha_decision END,
+           fecha_revision = CASE WHEN ? = 'En Revisión' THEN NOW() ELSE fecha_revision END
+       WHERE id = ?`,
+      [nuevoEstatus, observaciones, deptAGuardar, nuevoEstatus, nuevoEstatus, Number(solicitudId)]
+    );
+
+    await connection.commit();
+    return { success: true, message: "Estatus y departamento actualizados exitosamente." };
+
+  } catch (error: any) {
+    await connection.rollback();
+    console.error("❌ Error al actualizar el estatus de la solicitud:", error);
+    return { success: false, error: error.message };
+  } finally {
+    connection.release();
   }
 }

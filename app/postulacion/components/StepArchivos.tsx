@@ -1,4 +1,3 @@
-// linea 81
 "use client"
 
 import React, { useMemo, useState, useEffect } from "react"
@@ -20,14 +19,17 @@ interface FileStatus {
 export function StepArchivos({
   disabled,
   tipoBeca,
+  semestre,
   onValidationChange
 }: {
   disabled: boolean;
   tipoBeca?: string;
+  semestre?: number | string;
   onValidationChange?: (isValid: boolean) => void;
 }) {
   const [cargados, setCargados] = useState<FileStatus>({});
   
+  // 💡 Control opcional para rastrear intentos de avanzar sin completar archivos obligatorios
   // const [hasAttemptedNext, setHasAttemptedNext] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, fieldName: string) => {
@@ -39,38 +41,45 @@ export function StepArchivos({
   };
 
   const documentos = useMemo(() => {
+    // REGLA DE NEGOCIO: Determinamos si el estudiante está en el primer trimestre (Nuevo Ingreso)
+    const esPrimerTrimestre = Number(semestre) === 1;
+
+    // Documentos base comunes para todas las modalidades
     const baseDocs = [
       { id: "foto_carnet", label: "Foto Tipo Carnet", desc: "Formato JPG o PNG" },
-      { id: "copia_cedula", label: "Cédula de Identidad", desc: "Copia legible y centrada" },
+      { id: "copia_cedula", label: "Cédula de Identidad Ampliada", desc: "Copia legible y centrada" },
     ];
 
+    // Documentos específicos según la normativa oficial de Unimar
     const extraDocs: Record<string, Array<{ id: string; label: string; desc: string }>> = {
-      "BECA SOCIAL": [
-        { id: "constancia_residencia", label: "Constancia de Residencia", desc: "Expedida por ente oficial" },
-        { id: "declaracion_manutencion", label: "Declaración Jurada", desc: "Manutención notariada" }
-      ],
       "BECA APRENDIZAJE": [
-        { id: "constancia_residencia", label: "Constancia de Residencia", desc: "Expedida por ente oficial" },
-        { id: "declaracion_manutencion", label: "Declaración Jurada", desc: "Manutención notariada" }
+        { id: "constancia_notas", label: "Constancia de Notas", desc: "Emitida por Control de Estudios" }
+      ],
+      "BECA SOCIAL": [
+        // LÓGICA DE NEGOCIO: Las notas certificadas de bachillerato solo se piden si cursa el 1er trimestre
+        ...(esPrimerTrimestre ? [{ id: "notas_certificadas", label: "Notas Certificadas", desc: "7to, 8to, 9to y 1er año de Media General" }] : [])
       ],
       "BECA POR DISCAPACIDAD": [
-        { id: "constancia_residencia", label: "Constancia de Residencia", desc: "Expedida por ente oficial" },
-        { id: "declaracion_manutencion", label: "Declaración Jurada", desc: "Manutención notariada" },
-        { id: "informe_medico", label: "Informe Médico", desc: "Ente de Salud Pública" }
+        ...(esPrimerTrimestre ? [{ id: "notas_certificadas", label: "Notas Certificadas", desc: "7to a 1er año (Promedio mínimo 16 pts)" }] : []),
+        { id: "informe_medico", label: "Informe Médico", desc: "Emitido por especialista de salud" },
+        { id: "carnet_discapacidad", label: "Carnet de Discapacidad", desc: "Documento oficial vigente" }
+      ],
+      "BECA A LA EXCELENCIA ACADÉMICA": [
+        { id: "constancia_notas", label: "Constancia de Notas Acumuladas", desc: "Emitida por Control de Estudios" }
       ],
       "Ayuda Económica Familiar": [
-        { id: "partida_nacimiento", label: "Acta de Nacimiento", desc: "Comprobar nexo familiar" }
+        { id: "documentos_filiacion", label: "Documentos de Filiación", desc: "Partida de nacimiento o nexo familiar" }
       ],
       "Ayuda Económica para Hijos de Trabajadores": [
-        { id: "partida_nacimiento", label: "Acta de Nacimiento", desc: "Parentesco directo" }
+        { id: "documentos_filiacion", label: "Documentos de Filiación", desc: "Comprobante de parentesco directo" }
       ],
       "Ayuda Económica por Actividades Extracurriculares": [
-        { id: "constancia_club", label: "Constancia de Pertenencia", desc: "Club o selección oficial" }
+        { id: "constancia_club", label: "Constancia de Pertenencia", desc: "Avalada por el club, cultura u orfeón" }
       ]
     };
 
     return [...baseDocs, ...(tipoBeca && extraDocs[tipoBeca] ? extraDocs[tipoBeca] : [])];
-  }, [tipoBeca]);
+  }, [tipoBeca, semestre]);
 
   // Validación lista para activar después de pruebas
   const isValid = useMemo(() => {
@@ -83,13 +92,14 @@ export function StepArchivos({
   }, [isValid, onValidationChange]);
 
   /* 
-  useEffect(() => {
-    const handleValidationAttempt = () => {
-      setHasAttemptedNext(true);
-    };
-    window.addEventListener('intentar-avanzar-archivos', handleValidationAttempt);
-    return () => window.removeEventListener('intentar-avanzar-archivos', handleValidationAttempt);
-  }, []);
+    💡 Listener global opcional por si deseas sincronizar eventos de avance desde el componente padre
+    useEffect(() => {
+      const handleValidationAttempt = () => {
+        setHasAttemptedNext(true);
+      };
+      window.addEventListener('intentar-avanzar-archivos', handleValidationAttempt);
+      return () => window.removeEventListener('intentar-avanzar-archivos', handleValidationAttempt);
+    }, []);
   */
 
   return (
@@ -104,7 +114,7 @@ export function StepArchivos({
           <div>
             <h4 className="text-[#1e3a5f] font-black text-[10px] uppercase tracking-tight leading-none">Documentación de Soporte</h4>
             <p className="text-slate-400 text-[8px] font-bold uppercase tracking-widest mt-1 leading-none">
-              {tipoBeca || "Requisitos pendientes"}
+              {tipoBeca || "Requisitos pendientes"} {Number(semestre) > 1 ? `• Estudiante Regular (Trimestre ${semestre})` : "• Nuevo Ingreso"}
             </p>
           </div>
         </div>
@@ -171,7 +181,7 @@ export function StepArchivos({
                       ? "bg-white text-emerald-600 border border-emerald-100" 
                       : "bg-[#1e3a5f] text-white"
                   )}>
-                    {estaCargado ? "Cambiar" : "Subir"}
+                    {obtenerEtiquetaBoton(estaCargado)}
                   </div>
                 </label>
               );
@@ -199,4 +209,8 @@ export function StepArchivos({
 
     </div>
   )
+}
+
+function obtenerEtiquetaBoton(estaCargado: boolean) {
+  return estaCargado ? "Cambiar" : "Subir";
 }
