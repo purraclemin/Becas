@@ -40,7 +40,7 @@ export function OpcionesFiltros({ filters, handleInputChange, resetFilters, onOp
             <option value="">Estatus: Todos</option>
             <option value="Pendiente">Pendiente</option>
             <option value="En Revisión">Revisión</option>
-            <option value="Revisión Especial">Revisión Especial</option>
+            <option value="Convocado a Entrevista">Convocado a Entrevista</option>
             <option value="Renovacion">Renovacion</option>
             <option value="Aprobada">Aprobada</option>
             <option value="Rechazada">Rechazada</option>

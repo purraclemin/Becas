@@ -1,5 +1,6 @@
 export interface SolicitudItem {
   id: number | string;
+  user_id?: number | string; // 👈 Añadido para resolver el tipado en la vista académica de page.tsx
   nombre?: string;
   apellido?: string;
   cedula?: string;

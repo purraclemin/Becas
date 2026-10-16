@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, Suspense, useCallback } from "react"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 import { CheckCircle2, AlertCircle, Loader2, ChevronRight, Fingerprint } from "lucide-react"
 import { buscarEstudianteConEstudio, guardarOActualizarEstudio, borrarEstudio } from "@/lib/ActionsSocioeconomico"
 import { generarAnalisisIaEstudio } from "@/lib/diagnosticoIA"
@@ -25,6 +25,7 @@ interface EstudianteData {
 
 function SocioeconomicoContent() {
   const searchParams = useSearchParams();
+  const router = useRouter(); // 🟢 Hook para manejar la redirección inteligente
   const [loading, setLoading] = useState<boolean>(false)
   const [cedulaBusqueda, setCedulaBusqueda] = useState<string>("")
   
@@ -143,11 +144,16 @@ function SocioeconomicoContent() {
     
     if (res && res.success) {
       notify("Auditoría guardada correctamente.", "success");
-      await performSearch(student.cedula, true);
+      
+      // 🟢 REDIRECCIÓN INTELIGENTE: Vuelve a validar becas y abre directamente el expediente del estudiante
+      setTimeout(() => {
+        router.push(`/admin/validarBeca?abrirAuditoria=${student.cedula}`);
+      }, 800);
+
     } else {
       notify(res?.error || "Error al guardar.", "error");
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleGenerarAnalisisIA = async () => {

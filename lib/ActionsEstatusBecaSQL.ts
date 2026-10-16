@@ -5,7 +5,7 @@ import { randomUUID } from 'crypto'
 
 /**
  * Registra cada cambio de estatus en el historial, capturando una "fotografía" académica.
- * Sincronizado para usar el trimestre real de la tabla students y registrar excepciones.
+ * Sincronizado para persistir de forma transaccional el departamento asignado.
  */
 export async function registrarDecisionEnHistorial(
   solicitudId: number, 
@@ -13,14 +13,15 @@ export async function registrarDecisionEnHistorial(
   adminId: string | number, 
   observaciones: string | null,
   ip: string = '127.0.0.1',
-  estatusPrevioForzado?: string 
+  estatusPrevioForzado?: string,
+  departamentoAsignado?: string // 🟢 1. Añadimos el parámetro opcional del departamento
 ) {
   let connection;
   try {
     connection = await db.getConnection();
     await connection.beginTransaction();
 
-    // 1. OBTENER SNAPSHOT ACADÉMICO COMPLETO (La Verdad de las Tablas)
+    // 1. OBTENER SNAPSHOT ACADÉMICO COMPLETO
     const [dataRows]: any = await connection.execute(`
       SELECT 
         s.user_id AS estudiante_id, 
@@ -42,25 +43,17 @@ export async function registrarDecisionEnHistorial(
     if (dataRows.length === 0) throw new Error("Solicitud no encontrada.");
     const snapshot = dataRows[0];
 
-    // Lógica para determinar el estatus previo real
     const estatusPrevioReal = estatusPrevioForzado || snapshot.estatus_anterior_db;
-
-    // Determinar responsable (0 si es el sistema en una renovación automática)
     let responsableReal = (nuevoEstatus === 'Renovacion') ? 0 : adminId;
-
-    // 2. GENERAR TOKEN DE VERIFICACIÓN ÚNICO
     const token = randomUUID();
 
-    // 3. PREPARAR SNAPSHOT DE MATERIAS
     const materiasSnapshot = typeof snapshot.materias_json === 'string' 
       ? snapshot.materias_json 
       : JSON.stringify(snapshot.materias_json || []);
 
-    // 🟢 DETECCIÓN DE EXCEPCIÓN: Si las observaciones traen la marca del orquestador, 
-    // aseguramos que el historial refleje la naturaleza de la acción.
     const esExcepcion = observaciones?.includes('[APROBACIÓN EXCEPCIONAL]');
 
-    // 4. INSERTAR EN HISTORIAL (Guardamos la "fotografía" del momento)
+    // 2. INSERTAR EN HISTORIAL
     await connection.execute(`
       INSERT INTO historial_aprobaciones (
         solicitud_id, 
@@ -82,27 +75,32 @@ export async function registrarDecisionEnHistorial(
         ip_accion
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)
     `, [
-      solicitudId,                       // solicitud_id
-      snapshot.estudiante_id,            // user_id
-      snapshot.periodo_id,               // periodo_id
-      responsableReal,                   // admin_id
-      snapshot.promedio_notas,           // promedio_ciclo
-      snapshot.semestre,                 // trimestre (semestre real de la tabla students)
-      snapshot.puntaje || 0,             // puntaje_baremo_
-      snapshot.nivel_riesgo || 'Bajo',   // nivel_riesgo
-      snapshot.tipo_beca,                // tipo_beca_snapshot
-      estatusPrevioReal,                 // estatus_previo
-      nuevoEstatus,                      // estatus_nuevo
-      observaciones,                     // observacion_admin (Incluye la marca de excepción si existe)
-      materiasSnapshot,                  // materias_snapshot_json
-      snapshot.indice_global || 0.00,    // indice_global_snapshot
-      token,                             // token_verificacion
-      ip                                 // ip_accion
+      solicitudId,
+      snapshot.estudiante_id,
+      snapshot.periodo_id,
+      responsableReal,
+      snapshot.promedio_notas,
+      snapshot.semestre,
+      snapshot.puntaje || 0,
+      snapshot.nivel_riesgo || 'Bajo',
+      snapshot.tipo_beca,
+      estatusPrevioReal,
+      nuevoEstatus,
+      observaciones,
+      materiasSnapshot,
+      snapshot.indice_global || 0.00,
+      token,
+      ip
     ]);
 
-    // 5. ACTUALIZAR ESTATUS EN TABLA SOLICITUDES
-    let updateSolicitud = 'UPDATE solicitudes SET estatus = ?, revisado_por = ?, observaciones_admin = ?';
-    const paramsSolicitud: any[] = [nuevoEstatus, responsableReal, observaciones];
+    // 🟢 3. LÓGICA DE NEGOCIO PARA EL DEPARTAMENTO ASIGNADO:
+    // Si el estatus es Aprobada o Convocado a Entrevista, guardamos el departamento. Si no, se limpia a NULL.
+    const debeGuardarDept = ['Aprobada', 'Convocado a Entrevista'].includes(nuevoEstatus);
+    const deptFinal = debeGuardarDept ? (departamentoAsignado || null) : null;
+
+    // 4. ACTUALIZAR ESTATUS Y DEPARTAMENTO EN TABLA SOLICITUDES
+    let updateSolicitud = 'UPDATE solicitudes SET estatus = ?, revisado_por = ?, observaciones_admin = ?, departamento_asignado = ?';
+    const paramsSolicitud: any[] = [nuevoEstatus, responsableReal, observaciones, deptFinal];
 
     if (nuevoEstatus === 'Aprobada' || nuevoEstatus === 'Rechazada') {
         updateSolicitud += ', fecha_decision = NOW()';
@@ -115,7 +113,7 @@ export async function registrarDecisionEnHistorial(
 
     await connection.execute(updateSolicitud, paramsSolicitud);
 
-    // 6. ACTUALIZAR PROGRESIÓN ACADÉMICA (Hito de Beca)
+    // 5. ACTUALIZAR PROGRESIÓN ACADÉMICA (Hito de Beca)
     if (nuevoEstatus === 'Aprobada') {
         await connection.execute(
             'UPDATE students SET ha_tenido_beca = 1 WHERE id = ?',

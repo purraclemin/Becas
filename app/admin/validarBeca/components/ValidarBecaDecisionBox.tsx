@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { 
   ShieldCheck, MessageSquare, ShieldAlert, 
   CheckCircle2, Loader2, Lock, ArrowRight,
-  ClipboardEdit, Building2
+  ClipboardEdit, Building2, CalendarDays
 } from "lucide-react"
 import { validarCuposYRequisitos, DiagnosticoBeca } from "@/lib/ActionsBecaValidators"
 
@@ -13,7 +13,7 @@ interface SolicitudDecision {
   id: number | string;
   cedula: string;
   estatus?: string; 
-  departamento_asignado?: string; // <--- Añadido opcional por si ya viene cargado
+  departamento_asignado?: string;
 }
 
 interface ValidarBecaDecisionBoxProps {
@@ -22,8 +22,8 @@ interface ValidarBecaDecisionBoxProps {
   periodoActualId: number | null;
   observaciones: string;
   setObservaciones: (obs: string) => void;
-  departamentoAsignado: string; // <--- Nuevo prop para manejar el estado del departamento
-  setDepartamentoAsignado: (dept: string) => void; // <--- Nuevo setter
+  departamentoAsignado: string;
+  setDepartamentoAsignado: (dept: string) => void;
   onStatusChange: (id: number, status: string, observaciones?: string, confirmacionEspecial?: boolean, departamentoAsignado?: string) => void;
   onClose: () => void;
   bloqueadoPorEstudio: boolean;
@@ -45,11 +45,12 @@ export function ValidarBecaDecisionBox({
   const [confirmando, setConfirmando] = useState<string | null>(null)
   const [diagnostico, setDiagnostico] = useState<DiagnosticoBeca | null>(null)
   const [validandoCupo, setValidandoCupo] = useState(false)
+  const [guardandoDept, setGuardandoDept] = useState(false) // 🟢 Estado para el botón de cambio de departamento
   const [mostrarAdvertencia, setMostrarAdvertencia] = useState(false)
   const [responsabilidadAceptada, setResponsabilidadAceptada] = useState(false)
-
-  // Evaluamos el estatus actual limpio para las comparaciones
-  const estatusActual = solicitud.estatus?.trim() || "";
+  
+  const [estatusLocal, setEstatusLocal] = useState<string>(solicitud.estatus || "");
+  const estatusActual = estatusLocal.trim();
 
   const handleAprobarClick = async () => {
     if (bloqueadoPorEstudio || estatusActual === 'Aprobada') return;
@@ -65,15 +66,35 @@ export function ValidarBecaDecisionBox({
       } else {
         setConfirmando('Aprobada');
       }
-    } catch (error) {
+    } catch {
       setConfirmando('Aprobada');
     } finally {
       setValidandoCupo(false);
     }
   };
 
+  // 🟢 FUNCIÓN AISLADA: Solo cambia y guarda el departamento sin validar cupos ni reglas
+  const handleCambiarDepartamento = async () => {
+    setGuardandoDept(true);
+    try {
+      await onStatusChange(
+        Number(solicitud.id), 
+        'Aprobada', 
+        observaciones || 'Actualización de departamento asignado', 
+        false, 
+        departamentoAsignado
+      );
+      onClose();
+    } catch (error) {
+      console.error("Error al actualizar departamento:", error);
+    } finally {
+      setGuardandoDept(false);
+    }
+  };
+
+  // 🟢 CORREGIDO: Añadido el parámetro abrirAuditoria para asegurar el retorno automático al expediente
   const irAEstudioSocioeconomico = () => {
-    router.push(`/admin/estudio-socioeconomico?search=${solicitud.cedula}`);
+    router.push(`/admin/estudio-socioeconomico?search=${solicitud.cedula}&abrirAuditoria=${solicitud.cedula}`);
   };
 
   return (
@@ -86,15 +107,76 @@ export function ValidarBecaDecisionBox({
 
         {esPeriodoActual ? (
           <>
-            {bloqueadoPorEstudio ? (
+            {estatusActual === 'Pendiente' ? (
+              <div className="mb-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-500">
+                <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl border-l-4 border-l-blue-500">
+                  <div className="flex items-start gap-2.5">
+                    <CalendarDays className="h-4 w-4 text-blue-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-0.5">Fase de Convocatoria</p>
+                      <p className="text-[10px] font-bold text-white/90 leading-tight">
+                        Este estudiante se encuentra en estatus pendiente. Debe convocarlo a una entrevista presencial para habilitar el baremo.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5 mb-3">
+                  <div className="flex items-center gap-1.5 px-0.5">
+                    <MessageSquare className="h-3 w-3 text-slate-400" />
+                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Instrucciones de Citación</span>
+                  </div>
+                  <textarea 
+                    value={observaciones} 
+                    onChange={(e) => setObservaciones(e.target.value)}
+                    placeholder="Instrucciones para la entrevista presencial..."
+                    className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-xs text-white outline-none focus:border-[#d4a843] transition-all resize-none h-16 placeholder:text-white/20"
+                  />
+                </div>
+
+                {confirmando === 'Convocado a Entrevista' ? (
+                  <div className="flex gap-2 animate-in zoom-in duration-300">
+                    <button 
+                      onClick={() => setConfirmando(null)} 
+                      className="flex-1 py-2.5 rounded-xl bg-white/5 text-white text-[9px] font-black uppercase border border-white/10 tracking-widest hover:bg-white/10 transition-all"
+                    >
+                      Cancelar
+                    </button>
+                    <button 
+                      onClick={async () => { 
+                        await onStatusChange(Number(solicitud.id), 'Convocado a Entrevista', observaciones, false, departamentoAsignado); 
+                        setEstatusLocal('Convocado a Entrevista');
+                        setConfirmando(null);
+                      }}
+                      className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-[9px] font-black uppercase shadow-md shadow-blue-600/20 transition-all"
+                    > 
+                      Confirmar Cita 
+                    </button>
+                  </div>
+                ) : (
+                  <button 
+                    onClick={() => setConfirmando('Convocado a Entrevista')}
+                    className="w-full flex items-center justify-between p-3.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl transition-all group shadow-md shadow-blue-900/20 cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-1.5 bg-white/10 rounded-lg">
+                        <CalendarDays className="h-3.5 w-3.5 text-[#d4a843]" />
+                      </div>
+                      <span className="text-[9px] font-black uppercase tracking-tight">Convocar a Entrevista</span>
+                    </div>
+                    <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
+                  </button>
+                )}
+              </div>
+            ) : bloqueadoPorEstudio ? (
               <div className="mb-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-500">
                 <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl border-l-4 border-l-amber-500">
                   <div className="flex items-start gap-2.5">
                     <Lock className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest mb-0.5">Acción Restringida</p>
+                      <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest mb-0.5">Estudiante Convocado</p>
                       <p className="text-[10px] font-bold text-white/90 leading-tight">
-                        No se puede aprobar esta beca sin un baremo socioeconómico validado por el administrador.
+                        Cita notificada. Realice el baremo socioeconómico tras culminar la entrevista presencial para desbloquear la aprobación.
                       </p>
                     </div>
                   </div>
@@ -102,13 +184,13 @@ export function ValidarBecaDecisionBox({
 
                 <button 
                   onClick={irAEstudioSocioeconomico}
-                  className="w-full flex items-center justify-between p-3.5 bg-[#d4a843] hover:bg-[#c2983a] text-[#1e3a5f] rounded-xl transition-all group shadow-md shadow-amber-900/20"
+                  className="w-full flex items-center justify-between p-3.5 bg-[#d4a843] hover:bg-[#c2983a] text-[#1e3a5f] rounded-xl transition-all group shadow-md shadow-amber-900/20 cursor-pointer"
                 >
                   <div className="flex items-center gap-2.5">
                     <div className="p-1.5 bg-[#1e3a5f]/10 rounded-lg">
                       <ClipboardEdit className="h-3.5 w-3.5" />
                     </div>
-                    <span className="text-[9px] font-black uppercase tracking-tight">Realizar Baremo Ahora</span>
+                    <span className="text-[9px] font-black uppercase tracking-tight">Realizar Entrevista Ahora</span>
                   </div>
                   <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
                 </button>
@@ -149,7 +231,7 @@ export function ValidarBecaDecisionBox({
                   />
                 </div>
 
-                {/* NUEVO: Campo Select de Departamento Asignado */}
+                {/* Campo Select de Departamento Asignado */}
                 <div className="space-y-1.5 mb-4">
                   <div className="flex items-center gap-1.5 px-0.5">
                     <Building2 className="h-3 w-3 text-slate-400" />
@@ -212,23 +294,44 @@ export function ValidarBecaDecisionBox({
                         </button>
                       </div>
 
-                      <button 
-                        disabled={validandoCupo || estatusActual === 'Aprobada'} 
-                        onClick={handleAprobarClick} 
-                        className="py-3 rounded-xl bg-[#d4a843] text-[#1e3a5f] text-[9px] font-black uppercase tracking-widest hover:bg-[#c2983a] transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-md"
-                      >
-                        {validandoCupo ? (
-                          <div className="flex items-center justify-center gap-1.5">
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                            Validando...
-                          </div>
-                        ) : (
-                          <div className="flex items-center justify-center gap-1.5">
-                            <CheckCircle2 className="h-3 w-3" />
-                            Aprobar Solicitud
-                          </div>
-                        )}
-                      </button>
+                      {/* 🟢 RENDERIZADO CONDICIONAL DEL BOTÓN PRINCIPAL */}
+                      {estatusActual === 'Aprobada' ? (
+                        <button 
+                          disabled={guardandoDept} 
+                          onClick={handleCambiarDepartamento} 
+                          className="py-3 rounded-xl bg-[#d4a843] text-[#1e3a5f] text-[9px] font-black uppercase tracking-widest hover:bg-[#c2983a] transition-all disabled:opacity-40 shadow-md cursor-pointer"
+                        >
+                          {guardandoDept ? (
+                            <div className="flex items-center justify-center gap-1.5">
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                              Guardando...
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-center gap-1.5">
+                              <Building2 className="h-3 w-3" />
+                              Cambiar Departamento
+                            </div>
+                          )}
+                        </button>
+                      ) : (
+                        <button 
+                          disabled={validandoCupo} 
+                          onClick={handleAprobarClick} 
+                          className="py-3 rounded-xl bg-[#d4a843] text-[#1e3a5f] text-[9px] font-black uppercase tracking-widest hover:bg-[#c2983a] transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-md"
+                        >
+                          {validandoCupo ? (
+                            <div className="flex items-center justify-center gap-1.5">
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                              Validando...
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-center gap-1.5">
+                              <CheckCircle2 className="h-3 w-3" />
+                              Aprobar Solicitud
+                            </div>
+                          )}
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>

@@ -6,6 +6,13 @@ import { Footer } from "@/components/footer"
 import { CtaSection } from "@/components/cta-section"
 import { GraduationCap, FileText, ClipboardCheck, Headphones, ArrowRight } from "lucide-react"
 import Link from "next/link"
+import { getSession } from "@/lib/ActionsSession"
+import { getStudentAcademicStatus } from "@/lib/ActionsStudent"
+import { AlertaConvocatoria } from "@/app/perfil/components/AlertaConvocatoria" // 🟢 Importación de la alerta flotante
+
+// 🟢 CRÍTICO: Fuerza a Next.js a no cachear esta página para ver cambios de estatus al instante
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 const quickNav = [
   {
@@ -38,9 +45,26 @@ const quickNav = [
   },
 ]
 
-export default function Page() {
+export default async function Page() {
+  // 🟢 Obtenemos la sesión y el estatus actual del estudiante si ha iniciado sesión
+  const sessionUser = await getSession() as any;
+  let estatusEstudiante = "";
+
+  if (sessionUser?.isLoggedIn && sessionUser?.role === 'estudiante') {
+    try {
+      const statusData = await getStudentAcademicStatus(sessionUser.id);
+      estatusEstudiante = statusData?.estatus || "";
+    } catch (error) {
+      console.error("Error al obtener estatus para la alerta en Home:", error);
+    }
+  }
+
   return (
-    <main className="min-h-screen w-full flex flex-col bg-slate-50">
+    <main className="min-h-screen w-full flex flex-col bg-slate-50 relative">
+      
+      {/* 🟢 ALERTA LLAMATIVA EN TODA LA PANTALLA (Modal Ocultable con Botón Entendido) */}
+      <AlertaConvocatoria estatus={estatusEstudiante} />
+
       <Navbar />
       <HeroSection />
 

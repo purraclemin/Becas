@@ -7,17 +7,49 @@ import {
 } from "lucide-react"
 
 /**
+ * 🎓 INTERFACES TIPADAS (Cero Any)
+ */
+export interface MateriaAcademica {
+  codigo?: string;
+  nombre: string;
+  nota: number | string;
+  creditos?: number;
+}
+
+export interface PeriodoHistorial {
+  id: number | string;
+  periodoCodigo: string;
+  periodoNombre: string;
+  fechaRegistro: string;
+  trimestre?: number | string;
+  estado: string;
+  promedio: number | string;
+  materias: MateriaAcademica[];
+}
+
+export interface StatsAcademicas {
+  promedioHistorico: string | number;
+  totalPeriodos: number;
+  totalMaterias: number;
+}
+
+interface StudentAcademicHistoryProps {
+  historial: PeriodoHistorial[];
+  stats: StatsAcademicas;
+}
+
+/**
  * 🎓 COMPONENTE: StudentAcademicHistory
  * Visualización tecnológica del historial académico por periodos (Kardex).
  * Diseñado para ser utilizado en vistas de auditoría o expedientes detallados.
  */
-export function StudentAcademicHistory({ historial, stats }: any) {
+export function StudentAcademicHistory({ historial, stats }: StudentAcademicHistoryProps) {
   // Estado para manejar qué periodo está expandido (por defecto el más reciente en el índice 0)
   const [abierto, setAbierto] = useState<number | null>(0)
 
   // 🟢 Utilidad profesional para asignación semántica de colores según calificación
-  const getNotaBadge = (nota: any) => {
-    const val = parseFloat(nota || 0);
+  const getNotaBadge = (nota: number | string) => {
+    const val = typeof nota === 'number' ? nota : parseFloat(nota || "0");
     if (val >= 18) return "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
     if (val >= 16) return "bg-blue-500/10 text-blue-600 border-blue-500/20"
     if (val >= 10) return "bg-amber-500/10 text-amber-600 border-amber-500/20"
@@ -82,7 +114,7 @@ export function StudentAcademicHistory({ historial, stats }: any) {
             </p>
           </div>
         ) : (
-          historial.map((p: any, idx: number) => (
+          historial.map((p: PeriodoHistorial, idx: number) => (
             <div key={p.id || idx} className="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden transition-all group">
               
               {/* CABECERA DE PERIODO (BOTÓN DE CONTROL) */}
@@ -150,7 +182,7 @@ export function StudentAcademicHistory({ historial, stats }: any) {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {p.materias && p.materias.map((m: any, mIdx: number) => (
+                        {p.materias && p.materias.map((m: MateriaAcademica, mIdx: number) => (
                           <tr key={mIdx} className="hover:bg-white transition-colors group/row">
                             <td className="px-4 py-2.5 font-mono text-[10px] text-slate-400 font-bold uppercase">
                               {m.codigo || 'N/A'}
@@ -160,7 +192,7 @@ export function StudentAcademicHistory({ historial, stats }: any) {
                             </td>
                             <td className="px-4 py-2.5 text-center">
                               <span className={`inline-block min-w-[32px] py-1 rounded-lg border text-[10px] font-mono font-black ${getNotaBadge(m.nota)}`}>
-                                {parseFloat(m.nota || 0).toFixed(1)}
+                                {parseFloat(String(m.nota || 0)).toFixed(1)}
                               </span>
                             </td>
                           </tr>

@@ -11,8 +11,18 @@ import { ValidarBecaDecisionBox } from "./ValidarBecaDecisionBox"
 import { ValidarBecaInfo } from "@/app/admin/validarBeca/components/ValidarBecaInfo"
 import { ValidarBecaTrace } from "@/app/admin/validarBeca/components/ValidarBecaTrace"
 
+export interface SolicitudAuditoriaPanelData {
+  id: number | string;
+  cedula?: string | null;
+  periodo_id?: number | string | null;
+  estatus?: string | null;
+  email_institucional?: string | null;
+  departamento_asignado?: string | null;
+  [key: string]: unknown;
+}
+
 interface ValidarBecaAuditoriaPanelProps {
-  solicitud: any;
+  solicitud: SolicitudAuditoriaPanelData;
   onStatusChange: (id: number, status: string, observaciones?: string, confirmacionEspecial?: boolean, departamentoAsignado?: string) => void;
   onClose: () => void;
   periodoActualId: number | null;
@@ -20,38 +30,50 @@ interface ValidarBecaAuditoriaPanelProps {
 
 export function ValidarBecaAuditoriaPanel({ solicitud, onStatusChange, onClose, periodoActualId }: ValidarBecaAuditoriaPanelProps) {
   const [observaciones, setObservaciones] = useState("")
-  const [departamentoAsignado, setDepartamentoAsignado] = useState("") // 🟢 Estado local añadido
-  const [expedienteDetallado, setExpedienteDetallado] = useState<any>(null)
+  
+  // 🟢 Inicialización sincronizada con el valor proveniente de la base de datos
+  const [departamentoAsignado, setDepartamentoAsignado] = useState(String(solicitud.departamento_asignado || ""))
+
+  // 🟢 EFECTO DE SINCRONIZACIÓN: Actualiza el estado local si la prop cambia o se recarga el expediente
+  useEffect(() => {
+    setDepartamentoAsignado(String(solicitud.departamento_asignado || ""));
+  }, [solicitud.departamento_asignado]);
+  
+  const [expedienteDetallado, setExpedienteDetallado] = useState<Record<string, unknown> | null>(null)
   const [loading, setLoading] = useState(true)
-  const [diagnostico, setDiagnostico] = useState<DiagnosticoBeca | null>(null)
+  const [, setDiagnostico] = useState<DiagnosticoBeca | null>(null)
 
   const esPeriodoActual = Number(solicitud.periodo_id) === Number(periodoActualId);
 
+  // Mapeo seguro con tipos garantizados para los subcomponentes hijos
+  const solicitudParaHijos = {
+    ...solicitud,
+    cedula: solicitud.cedula || "",
+    estatus: solicitud.estatus || undefined,
+    departamento_asignado: departamentoAsignado,
+  };
+
   useEffect(() => {
     async function cargarDetalleSocioeconomico() {
+      if (!solicitud.cedula) {
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       try {
         const resultados = await buscarEstudianteConEstudio(solicitud.cedula);
         
-        /**
-         * 🔍 LÓGICA DE DETECCIÓN REFORZADA:
-         * 1. Buscamos por el campo 'tipo' normalizado.
-         * 2. Si no lo encuentra por 'tipo', verificamos si algún registro ya tiene
-         * puntaje asignado por un administrador (puntaje_admin o nivel_admin).
-         */
-        const estudioAdmin = resultados?.find((r: any) => 
-          r.tipo?.toString().trim().toLowerCase() === 'administrador' || 
-          r.puntaje_admin !== null || 
-          r.nivel_admin !== null
-        );
+        const estudioAdmin = (resultados as Array<Record<string, unknown>>)?.find((r) => {
+          const tipo = r.tipo ? String(r.tipo).trim().toLowerCase() : "";
+          return tipo === 'administrador' || r.puntaje_admin !== null || r.nivel_admin !== null;
+        });
 
-        const baseData = estudioAdmin || (resultados && resultados.length > 0 ? resultados[0] : {});
+        const baseData = estudioAdmin || (resultados && resultados.length > 0 ? (resultados[0] as Record<string, unknown>) : {});
         
         setExpedienteDetallado({
           ...baseData,
           ...solicitud,
           email: solicitud.email_institucional,
-          // Sincronización explícita de la validación oficial
           puntaje_admin: estudioAdmin ? (estudioAdmin.puntaje_admin || estudioAdmin.puntaje) : null,
           nivel_admin: estudioAdmin ? (estudioAdmin.nivel_admin || estudioAdmin.nivel_riesgo) : null,
           es_estudio_oficial: !!estudioAdmin
@@ -66,10 +88,7 @@ export function ValidarBecaAuditoriaPanel({ solicitud, onStatusChange, onClose, 
     cargarDetalleSocioeconomico();
   }, [solicitud]);
 
-  /** * 🟢 SENSOR DE SEGURIDAD: 
-   * Garantiza el desbloqueo si se detectó la existencia de un baremo oficial.
-   */
-  const tieneEstudioAdmin = expedienteDetallado?.es_estudio_oficial === true;
+  const tieneEstudioAdmin = Boolean(expedienteDetallado?.es_estudio_oficial);
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center py-20 bg-white rounded-[2rem] border border-slate-200 shadow-xl">
@@ -85,9 +104,9 @@ export function ValidarBecaAuditoriaPanel({ solicitud, onStatusChange, onClose, 
       </div>
 
       <div className="w-full lg:w-[400px] space-y-6">
-        {/* Panel de decisión unificado y adaptado */}
+        {/* Panel de decisión unificado y adaptado que inyecta el departamento seleccionado */}
         <ValidarBecaDecisionBox 
-          solicitud={solicitud}
+          solicitud={solicitudParaHijos}
           esPeriodoActual={esPeriodoActual}
           periodoActualId={periodoActualId}
           observaciones={observaciones}
@@ -101,11 +120,11 @@ export function ValidarBecaAuditoriaPanel({ solicitud, onStatusChange, onClose, 
 
         {/* Resumen académico / Info */}
         <ValidarBecaInfo 
-          solicitud={solicitud} 
+          solicitud={solicitudParaHijos} 
           sinEstudio={!tieneEstudioAdmin}
         />
 
-        <ValidarBecaTrace solicitud={solicitud} />
+        <ValidarBecaTrace solicitud={solicitudParaHijos} />
       </div>
     </div>
   )

@@ -156,7 +156,7 @@ export async function fetchSolicitudesDesdeDB(filtros: FiltrosDB = {}) {
         s.constancia_residencia, s.declaracion_manutencion, s.informe_medico, 
         s.partida_nacimiento, s.constancia_club, s.constancia_notas, 
         s.notas_certificadas, s.carnet_discapacidad, s.documentos_filiacion,
-        s.email_institucional, s.periodo_id,
+        s.email_institucional, s.periodo_id, s.departamento_asignado,
         st.nombre, st.apellido, st.cedula, st.carrera, st.telefono,
         st.semestre, st.municipio_residencia,
         e.puntaje, e.nivel_riesgo, e.monto_ingreso_familiar,

@@ -1,7 +1,7 @@
 "use client"
 
 import { Card, CardContent } from "@/components/ui/card"
-import { Clock, CheckCircle2, XCircle, AlertCircle, ShieldAlert, FileSearch, RotateCcw } from "lucide-react"
+import { Clock, CheckCircle2, XCircle, AlertCircle, ShieldAlert, FileSearch, RotateCcw, CalendarDays } from "lucide-react"
 
 /**
  * 🟢 COMPONENTE: ESTATUS VISUAL DEL PERFIL (PASO 5: FINALIZACIÓN)
@@ -24,6 +24,16 @@ export function ProfileStatus({ estatus }: { estatus: string }) {
       icon: CheckCircle2, 
       pulse: false, 
       msg: "Felicidades, tu beneficio académico está vigente y confirmado para este periodo." 
+    },
+    convocado: { 
+      bg: "bg-blue-50", 
+      bar: "bg-blue-600", 
+      text: "text-blue-900", 
+      iconText: "text-blue-600", 
+      label: "Convocado a Entrevista", 
+      icon: CalendarDays, 
+      pulse: true, 
+      msg: "Su postulación ha sido seleccionada para entrevista presencial. Acuda al Departamento de Bienestar Estudiantil." 
     },
     pendiente: { 
       bg: "bg-yellow-50", 
@@ -87,8 +97,9 @@ export function ProfileStatus({ estatus }: { estatus: string }) {
     }
   };
 
-  // Lógica de detección de etiquetas flexible (Aprobada, Becado, Aprovada...)
+  // Lógica de detección de etiquetas flexible incluyendo 'convocado'
   const key = (s.includes('aprob') || s.includes('aprov') || s === 'becado') ? 'aprobada' : 
+              s.includes('convocad') ? 'convocado' :
               s.includes('pendiente') ? 'pendiente' :
               (s.includes('rechaz') || s.includes('deneg')) ? 'rechazada' :
               s.includes('especial') ? 'especial' :

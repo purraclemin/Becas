@@ -2,20 +2,19 @@
 
 import React from "react"
 import { ArrowLeft, ShieldCheck, Award } from "lucide-react"
-import { ValidarBecaAuditoriaPanel } from "./ValidarBecaAuditoriaPanel"
+import { ValidarBecaAuditoriaPanel, SolicitudAuditoriaPanelData } from "./ValidarBecaAuditoriaPanel"
 import { getBadgeColor } from "@/app/admin/validarBeca/lib/ValidarBecaUtils"
 
-interface SolicitudAuditoriaView {
-  nombre?: string;
-  apellido?: string;
-  cedula?: string;
-  estatus?: string;
-  [key: string]: any;
+export interface SolicitudAuditoriaView extends SolicitudAuditoriaPanelData {
+  nombre?: string | null;
+  apellido?: string | null;
+  cedula?: string | null;
+  estatus?: string | null;
 }
 
 interface ValidarBecaViewAuditoriaProps {
   selectedSolicitud: SolicitudAuditoriaView | null;
-  onStatusChange: (id: number, status: string, observaciones?: string, confirmacionEspecial?: boolean) => void;
+  onStatusChange: (id: number, status: string, observaciones?: string, confirmacionEspecial?: boolean, departamentoAsignado?: string) => void;
   onClose: () => void;
   periodoActualId: number | null;
 }
@@ -26,6 +25,15 @@ export function ValidarBecaViewAuditoria({
   onClose, 
   periodoActualId 
 }: ValidarBecaViewAuditoriaProps) {
+  // Objeto seguro por defecto para evitar errores si selectedSolicitud es null
+  const solicitudSegura: SolicitudAuditoriaPanelData = selectedSolicitud || {
+    id: 0,
+    cedula: "",
+    periodo_id: periodoActualId,
+    estatus: "Pendiente",
+    email_institucional: ""
+  };
+
   return (
     <div className="space-y-4 animate-in fade-in duration-500 w-full max-w-[1600px] mx-auto px-4 md:px-8 py-4">
       {/* CABECERA DE AUDITORÍA: Estandarizada al tamaño de ValidarBecaHeader */}
@@ -44,7 +52,7 @@ export function ValidarBecaViewAuditoria({
               <h1 className="text-xs md:text-sm font-black tracking-wider uppercase text-white">Auditoría y Validación de Beca</h1>
             </div>
             <p className="text-[10px] text-slate-300 font-medium">
-              {selectedSolicitud?.nombre || ""} {selectedSolicitud?.apellido || ""} • V-{selectedSolicitud?.cedula || ""}
+              {String(selectedSolicitud?.nombre || "")} {String(selectedSolicitud?.apellido || "")} • V-{String(selectedSolicitud?.cedula || "")}
             </p>
           </div>
         </div>
@@ -53,15 +61,15 @@ export function ValidarBecaViewAuditoria({
         <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-[#172e4d] rounded-xl border border-white/10 shrink-0">
           <Award className="h-3.5 w-3.5 text-[#d4a843]" />
           <span className="text-[9px] font-black uppercase tracking-wider text-slate-300">Estatus:</span>
-          <span className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest border ${getBadgeColor(selectedSolicitud?.estatus || '')}`}>
-            {selectedSolicitud?.estatus || "S/I"}
+          <span className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest border ${getBadgeColor(String(selectedSolicitud?.estatus || ''))}`}>
+            {String(selectedSolicitud?.estatus || "S/I")}
           </span>
         </div>
       </div>
 
       {/* PANEL DE AUDITORÍA INTEGRADO Y AUTÓNOMO */}
       <ValidarBecaAuditoriaPanel 
-        solicitud={selectedSolicitud}
+        solicitud={solicitudSegura}
         onStatusChange={onStatusChange}
         onClose={onClose}
         periodoActualId={periodoActualId}

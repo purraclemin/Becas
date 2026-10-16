@@ -1,3 +1,5 @@
+"import client"
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { GraduationCap, Mail, IdCard, CalendarDays, BookOpen, Clock, User2, Trophy, LucideIcon } from "lucide-react"
 
@@ -38,7 +40,8 @@ export function AcademicInfo({ user }: IAcademicInfoProps) {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-y-10 gap-x-8">
           <InfoItem icon={IdCard} label="Cédula" value={`V-${user.cedula || "---"}`} />
           
-          <InfoItem icon={Mail} label="Correo" value={user.email} isLowercase />
+          {/* 🟢 Se añade la prop isEmail para aplicar el quiebre de palabra largo */}
+          <InfoItem icon={Mail} label="Email" value={user.email} isLowercase isEmail />
           
           <InfoItem icon={BookOpen} label="Carrera" value={user.carrera} isUppercase />
           
@@ -79,16 +82,21 @@ interface IInfoItemProps {
   value: string | number | undefined | null;
   isLowercase?: boolean;
   isUppercase?: boolean;
+  isEmail?: boolean; // 🟢 Prop opcional para control de correos largos
 }
 
-function InfoItem({ icon: Icon, label, value, isLowercase, isUppercase }: IInfoItemProps) {
+function InfoItem({ icon: Icon, label, value, isLowercase, isUppercase, isEmail }: IInfoItemProps) {
   return (
-    <div className="space-y-2 group cursor-default">
+    <div className="space-y-2 group cursor-default min-w-0"> {/* min-w-0 evita que el grid colapse con textos largos */}
       <div className="flex items-center gap-2 text-[10px] text-gray-400 font-black uppercase tracking-widest group-hover:text-[#d4a843] transition-colors">
-        <Icon className="h-4 w-4" /> 
+        <Icon className="h-4 w-4 shrink-0" /> 
         {label}
       </div>
-      <p className={`text-sm md:text-base font-bold text-[#1e3a5f] border-b border-gray-100 pb-2 transition-all group-hover:border-[#d4a843]/30 ${isLowercase ? 'lowercase' : isUppercase ? 'uppercase tracking-tighter' : ''}`}>
+      <p className={`text-sm md:text-base font-bold text-[#1e3a5f] border-b border-gray-100 pb-2 transition-all group-hover:border-[#d4a843]/30 ${
+        isLowercase ? 'lowercase' : isUppercase ? 'uppercase tracking-tighter' : ''
+      } ${
+        isEmail ? 'break-all sm:break-all md:break-words' : 'truncate'
+      }`}>
         {value || "---"}
       </p>
     </div>

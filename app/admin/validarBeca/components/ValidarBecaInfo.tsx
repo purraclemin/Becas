@@ -1,13 +1,13 @@
 "use client"
 
-import React, { useState, useMemo } from "react"
+import React, { useState, useMemo, ComponentType, SVGProps } from "react"
 import { 
   Info, Mail, GraduationCap, Star, Hash, BookOpen, 
   FileText, ImageIcon, X, ExternalLink,
   ShieldAlert, CreditCard, Phone
 } from "lucide-react"
 
-interface SolicitudAuditoria {
+export interface SolicitudAuditoria {
   cedula?: string | null;
   telefono?: string | null;
   telefono_movil?: string | null;
@@ -27,7 +27,13 @@ interface SolicitudAuditoria {
   constancia_club?: string | null;
   constancia_residencia?: string | null;
   declaracion_manutencion?: string | null;
-  [key: string]: any; 
+  [key: string]: unknown; 
+}
+
+export interface DocumentoItem {
+  label: string;
+  url?: string | null;
+  icon: ComponentType<SVGProps<SVGSVGElement>>;
 }
 
 interface ValidarBecaInfoProps {
@@ -41,64 +47,64 @@ export function ValidarBecaInfo({ solicitud, sinEstudio }: ValidarBecaInfoProps)
   // Mapeo dinámico completo de documentos según los tipos de becas y ayudas de la institución
   const documentos = useMemo(() => {
     const esPrimerTrimestre = Number(solicitud.semestre || solicitud.trimestre) === 1;
-    const tipoBeca = solicitud.tipo_beca?.trim();
+    const tipoBeca = typeof solicitud.tipo_beca === 'string' ? solicitud.tipo_beca.trim() : "";
 
     // Documentos base obligatorios para todas las solicitudes
-    const baseDocs = [
-      { label: 'Foto Carnet', url: solicitud.foto_carnet, icon: ImageIcon },
-      { label: 'Cédula', url: solicitud.copia_cedula, icon: FileText }
+    const baseDocs: DocumentoItem[] = [
+      { label: 'Foto Carnet', url: solicitud.foto_carnet as string | null, icon: ImageIcon },
+      { label: 'Cédula', url: solicitud.copia_cedula as string | null, icon: FileText }
     ];
 
-    const extraDocs: Record<string, Array<{ label: string; url?: string | null; icon: any }>> = {
+    const extraDocs: Record<string, DocumentoItem[]> = {
       "BECA SOCIAL": [
-        { label: 'Constancia Residencia', url: solicitud.constancia_residencia, icon: FileText },
-        { label: 'Declaración Jurada', url: solicitud.declaracion_manutencion, icon: FileText },
-        ...(esPrimerTrimestre ? [{ label: 'Notas Certificadas', url: solicitud.notas_certificadas, icon: FileText }] : [])
+        { label: 'Constancia Residencia', url: solicitud.constancia_residencia as string | null, icon: FileText },
+        { label: 'Declaración Jurada', url: solicitud.declaracion_manutencion as string | null, icon: FileText },
+        ...(esPrimerTrimestre ? [{ label: 'Notas Certificadas', url: solicitud.notas_certificadas as string | null, icon: FileText }] : [])
       ],
       "BECA APRENDIZAJE": [
-        { label: 'Constancia Residencia', url: solicitud.constancia_residencia, icon: FileText },
-        { label: 'Declaración Jurada', url: solicitud.declaracion_manutencion, icon: FileText },
-        { label: 'Constancia Notas', url: solicitud.constancia_notas, icon: FileText }
+        { label: 'Constancia Residencia', url: solicitud.constancia_residencia as string | null, icon: FileText },
+        { label: 'Declaración Jurada', url: solicitud.declaracion_manutencion as string | null, icon: FileText },
+        { label: 'Constancia Notas', url: solicitud.constancia_notas as string | null, icon: FileText }
       ],
       "BECA POR DISCAPACIDAD": [
-        { label: 'Constancia Residencia', url: solicitud.constancia_residencia, icon: FileText },
-        { label: 'Declaración Jurada', url: solicitud.declaracion_manutencion, icon: FileText },
-        ...(esPrimerTrimestre ? [{ label: 'Notas Certificadas', url: solicitud.notas_certificadas, icon: FileText }] : []),
-        { label: 'Informe Médico', url: solicitud.informe_medico, icon: FileText },
-        { label: 'Carnet Discapacidad', url: solicitud.carnet_discapacidad, icon: FileText }
+        { label: 'Constancia Residencia', url: solicitud.constancia_residencia as string | null, icon: FileText },
+        { label: 'Declaración Jurada', url: solicitud.declaracion_manutencion as string | null, icon: FileText },
+        ...(esPrimerTrimestre ? [{ label: 'Notas Certificadas', url: solicitud.notas_certificadas as string | null, icon: FileText }] : []),
+        { label: 'Informe Médico', url: solicitud.informe_medico as string | null, icon: FileText },
+        { label: 'Carnet Discapacidad', url: solicitud.carnet_discapacidad as string | null, icon: FileText }
       ],
       "BECA A LA EXCELENCIA": [
-        { label: 'Constancia Notas', url: solicitud.constancia_notas, icon: FileText }
+        { label: 'Constancia Notas', url: solicitud.constancia_notas as string | null, icon: FileText }
       ],
       "BECA A LA EXCELENCIA ACADÉMICA": [
-        { label: 'Constancia Notas', url: solicitud.constancia_notas, icon: FileText }
+        { label: 'Constancia Notas', url: solicitud.constancia_notas as string | null, icon: FileText }
       ],
       "AYUDA ECONÓMICA GENERAL": [
         // Utiliza solo los documentos base comunes
       ],
       "AYUDA ECONÓMICA FAMILIAR": [
-        { label: 'Doc. Filiación', url: solicitud.documentos_filiacion, icon: FileText }
+        { label: 'Doc. Filiación', url: solicitud.documentos_filiacion as string | null, icon: FileText }
       ],
       "Ayuda Económica Familiar": [
-        { label: 'Doc. Filiación', url: solicitud.documentos_filiacion, icon: FileText }
+        { label: 'Doc. Filiación', url: solicitud.documentos_filiacion as string | null, icon: FileText }
       ],
       "AYUDA ECONÓMICA PARA TRABAJADORES": [
         // Utiliza solo los documentos base comunes
       ],
       "AYUDA ECONÓMICA PARA HIJOS DE TRABAJADORES": [
-        { label: 'Doc. Filiación', url: solicitud.documentos_filiacion, icon: FileText }
+        { label: 'Doc. Filiación', url: solicitud.documentos_filiacion as string | null, icon: FileText }
       ],
       "Ayuda Económica para Hijos de Trabajadores": [
-        { label: 'Doc. Filiación', url: solicitud.documentos_filiacion, icon: FileText }
+        { label: 'Doc. Filiación', url: solicitud.documentos_filiacion as string | null, icon: FileText }
       ],
       "AYUDA ECONÓMICA PARA ESTUDIANTES PREPARADORES": [
         // Utiliza solo los documentos base comunes
       ],
       "AYUDA ECONÓMICA POR ACTIVIDADES EXTRACURRICULARES": [
-        { label: 'Constancia Club', url: solicitud.constancia_club, icon: FileText }
+        { label: 'Constancia Club', url: solicitud.constancia_club as string | null, icon: FileText }
       ],
       "Ayuda Económica por Actividades Extracurriculares": [
-        { label: 'Constancia Club', url: solicitud.constancia_club, icon: FileText }
+        { label: 'Constancia Club', url: solicitud.constancia_club as string | null, icon: FileText }
       ]
     };
 
@@ -131,7 +137,7 @@ export function ValidarBecaInfo({ solicitud, sinEstudio }: ValidarBecaInfoProps)
             <Star className="h-3.5 w-3.5 text-[#d4a843]" />
             <div className="min-w-0">
               <p className="text-[7px] font-black text-slate-400 uppercase tracking-wider">Beneficio Solicitado</p>
-              <p className="text-xs font-bold text-[#1e3a5f] uppercase tracking-tight">{solicitud.tipo_beca || "No especificado"}</p>
+              <p className="text-xs font-bold text-[#1e3a5f] uppercase tracking-tight">{String(solicitud.tipo_beca || "No especificado")}</p>
             </div>
           </div>
 
@@ -141,14 +147,14 @@ export function ValidarBecaInfo({ solicitud, sinEstudio }: ValidarBecaInfoProps)
               <CreditCard className="h-3.5 w-3.5 text-[#d4a843]" />
               <div className="min-w-0">
                 <p className="text-[7px] font-black text-slate-400 uppercase tracking-wider">Cédula</p>
-                <p className="text-xs font-bold text-[#1e3a5f]">V-{solicitud.cedula || "---"}</p>
+                <p className="text-xs font-bold text-[#1e3a5f]">V-{String(solicitud.cedula || "---")}</p>
               </div>
             </div>
             <div className="flex items-center gap-2.5 p-2.5 bg-slate-50/70 rounded-xl border border-slate-100">
               <Phone className="h-3.5 w-3.5 text-[#d4a843]" />
               <div className="min-w-0">
                 <p className="text-[7px] font-black text-slate-400 uppercase tracking-wider">Teléfono</p>
-                <p className="text-xs font-bold text-[#1e3a5f] truncate">{solicitud.telefono_movil || solicitud.telefono || "---"}</p>
+                <p className="text-xs font-bold text-[#1e3a5f] truncate">{String(solicitud.telefono_movil || solicitud.telefono || "---")}</p>
               </div>
             </div>
           </div>
@@ -159,14 +165,14 @@ export function ValidarBecaInfo({ solicitud, sinEstudio }: ValidarBecaInfoProps)
               <Hash className="h-3.5 w-3.5 text-[#d4a843]" />
               <div className="min-w-0">
                 <p className="text-[7px] font-black text-slate-400 uppercase tracking-wider">Trimestre</p>
-                <p className="text-xs font-bold text-[#1e3a5f]">{solicitud.semestre || solicitud.trimestre || "0"}</p>
+                <p className="text-xs font-bold text-[#1e3a5f]">{String(solicitud.semestre || solicitud.trimestre || "0")}</p>
               </div>
             </div>
             <div className="flex items-center gap-2.5 p-2.5 bg-slate-50/70 rounded-xl border border-slate-100">
               <BookOpen className="h-3.5 w-3.5 text-[#d4a843]" />
               <div className="min-w-0">
                 <p className="text-[7px] font-black text-slate-400 uppercase tracking-wider">Promedio</p>
-                <p className="text-xs font-bold text-[#1e3a5f]">{solicitud.promedio_notas || "0.00"}</p>
+                <p className="text-xs font-bold text-[#1e3a5f]">{String(solicitud.promedio_notas || "0.00")}</p>
               </div>
             </div>
           </div>
@@ -176,7 +182,7 @@ export function ValidarBecaInfo({ solicitud, sinEstudio }: ValidarBecaInfoProps)
             <GraduationCap className="h-3.5 w-3.5 text-[#d4a843]" />
             <div className="min-w-0">
               <p className="text-[7px] font-black text-slate-400 uppercase tracking-wider">Carrera</p>
-              <p className="text-xs font-bold text-[#1e3a5f] truncate uppercase">{solicitud.carrera || "No especificada"}</p>
+              <p className="text-xs font-bold text-[#1e3a5f] truncate uppercase">{String(solicitud.carrera || "No especificada")}</p>
             </div>
           </div>
 
@@ -185,7 +191,7 @@ export function ValidarBecaInfo({ solicitud, sinEstudio }: ValidarBecaInfoProps)
             <Mail className="h-3.5 w-3.5 text-[#d4a843]" />
             <div className="min-w-0">
               <p className="text-[7px] font-black text-slate-400 uppercase tracking-wider">Correo Institucional</p>
-              <p className="text-xs font-bold text-[#1e3a5f] truncate">{solicitud.email_institucional || "No registrado"}</p>
+              <p className="text-xs font-bold text-[#1e3a5f] truncate">{String(solicitud.email_institucional || "No registrado")}</p>
             </div>
           </div>
 
@@ -193,17 +199,20 @@ export function ValidarBecaInfo({ solicitud, sinEstudio }: ValidarBecaInfoProps)
           <div className="pt-3 border-t border-slate-100">
             <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-2.5 px-0.5">Documentación Adjunta</p>
             <div className="grid grid-cols-3 gap-2">
-              {documentos.map((doc, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => doc.url && setImgPreview(doc.url)}
-                  disabled={!doc.url}
-                  className="flex flex-col items-center justify-center gap-1.5 p-2.5 bg-white border border-slate-200 rounded-xl hover:border-[#d4a843] hover:bg-slate-50 transition-all group disabled:opacity-30 disabled:grayscale shadow-sm"
-                >
-                  <doc.icon className="h-3.5 w-3.5 text-slate-400 group-hover:text-[#d4a843] transition-colors" />
-                  <span className="text-[7px] font-black uppercase text-slate-500 text-center leading-tight">{doc.label}</span>
-                </button>
-              ))}
+              {documentos.map((doc: DocumentoItem, idx: number) => {
+                const IconComponent = doc.icon;
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => doc.url && setImgPreview(doc.url)}
+                    disabled={!doc.url}
+                    className="flex flex-col items-center justify-center gap-1.5 p-2.5 bg-white border border-slate-200 rounded-xl hover:border-[#d4a843] hover:bg-slate-50 transition-all group disabled:opacity-30 disabled:grayscale shadow-sm"
+                  >
+                    <IconComponent className="h-3.5 w-3.5 text-slate-400 group-hover:text-[#d4a843] transition-colors" />
+                    <span className="text-[7px] font-black uppercase text-slate-500 text-center leading-tight">{doc.label}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>

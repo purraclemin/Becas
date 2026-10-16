@@ -11,7 +11,7 @@ import { ControlesPaginacion } from "./ControlesPaginacion"
 import { OpcionesFiltros } from "./OpcionesFiltros"
 import { calcularFilasPorAltura } from "@/app/admin/validarBeca/lib/ControlesPaginacion"
 
-interface FiltrosValidacionState {
+export interface FiltrosValidacionState {
   search: string;
   status: string;
   municipio: string;
@@ -31,7 +31,7 @@ interface FiltrosValidacionState {
   scope?: string;
 }
 
-interface StudentData {
+export interface StudentData {
   id: string | number;
   nombre?: string;
   apellido?: string;

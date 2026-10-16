@@ -2,7 +2,13 @@
 
 import React from "react"
 
-export function RiskIndicator({ color, label, range }: any) {
+interface RiskIndicatorProps {
+  color: string;
+  label: string;
+  range: string;
+}
+
+export function RiskIndicator({ color, label, range }: RiskIndicatorProps) {
   return (
     <div className="flex flex-col items-center md:items-start gap-2">
       <div className="flex items-center gap-2">
@@ -14,7 +20,7 @@ export function RiskIndicator({ color, label, range }: any) {
   )
 }
 
-export const getColorByScore = (score: number) => {
+export const getColorByScore = (score: number): string => {
   // Sincronizado con los umbrales originales de 70, 50, 25
   if (score >= 70) return "bg-rose-600";    // Riesgo Crítico
   if (score >= 50) return "bg-orange-500";  // Riesgo Alto

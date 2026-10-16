@@ -148,8 +148,9 @@ export async function actualizarEstadoSolicitud(
   try {
     await connection.beginTransaction();
 
-    // Si está aprobada se guarda el departamento, de lo contrario se asigna NULL
-    const deptAGuardar = nuevoEstatus === 'Aprobada' ? (departamentoAsignado || null) : null;
+    // 🟢 Sincronizado: Solo guarda el departamento si aplica para el estatus
+    const debeGuardarDept = ['Aprobada', 'En Revisión'].includes(nuevoEstatus);
+    const deptAGuardar = debeGuardarDept ? (departamentoAsignado || null) : null;
 
     await connection.execute(
       `UPDATE solicitudes 

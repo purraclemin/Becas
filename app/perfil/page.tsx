@@ -3,13 +3,14 @@ import { getSession } from "@/lib/ActionsSession"
 import { getStudentAcademicStatus } from "@/lib/ActionsStudent"
 import { getStudentHistory } from "@/lib/ActionsHistoryMaterias"
 import { Button } from "@/components/ui/button"
-import { AlertCircle, ArrowLeft, LayoutDashboard, History } from "lucide-react"
+import { AlertCircle, ArrowLeft, LayoutDashboard, History, CalendarDays } from "lucide-react"
 import { ProfileIdentity } from "./components/ProfileIdentity"
 import { ProfileStatus } from "./components/ProfileStatus"
 import { AcademicInfo } from "./components/AcademicInfo"
 import { ActionBanner, RenovationBanner, FinalistBanner } from "./components/ProfileBanners"
 import { GradesHistory } from "./components/GradesHistory"
 import { HistoryTimeline } from "./components/HistoryTimeline"
+import { AlertaConvocatoria } from "./components/AlertaConvocatoria" // 🟢 Importación del modal flotante
 
 // 🟢 CRÍTICO: Fuerza a Next.js a no cachear esta página para ver cambios de estatus al instante
 export const dynamic = 'force-dynamic';
@@ -69,8 +70,16 @@ export default async function PerfilPage(props: { searchParams: Promise<{ view?:
   // 🟢 LÓGICA DE FINALIZACIÓN: Basada en el semestre real
   const esUltimoTrimestre = user.semestre === 12;
 
+  // Normalización estricta para detectar la convocatoria
+  const estatusNormalizado = user.estatus?.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || '';
+  const esConvocado = estatusNormalizado.includes('convocad');
+
   return (
     <div className="min-h-screen bg-[#f0f4f8] py-8 md:py-16">
+      
+      {/* 🟢 ALERTA LLAMATIVA EN TODA LA PANTALLA (Modal Ocultable con Botón Entendido) */}
+      <AlertaConvocatoria estatus={user.estatus} />
+
       <div className="container mx-auto px-4 max-w-5xl animate-in fade-in slide-in-from-bottom-4 duration-700">
         
         <div className="mb-8 flex justify-center md:justify-start">
@@ -81,6 +90,33 @@ export default async function PerfilPage(props: { searchParams: Promise<{ view?:
             </Button>
           </Link>
         </div>
+
+        {/* 🟢 ALERTA VISUAL / BANNER FLOTANTE EN TIEMPO REAL PARA EL ESTUDIANTE CONVOCADO */}
+        {esConvocado && (
+          <div className="mb-8 bg-gradient-to-r from-[#1e3a5f] to-[#284b7a] border-l-8 border-[#d4a843] rounded-2xl p-6 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-in zoom-in duration-500">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-[#d4a843]/20 rounded-xl border border-[#d4a843]/30 shrink-0">
+                <CalendarDays className="h-8 w-8 text-[#d4a843] animate-bounce" />
+              </div>
+              <div className="space-y-1">
+                <span className="px-2 py-0.5 bg-[#d4a843] text-[#1e3a5f] rounded font-black text-[9px] uppercase tracking-wider">
+                  Citación Oficial Urgente
+                </span>
+                <h3 className="text-sm md:text-base font-black uppercase tracking-wide">
+                  ¡Entrevista Presencial Requerida!
+                </h3>
+                <p className="text-xs text-slate-200 font-medium leading-relaxed">
+                  Su postulación ha sido seleccionada para entrevista presencial. Acuda al Departamento de Bienestar Estudiantil.
+                </p>
+              </div>
+            </div>
+            <div className="shrink-0 self-end md:self-center">
+              <span className="px-4 py-2 bg-white/10 border border-white/20 rounded-xl text-[10px] font-black uppercase tracking-widest text-[#d4a843]">
+                Estatus: Activo
+              </span>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 lg:gap-10">
           

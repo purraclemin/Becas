@@ -2,27 +2,23 @@
 
 import React from "react"
 import { ArrowLeft, Loader2, GraduationCap } from "lucide-react"
-import { StudentAcademicHistory } from "./ValidarBecaAcademicHistory"
+import { StudentAcademicHistory, PeriodoHistorial, StatsAcademicas } from "./ValidarBecaAcademicHistory"
 
 interface EstudianteSolicitudAcademic {
-  nombre?: string;
-  apellido?: string;
-  cedula?: string;
-  carrera?: string;
-  promedio_notas?: number | string;
-  tipo_beca?: string;
-  semestre?: number | string;
-  trimestre?: number | string;
-}
-
-interface HistorialAcademicoRecord {
-  [key: string]: unknown;
+  nombre?: string | null;
+  apellido?: string | null;
+  cedula?: string | null;
+  carrera?: string | null;
+  promedio_notas?: number | string | null;
+  tipo_beca?: string | null;
+  semestre?: number | string | null;
+  trimestre?: number | string | null;
 }
 
 interface HistorialAcademicoData {
   success?: boolean;
-  data: HistorialAcademicoRecord[];
-  stats?: Record<string, unknown>;
+  data: PeriodoHistorial[];
+  stats?: StatsAcademicas;
   [key: string]: unknown;
 }
 
@@ -53,7 +49,10 @@ export function ValidarBecaViewAcademic({ selectedSolicitud, dataHistorial, load
           <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Consultando MariaDB...</p>
         </div>
       ) : dataHistorial && Array.isArray(dataHistorial.data) && dataHistorial.data.length > 0 ? (
-        <StudentAcademicHistory historial={dataHistorial.data} stats={dataHistorial.stats} />
+        <StudentAcademicHistory 
+          historial={dataHistorial.data} 
+          stats={dataHistorial.stats || { promedioHistorico: "0.00", totalPeriodos: 0, totalMaterias: 0 }} 
+        />
       ) : (
         <div className="text-center py-24 bg-white rounded-[2rem] border border-slate-200 shadow-sm">
           <GraduationCap className="h-12 w-12 text-slate-200 mx-auto mb-4" />

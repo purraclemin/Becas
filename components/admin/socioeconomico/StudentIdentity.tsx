@@ -189,21 +189,6 @@ export function StudentIdentity({
               {/* ACCIONES (Ordenadas: Expediente primero, luego Editar y Borrar) */}
               {mostrarResultado && (
                 <div className="flex items-center gap-2 md:mr-14">
-                  
-                  {/* 1. Botón Expediente (Activa su panel de confirmación) */}
-                  <button 
-                    type="button"
-                    onClick={() => {
-                      setMostrarConfirmacionExpediente(true);
-                      setMostrarConfirmacionEditar(false);
-                      setMostrarConfirmacionBorrar(false);
-                    }}
-                    className="flex flex-col items-center justify-center w-12 h-12 md:w-9 md:h-9 bg-slate-50 border border-slate-200 rounded-xl text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white transition-all active:scale-95 group cursor-pointer shadow-xs"
-                    title="Ver Expediente y Auditoría"
-                  >
-                    <FileText className="h-4 w-4 md:h-3.5 md:w-3.5 mb-0.5 group-hover:scale-110 transition-transform" />
-                    <span className="text-[8px] md:text-[7px] font-black uppercase tracking-wider">Expediente</span>
-                  </button>
 
                   {/* 2. Botón Editar (Activa su panel de confirmación) */}
                   <button 

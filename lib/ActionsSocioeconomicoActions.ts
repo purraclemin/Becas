@@ -185,7 +185,7 @@ export async function procesarGuardadoEstudio(data: Record<string, any>) {
     );
 
     await connection.execute(
-      `UPDATE solicitudes SET estatus = 'En Revisión', fecha_revision = NOW() WHERE user_id = ? AND estatus = 'Pendiente'`,
+      `UPDATE solicitudes SET estatus = 'En Revisión', fecha_revision = NOW() WHERE user_id = ? AND estatus = 'Convocado a Entrevista'`,
       [data?.student_id ?? null]
     );
 
