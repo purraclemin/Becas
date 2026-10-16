@@ -257,7 +257,7 @@ function ValidarBecaFila({ s, onView, onViewHistorial, onStatusChange, periodoAc
               className="bg-slate-50 border border-slate-200 text-slate-600 text-[10px] font-bold rounded-xl px-2 py-1 outline-none focus:ring-1 focus:ring-[#1e3a5f] cursor-pointer hover:bg-slate-100 transition-colors"
             >
               <option value="" disabled>Validar...</option>
-              <option value="ver_detalles">👁️ Ver Expediente</option>
+              <option value="ver_detalles">👁️ Ver Expediente3</option>
               <option value="ver_historial">📋  Materia Historia</option>
               {esPeriodoActual ? (
                 <>

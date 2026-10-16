@@ -1,7 +1,7 @@
 "use client"
 
 import React from "react"
-import { Step1Personal } from "./Step1Personal"
+import { Step1Personal, RegistroFormState } from "./Step1Personal"
 import { Step2Academic } from "./Step2Academic"
 import { Step3Security } from "./Step3Security"
 
@@ -10,12 +10,14 @@ import { Step3Security } from "./Step3Security"
  */
 interface StepContentProps {
   step: number
-  form: any
-  updateField: (field: string, value: string | boolean) => void
+  form: RegistroFormState
+  updateField: (field: keyof RegistroFormState, value: string | boolean) => void
   showPassword: boolean
   setShowPassword: (show: boolean) => void
   showConfirm: boolean
   setShowConfirm: (show: boolean) => void
+  emailVerified: boolean
+  setEmailVerified: (verified: boolean) => void
 }
 
 /**
@@ -27,8 +29,7 @@ export function StepContent(props: StepContentProps) {
 
   switch (step) {
     case 1:
-      // Paso de Datos Personales (Nombre, Apellido, Cédula, Sexo, Fecha Nac, Municipio, Teléfono, Email)
-      // {...props} envía automáticamente el objeto 'form' actualizado
+      // Paso de Datos Personales (Nombre, Apellido, Cédula, Sexo, Fecha Nac, Municipio, Teléfono, Email + OTP)
       return <Step1Personal {...props} />;
     
     case 2:

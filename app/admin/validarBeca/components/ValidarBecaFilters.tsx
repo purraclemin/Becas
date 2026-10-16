@@ -31,6 +31,17 @@ interface FiltrosValidacionState {
   scope?: string;
 }
 
+interface StudentData {
+  id: string | number;
+  nombre?: string;
+  apellido?: string;
+  cedula: string;
+  carrera?: string;
+  email?: string;
+  nivel_riesgo?: string;
+  [key: string]: unknown;
+}
+
 interface ValidarBecaFiltersProps {
   onFilterChange: (filters: FiltrosValidacionState) => void;
   initialFilters?: Partial<FiltrosValidacionState>;
@@ -41,7 +52,20 @@ interface ValidarBecaFiltersProps {
   hasData: boolean;
   registrosPorPagina: number;
   setRegistrosPorPagina?: (limit: number) => void;
-  onOpenAptoIA: () => void; 
+  onOpenAptoIA: () => void;
+  student: StudentData | null;
+  studentLoading: boolean;
+  cedulaBusqueda: string;
+  setCedulaBusqueda: (val: string) => void;
+  handleSearch: () => void;
+  mostrarResultado: boolean;
+  setMostrarResultado: (val: boolean) => void;
+  setPasoActual: (val: number) => void;
+  borrarEstudio: (id: string | number) => Promise<{ success: boolean } | void>;
+  setStudent: (val: StudentData | null) => void;
+  onView?: (student: StudentData) => void;
+  setViewMode?: (mode: 'list' | 'auditoria' | 'academic') => void;
+  setSelectedSolicitud?: (solicitud: any) => void;
 }
 
 export function ValidarBecaFilters({ 
@@ -54,7 +78,9 @@ export function ValidarBecaFilters({
   hasData,
   registrosPorPagina,
   setRegistrosPorPagina,
-  onOpenAptoIA
+  onOpenAptoIA,
+  setViewMode,
+  setSelectedSolicitud
 }: ValidarBecaFiltersProps) {
 
   const router = useRouter()
@@ -146,89 +172,88 @@ export function ValidarBecaFilters({
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-4">
-      <div className="p-2 md:p-3 border-b border-slate-100 bg-white flex flex-wrap xl:flex-nowrap items-center justify-between gap-2">
-        
-        {/* Bloque izquierdo: Buscador con ancho exacto restaurado para PC y fluido para móvil */}
-        <div className="flex items-center gap-2 w-full xl:w-auto flex-1">
-          <div className="relative w-full xl:w-[320px]">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-            <input
-              name="search" type="text" value={filters.search} onChange={handleInputChange}
-              placeholder="Buscar por Nombre o Cédula..."
-              className="w-full pl-9 pr-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium outline-none focus:border-[#1e3a5f] transition-all"
+    <div className="space-y-4 mb-4">
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="p-2 md:p-3 border-b border-slate-100 bg-white flex flex-wrap xl:flex-nowrap items-center justify-between gap-2">
+          
+          <div className="flex items-center gap-2 w-full xl:w-auto flex-1">
+            <div className="relative w-full xl:w-[320px]">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+              <input
+                name="search" type="text" value={filters.search} onChange={handleInputChange}
+                placeholder="Buscar por Nombre o Cédula..."
+                className="w-full pl-9 pr-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium outline-none focus:border-[#1e3a5f] transition-all"
+              />
+            </div>
+
+            <div className="flex items-center gap-1.5 shrink-0">
+              {activeFiltersCount > 0 && (
+                <div className="flex items-center gap-1 px-2 py-1.5 bg-[#1e3a5f] rounded-xl border border-[#1e3a5f]">
+                  <Filter className="h-3 w-3 text-[#d4a843]" />
+                  <span className="text-[9px] font-black text-white leading-none">{activeFiltersCount}</span>
+                </div>
+              )}
+              
+              <button onClick={resetFilters} className="p-2 bg-slate-100 text-slate-500 rounded-xl border border-slate-200 hover:bg-slate-200 transition-colors group" title="Limpiar todos los filtros">
+                <RotateCcw className="h-3.5 w-3.5 group-active:rotate-180 transition-transform duration-500" />
+              </button>
+
+              <Boton100registros />
+            </div>
+          </div>
+
+          <div className="hidden xl:flex items-center justify-center shrink-0">
+            <button 
+              type="button"
+              onClick={onOpenAptoIA}
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-[#1e3a5f] hover:bg-[#162c4a] text-white border border-[#d4a843]/60 rounded-xl shadow-sm hover:shadow-md text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer group"
+              title="Selección Inteligente por IA (Aptos)"
+            >
+              <Shield className="h-3.5 w-3.5 text-[#d4a843] group-hover:scale-110 transition-transform" />
+              <span className="text-[#d4a843]">Aptos</span>
+            </button>
+          </div>
+
+          <div className="w-full xl:w-auto flex justify-center xl:justify-end">
+            <ControlesPaginacion 
+              paginaActual={paginaActual}
+              totalPaginas={totalPaginas}
+              setPaginaActual={setPaginaActual}
+              registrosPorPagina={registrosPorPagina || filters.limit}
+              setRegistrosPorPagina={setRegistrosPorPagina}
+              alturaCalculada={alturaCalculada}
+              loading={loading}
+              hasData={hasData}
+              onOpenAptoIA={onOpenAptoIA} 
             />
           </div>
+        </div>
 
-          <div className="flex items-center gap-1.5 shrink-0">
-            {activeFiltersCount > 0 && (
-              <div className="flex items-center gap-1 px-2 py-1.5 bg-[#1e3a5f] rounded-xl border border-[#1e3a5f]">
-                <Filter className="h-3 w-3 text-[#d4a843]" />
-                <span className="text-[9px] font-black text-white leading-none">{activeFiltersCount}</span>
-              </div>
-            )}
-            
-            <button onClick={resetFilters} className="p-2 bg-slate-100 text-slate-500 rounded-xl border border-slate-200 hover:bg-slate-200 transition-colors group" title="Limpiar todos los filtros">
-              <RotateCcw className="h-3.5 w-3.5 group-active:rotate-180 transition-transform duration-500" />
-            </button>
-
-            <Boton100registros />
+        {activeFiltersCount > 0 && (
+          <div className="px-3 py-1.5 bg-rose-50 border-b border-rose-100 flex items-center gap-2 animate-pulse">
+            <AlertCircle className="h-3.5 w-3.5 text-rose-600 shrink-0" />
+            <p className="text-[9px] font-black text-rose-700 uppercase tracking-widest">
+              ¡Atención! Tienes {activeFiltersCount} filtros activos aplicando en la consulta actual.
+            </p>
           </div>
-        </div>
+        )}
 
-        {/* 🟢 Botón Escudo IA "APTOS": Visible únicamente en PC/Laptop (oculto en móvil con hidden xl:flex) */}
-        <div className="hidden xl:flex items-center justify-center shrink-0">
-          <button 
-            type="button"
-            onClick={onOpenAptoIA}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-[#1e3a5f] hover:bg-[#162c4a] text-white border border-[#d4a843]/60 rounded-xl shadow-sm hover:shadow-md text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer group"
-            title="Selección Inteligente por IA (Aptos)"
-          >
-            <Shield className="h-3.5 w-3.5 text-[#d4a843] group-hover:scale-110 transition-transform" />
-            <span className="text-[#d4a843]">Aptos</span>
-          </button>
-        </div>
+        {activeFiltersCount >= MAX_FILTROS_RECOMENDADOS && (
+          <div className="px-3 py-1.5 bg-amber-50 border-b border-amber-100 flex items-center gap-2">
+            <AlertCircle className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+            <p className="text-[9px] font-black text-amber-700 uppercase tracking-widest">
+              Aviso: {activeFiltersCount} filtros activos. La búsqueda es muy restrictiva.
+            </p>
+          </div>
+        )}
 
-        {/* Controles de Paginación (Se le pasa la prop onOpenAptoIA para renderizar el botón central en móvil) */}
-        <div className="w-full xl:w-auto flex justify-center xl:justify-end">
-          <ControlesPaginacion 
-            paginaActual={paginaActual}
-            totalPaginas={totalPaginas}
-            setPaginaActual={setPaginaActual}
-            registrosPorPagina={registrosPorPagina || filters.limit}
-            setRegistrosPorPagina={setRegistrosPorPagina}
-            alturaCalculada={alturaCalculada}
-            loading={loading}
-            hasData={hasData}
-            onOpenAptoIA={onOpenAptoIA} 
-          />
-        </div>
+        <OpcionesFiltros 
+          filters={filters} 
+          handleInputChange={handleInputChange} 
+          resetFilters={resetFilters} 
+          onOpenAptoIA={onOpenAptoIA}
+        />
       </div>
-
-      {activeFiltersCount > 0 && (
-        <div className="px-3 py-1.5 bg-rose-50 border-b border-rose-100 flex items-center gap-2 animate-pulse">
-          <AlertCircle className="h-3.5 w-3.5 text-rose-600 shrink-0" />
-          <p className="text-[9px] font-black text-rose-700 uppercase tracking-widest">
-            ¡Atención! Tienes {activeFiltersCount} filtros activos aplicando en la consulta actual.
-          </p>
-        </div>
-      )}
-
-      {activeFiltersCount >= MAX_FILTROS_RECOMENDADOS && (
-        <div className="px-3 py-1.5 bg-amber-50 border-b border-amber-100 flex items-center gap-2">
-          <AlertCircle className="h-3.5 w-3.5 text-amber-600 shrink-0" />
-          <p className="text-[9px] font-black text-amber-700 uppercase tracking-widest">
-            Aviso: {activeFiltersCount} filtros activos. La búsqueda es muy restrictiva.
-          </p>
-        </div>
-      )}
-
-      <OpcionesFiltros 
-        filters={filters} 
-        handleInputChange={handleInputChange} 
-        resetFilters={resetFilters} 
-        onOpenAptoIA={onOpenAptoIA}
-      />
     </div>
   )
 }

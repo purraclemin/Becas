@@ -7,7 +7,7 @@ export function HealthStatus({ porEstatus, total }: { porEstatus: any[], total: 
   const router = useRouter()
 
   const filtrarPorEstatus = (estatus: string) => {
-    router.push(`/admin/solicitudes?filter=${encodeURIComponent(estatus)}`)
+    router.push(`/admin/validarBeca?filter=${encodeURIComponent(estatus)}`)
   }
 
   return (

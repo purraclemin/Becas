@@ -60,9 +60,9 @@ export default function AdminDashboard() {
 
   const irAStatus = (estatus: string) => {
     if (estatus === 'Todas') {
-      router.push('/admin/solicitudes')
+      router.push('/admin/validarBeca')
     } else {
-      router.push(`/admin/solicitudes?status=${encodeURIComponent(estatus)}`)
+      router.push(`/admin/validarBeca?status=${encodeURIComponent(estatus)}`)
     }
   }
 
@@ -116,10 +116,10 @@ export default function AdminDashboard() {
       {/* Grilla superior modificada: Solicitudes por Carrera ahora es más alargada (col-span-7) y Ranking en col-span-5 */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-stretch">
         <div className="lg:col-span-7 bg-white rounded-xl border border-slate-200/80 p-3 shadow-sm flex flex-col">
-          <CarreraBarChart data={stats?.porCarrera || []} onNavigate={(c) => router.push(`/admin/solicitudes?carrera=${encodeURIComponent(c)}`)} />
+          <CarreraBarChart data={stats?.porCarrera || []} onNavigate={(c) => router.push(`/admin/validarBeca?carrera=${encodeURIComponent(c)}`)} />
         </div>
         <div className="lg:col-span-5 bg-white rounded-xl border border-slate-200/80 p-3 shadow-sm flex flex-col">
-          <RankingPrioridad estudiantes={ranking} onNavigate={(q: string) => router.push(`/admin/solicitudes?search=${q}`)} />
+          <RankingPrioridad estudiantes={ranking} onNavigate={(q: string) => router.push(`/admin/validarBeca?search=${q}`)} />
         </div>
       </div>
 
@@ -130,7 +130,7 @@ export default function AdminDashboard() {
         </div>
         
         <div className="bg-white rounded-xl border border-slate-200/80 p-3 shadow-sm flex flex-col">
-          <BecaPieChart data={stats?.porTipo || []} onNavigate={(b) => router.push(`/admin/solicitudes?tipoBeca=${encodeURIComponent(b)}`)} />
+          <BecaPieChart data={stats?.porTipo || []} onNavigate={(b) => router.push(`/admin/validarBeca?tipoBeca=${encodeURIComponent(b)}`)} />
         </div>
       </div>
 

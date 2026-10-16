@@ -13,23 +13,33 @@ import { StepForm } from "@/components/admin/socioeconomico/StepForm"
 import { StudentIdentity } from "@/components/admin/socioeconomico/StudentIdentity"
 import { AnalisisIA } from "@/components/admin/socioeconomico/AnalisisIA"
 
+interface EstudianteData {
+  id: number | string;
+  nombre?: string;
+  apellido?: string;
+  cedula: string;
+  email?: string;
+  puntaje_admin?: number | null;
+  [key: string]: unknown;
+}
+
 function SocioeconomicoContent() {
   const searchParams = useSearchParams();
-  const [loading, setLoading] = useState(false)
-  const [cedulaBusqueda, setCedulaBusqueda] = useState("")
+  const [loading, setLoading] = useState<boolean>(false)
+  const [cedulaBusqueda, setCedulaBusqueda] = useState<string>("")
   
-  const [student, setStudent] = useState<any>(null)
-  const [candidates, setCandidates] = useState<any[]>([]) 
+  const [student, setStudent] = useState<EstudianteData | null>(null)
+  const [candidates, setCandidates] = useState<EstudianteData[]>([]) 
   
-  const [pasoActual, setPasoActual] = useState(1)
-  const [mostrarResultado, setMostrarResultado] = useState(false)
+  const [pasoActual, setPasoActual] = useState<number>(1)
+  const [mostrarResultado, setMostrarResultado] = useState<boolean>(false)
   const [notificacion, setNotificacion] = useState<{msg: string, tipo: 'success' | 'error'} | null>(null)
   
   // Estados para la IA real
-  const [cargandoIA, setCargandoIA] = useState(false)
-  const [resumenIA, setResumenIA] = useState("")
+  const [cargandoIA, setCargandoIA] = useState<boolean>(false)
+  const [resumenIA, setResumenIA] = useState<string>("")
 
-  const initialFormState = {
+  const initialFormState: Record<string, unknown> = {
     socio_estado_civil: "",
     socio_municipio: "",
     posee_empleo_aspirante: "No",
@@ -56,17 +66,17 @@ function SocioeconomicoContent() {
     socio_relacion_fam: ""
   };
 
-  const [formData, setFormData] = useState<any>(initialFormState)
+  const [formData, setFormData] = useState<Record<string, unknown>>(initialFormState)
 
   const notify = (msg: string, tipo: 'success' | 'error' = 'error') => {
     setNotificacion({ msg, tipo });
     setTimeout(() => setNotificacion(null), 4000);
   };
 
-  const selectCandidate = (selected: any) => {
+  const selectCandidate = (selected: EstudianteData) => {
     setStudent(selected);
     setCandidates([]); 
-    setResumenIA(""); // Resetear IA al cambiar de estudiante
+    setResumenIA(""); 
     
     if (selected.puntaje_admin !== null && selected.puntaje_admin !== undefined) {
       setFormData({ ...initialFormState, ...selected });
@@ -82,7 +92,7 @@ function SocioeconomicoContent() {
     if (!termino || termino.length < 3) return;
 
     setLoading(true);
-    const res: any = await buscarEstudianteConEstudio(termino);
+    const res = await buscarEstudianteConEstudio(termino) as EstudianteData[];
     
     if (res && res.length > 0) {
       if (res.length === 1) {
@@ -124,11 +134,12 @@ function SocioeconomicoContent() {
     await performSearch(cedulaBusqueda, false);
   };
 
-  const handleSubmit = async (e: any) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!student) return;
     setLoading(true);
     const dataToSave = { ...formData, student_id: student.id };
-    const res: any = await guardarOActualizarEstudio(dataToSave);
+    const res = await guardarOActualizarEstudio(dataToSave) as { success?: boolean; error?: string };
     
     if (res && res.success) {
       notify("Auditoría guardada correctamente.", "success");
@@ -139,7 +150,6 @@ function SocioeconomicoContent() {
     setLoading(false);
   };
 
-  // Conexión real con la Server Action de Gemini (Corregido para manejar string | undefined)
   const handleGenerarAnalisisIA = async () => {
     if (!student?.id) return;
     
@@ -147,7 +157,7 @@ function SocioeconomicoContent() {
     setResumenIA("");
 
     try {
-      const res = await generarAnalisisIaEstudio(student.id);
+      const res = await generarAnalisisIaEstudio(Number(student.id)) as { success?: boolean; analisis?: string; error?: string };
 
       if (res && res.success) {
         setResumenIA(res.analisis ?? "");
@@ -162,8 +172,19 @@ function SocioeconomicoContent() {
     }
   };
 
+  // Envoltorio compatible con la interfaz requerida por StudentIdentity
+  const handleBorrarEstudio = async (studentId: string | number): Promise<{ success: boolean }> => {
+    const numericId = typeof studentId === 'string' ? Number(studentId) : studentId;
+    const res = await borrarEstudio(numericId);
+    return res ?? { success: false };
+  };
+
+  const handleSetStudent = (val: EstudianteData | null) => {
+    setStudent(val);
+  };
+
   return (
-    <div className="space-y-4 relative">
+    <div className="w-full space-y-4 relative px-2 sm:px-4 md:px-6">
       
       {notificacion && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] animate-in fade-in slide-in-from-top-2 duration-300">
@@ -182,10 +203,10 @@ function SocioeconomicoContent() {
         mostrarExportar={false}
       />
 
-      <main className="space-y-6 pb-10">
+      <main className="w-full space-y-6 pb-10">
         
         {/* BUSCADOR E IDENTIDAD */}
-        <section className="bg-white rounded-xl shadow-sm border border-slate-200/60 overflow-hidden">
+        <section className="w-full bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
             <StudentIdentity 
               student={student} 
               loading={loading} 
@@ -195,14 +216,14 @@ function SocioeconomicoContent() {
               mostrarResultado={mostrarResultado}
               setMostrarResultado={setMostrarResultado} 
               setPasoActual={setPasoActual}
-              borrarEstudio={borrarEstudio} 
-              setStudent={setStudent}
+              borrarEstudio={handleBorrarEstudio} 
+              setStudent={handleSetStudent}
             />
         </section>
 
         {/* LISTADO DE CANDIDATOS */}
         {candidates.length > 0 && !student && (
-          <div className="animate-in fade-in slide-in-from-top-2 duration-500 max-w-5xl mx-auto">
+          <div className="w-full animate-in fade-in slide-in-from-top-2 duration-500">
             <div className="flex items-center gap-3 mb-5 px-1">
                 <div className="h-px flex-1 bg-slate-200"></div>
                 <h3 className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">
@@ -212,14 +233,14 @@ function SocioeconomicoContent() {
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {candidates.map((c: any) => (
+              {candidates.map((c) => (
                 <div 
                   key={c.id}
                   onClick={() => selectCandidate(c)}
                   className="bg-white p-3.5 rounded-xl border border-slate-200/80 cursor-pointer hover:border-[#d4a843] hover:shadow-md transition-all group flex items-center justify-between"
                 >
-                  <div className="flex items-center gap-3.5">
-                    <div className="h-10 w-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-[#1e3a5f] font-bold text-xs group-hover:bg-[#1e3a5f] group-hover:text-[#d4a843] transition-colors shadow-sm">
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="h-10 w-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-[#1e3a5f] font-bold text-xs group-hover:bg-[#1e3a5f] group-hover:text-[#d4a843] transition-colors shadow-sm shrink-0">
                         {c.nombre?.[0]}{c.apellido?.[0]}
                     </div>
                     <div className="min-w-0">
@@ -233,7 +254,7 @@ function SocioeconomicoContent() {
                       </div>
                     </div>
                   </div>
-                  <div className="h-8 w-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-[#1a2744] group-hover:text-[#d4a843] transition-all">
+                  <div className="h-8 w-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-[#1a2744] group-hover:text-[#d4a843] transition-all shrink-0">
                     <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
                   </div>
                 </div>
@@ -242,9 +263,9 @@ function SocioeconomicoContent() {
           </div>
         )}
 
-        {/* ÁREA DE TRABAJO (FORMULARIO O RESULTADO) */}
+        {/* ÁREA DE TRABAJO (FORMULARIO O RESULTADO) - ANCHO FLUIDO TOTAL */}
         {student ? (
-          <div className="animate-in fade-in slide-in-from-bottom-2 duration-700 max-w-4xl mx-auto space-y-4">
+          <div className="w-full animate-in fade-in slide-in-from-bottom-2 duration-700 space-y-4">
             {mostrarResultado ? (
               <>
                 {/* COMPONENTE ANALISIS IA REAL INTEGRADO */}
@@ -257,7 +278,7 @@ function SocioeconomicoContent() {
                 <ResultCard student={student} formData={formData} />
               </>
             ) : (
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+              <div className="w-full bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 <div className="bg-[#1e3a5f] h-1 w-full"></div>
                 <StepForm 
                     student={student}
@@ -279,8 +300,8 @@ function SocioeconomicoContent() {
         )}
       </main>
 
-      <footer className="text-center py-4">
-        <p className="text-[7px] font-bold text-slate-300 uppercase tracking-[0.4em]">
+      <footer className="text-center py-4 border-t border-slate-100 mt-6">
+        <p className="text-[7px] font-bold text-slate-400 uppercase tracking-[0.4em]">
           Bienestar Estudiantil &bull; Unimar 2026
         </p>
       </footer>

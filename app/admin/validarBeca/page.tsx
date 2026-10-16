@@ -47,6 +47,13 @@ export default function ValidarBecaPage({ searchParams }: { searchParams?: Promi
   const [dataHistorial, setDataHistorial] = useState<any>(null) 
   const [loadingHistorial, setLoadingHistorial] = useState(false)
 
+  // 🟢 ESTADOS PARA EL BUSCADOR DE IDENTIDAD Y FICHA INDIVIDUAL
+  const [student, setStudent] = useState<any | null>(null);
+  const [studentLoading, setStudentLoading] = useState(false);
+  const [cedulaBusqueda, setCedulaBusqueda] = useState("");
+  const [mostrarResultado, setMostrarResultado] = useState(false);
+  const [, setPasoActual] = useState<number>(1);
+
   // 🟢 ESTADOS PARA EL MODAL DE IA CON PERSISTENCIA GLOBAL (localStorage)
   const [isAptoIAOpen, setIsAptoIAOpen] = useState(false)
   const [loadingIA, setLoadingIA] = useState(false)
@@ -91,7 +98,7 @@ export default function ValidarBecaPage({ searchParams }: { searchParams?: Promi
   
   const [paginaActual, setPaginaActual] = useState(1)
   const [totalPaginas, setTotalPaginas] = useState(1)
-  const [totalRegistros, setTotalRegistros] = useState(0)
+  const [, setTotalRegistros] = useState(0)
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const isFirstRender = useRef(true); 
@@ -159,6 +166,45 @@ export default function ValidarBecaPage({ searchParams }: { searchParams?: Promi
     }
   }
 
+  // 🟢 FUNCIÓN DE BÚSQUEDA INDIVIDUAL PARA STUDENTIDENTITY
+  const handleSearch = async () => {
+    if (!cedulaBusqueda.trim()) return;
+    setStudentLoading(true);
+    try {
+      const res: any = await obtenerTodasLasSolicitudes({ 
+        search: cedulaBusqueda.trim(), 
+        page: 1, 
+        limit: 1 
+      });
+      if (res && res.data && res.data.length > 0) {
+        setStudent(res.data[0]);
+        setMostrarResultado(true);
+      } else {
+        setStudent(null);
+        setMostrarResultado(false);
+      }
+    } catch (error) {
+      console.error("Error buscando estudiante individual:", error);
+      setStudent(null);
+    } finally {
+      setStudentLoading(false);
+    }
+  };
+
+  // 🟢 FUNCIÓN DE BORRADO DE ESTUDIO (COMPATIBLE CON string | number)
+  const borrarEstudio = async (id: string | number) => {
+    try {
+      setStudent(null);
+      setMostrarResultado(false);
+      setCedulaBusqueda("");
+      await cargarDatos(filtros, paginaActual);
+      return { success: true };
+    } catch (error) {
+      console.error("Error al borrar estudio:", error);
+      return { success: false };
+    }
+  };
+
   // 🟢 FUNCIÓN DE EJECUCIÓN Y ALMACENAMIENTO PERSISTENTE DE LA IA (CON TIMESTAMP)
   const ejecutarAnalisisIA = async () => {
     setLoadingIA(true);
@@ -167,7 +213,6 @@ export default function ValidarBecaPage({ searchParams }: { searchParams?: Promi
       if (res.success && res.data) {
         setEstudiantesAptosIA(res.data);
         setIaYaCargada(true);
-        // Guardamos de forma persistente en localStorage tanto los datos como la marca de tiempo exacta
         if (typeof window !== 'undefined') {
           localStorage.setItem('unimar_ranking_ia_cache', JSON.stringify(res.data));
           localStorage.setItem('unimar_ranking_ia_timestamp', new Date().toISOString());
@@ -185,7 +230,6 @@ export default function ValidarBecaPage({ searchParams }: { searchParams?: Promi
   // 🟢 AL HACER CLIC EN EL BOTÓN DE APTOS
   const handleOpenAptoIA = async () => {
     setIsAptoIAOpen(true);
-    // Si no existen datos almacenados en la caché local, los genera por primera vez
     if (!iaYaCargada || estudiantesAptosIA.length === 0) {
       await ejecutarAnalisisIA();
     }
@@ -247,6 +291,20 @@ export default function ValidarBecaPage({ searchParams }: { searchParams?: Promi
           setPaginaActual(1); 
         }} 
         onOpenAptoIA={handleOpenAptoIA} 
+        student={student}
+        studentLoading={studentLoading}
+        cedulaBusqueda={cedulaBusqueda}
+        setCedulaBusqueda={setCedulaBusqueda}
+        handleSearch={handleSearch}
+        mostrarResultado={mostrarResultado}
+        setMostrarResultado={setMostrarResultado}
+        setPasoActual={setPasoActual}
+        borrarEstudio={borrarEstudio}
+        setStudent={setStudent}
+        onView={(studentData) => {
+          setSelectedSolicitud(studentData);
+          setViewMode('auditoria');
+        }}
       />
       <ValidarBecaTable 
         loading={loading} 

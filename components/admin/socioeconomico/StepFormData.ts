@@ -2,7 +2,7 @@ import { User, BookOpen, Users, DollarSign, Home, Zap, HeartPulse } from "lucide
 
 export const SECCIONES_MAESTRAS = [
   {
-    titulo: "1. Identificación y Ubicación",
+    titulo: "1. Identificación y Ubicación3",
     icon: User,
     fields: [
       { label: "Lugar de Nacimiento", name: "socio_lugar_nac" },

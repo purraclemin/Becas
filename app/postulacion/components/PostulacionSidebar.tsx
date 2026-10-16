@@ -1,6 +1,7 @@
 "use client"
 
 import React from "react"
+import Link from "next/link"
 import { 
   ClipboardList, 
   BookOpen, 
@@ -8,7 +9,9 @@ import {
   CheckCircle2, 
   GraduationCap,
   LayoutDashboard,
-  Eye
+  Eye,
+  Home,
+  User
 } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
@@ -17,7 +20,7 @@ export const PASOS = [
   { id: 1, titulo: "Carga Académica", icon: BookOpen },
   { id: 2, titulo: "Detalles Beca", icon: LayoutDashboard },
   { id: 3, titulo: "Estudio Social", icon: ClipboardList },
-  { id: 4, titulo: "Documentación3", icon: Upload },
+  { id: 4, titulo: "Documentación", icon: Upload },
   { id: 5, titulo: "Resumen y Envío", icon: Eye },
 ]
 
@@ -31,23 +34,53 @@ export function PostulacionSidebar({ pasoActual, progreso }: { pasoActual: numbe
           <div className="bg-[#d4a843] p-1.5 rounded-lg"><GraduationCap className="h-3 w-3 text-[#1e3a5f]" /></div>
           <span className="text-white font-black text-[10px] uppercase tracking-widest">Unimar Becas</span>
         </div>
-        <div className="text-[9px] font-black text-[#d4a843] bg-white/5 px-2 py-1 rounded-md">
-          Paso 0{pasoActual} / 0{PASOS.length}
+        <div className="flex items-center gap-2">
+          <Link href="/" className="text-white/70 hover:text-white p-1" title="Página Principal">
+            <Home className="h-4 w-4" />
+          </Link>
+          <Link href="/perfil" className="text-white/70 hover:text-white p-1" title="Perfil">
+            <User className="h-4 w-4" />
+          </Link>
+          <div className="text-[9px] font-black text-[#d4a843] bg-white/5 px-2 py-1 rounded-md ml-1">
+            Paso 0{pasoActual} / 0{PASOS.length}
+          </div>
         </div>
       </div>
 
       {/* VISTA DESKTOP (Elegante y delgada) */}
-      <div className="hidden lg:flex p-6 items-center gap-3 border-b border-white/5">
-        <div className="bg-[#d4a843] p-2 rounded-xl shadow-lg shadow-[#d4a843]/20">
-          <GraduationCap className="h-4 w-4 text-[#1e3a5f]" />
+      <div className="hidden lg:flex flex-col p-5 border-b border-white/5 gap-4">
+        <div className="flex items-center gap-3">
+          <div className="bg-[#d4a843] p-2 rounded-xl shadow-lg shadow-[#d4a843]/20">
+            <GraduationCap className="h-4 w-4 text-[#1e3a5f]" />
+          </div>
+          <div>
+            <h2 className="text-white font-black text-[11px] uppercase tracking-tighter leading-none">Unimar</h2>
+            <p className="text-[#d4a843] text-[8px] font-bold uppercase tracking-[0.2em] mt-1">Becas 2026</p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-white font-black text-[11px] uppercase tracking-tighter leading-none">Unimar</h2>
-          <p className="text-[#d4a843] text-[8px] font-bold uppercase tracking-[0.2em] mt-1">Becas 2026</p>
+
+        {/* BOTONES DE ACCIÓN RÁPIDA (Debajo del Título/Logo) */}
+        <div className="grid grid-cols-2 gap-2">
+          <Link 
+            href="/" 
+            className="flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white text-[9px] font-bold uppercase tracking-wider transition-all"
+            title="Página Principal"
+          >
+            <Home className="h-3 w-3 text-[#d4a843]" />
+            <span>Inicio</span>
+          </Link>
+          <Link 
+            href="/perfil" 
+            className="flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white text-[9px] font-bold uppercase tracking-wider transition-all"
+            title="Ir al Perfil"
+          >
+            <User className="h-3 w-3 text-[#d4a843]" />
+            <span>Perfil</span>
+          </Link>
         </div>
       </div>
 
-      <nav className="hidden lg:flex flex-col px-4 py-8 gap-6 flex-1">
+      <nav className="hidden lg:flex flex-col px-4 py-6 gap-6 flex-1">
         {PASOS.map((paso) => {
           const Icono = paso.icon;
           const activo = pasoActual === paso.id;
@@ -71,7 +104,7 @@ export function PostulacionSidebar({ pasoActual, progreso }: { pasoActual: numbe
         })}
       </nav>
 
-      {/* FOOTER DE PROGRESO "TECH" */}
+      {/* FOOTER DE PROGRESO */}
       <div className="hidden lg:block p-4 bg-[#16273e]">
         <div className="flex justify-between items-center mb-1.5">
           <span className="text-[8px] font-black uppercase text-white/40 tracking-[0.2em]">Progreso</span>

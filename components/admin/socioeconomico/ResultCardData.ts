@@ -2,7 +2,7 @@ import { User, BookOpen, Users, DollarSign, Home } from "lucide-react";
 
 export const SECCIONES_REPORTE: any = {
   identificacion: {
-    titulo: "1. Identificación y Ubicación",
+    titulo: "1. Identificación y Ubicación2",
     icon: User,
     campos: {
       socio_lugar_nac: "Lugar de Nacimiento",

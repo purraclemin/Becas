@@ -34,13 +34,13 @@ export function SolicitudesFilters({
   const initialized = useRef(false) 
   
   const obtenerFilasPorAltura = () => {
-    if (typeof window === "undefined") return 7
+    if (typeof window === "undefined") return 70
     const alturaVentana = window.innerHeight
     const filasPosibles = Math.floor((alturaVentana - 360) / 55)
     return Math.max(6, filasPosibles)
   }
 
-  const [alturaCalculada, setAlturaCalculada] = useState(7)
+  const [alturaCalculada, setAlturaCalculada] = useState(70)
 
   const [filters, setFilters] = useState({
     search: initialFilters.search || "",
@@ -54,7 +54,7 @@ export function SolicitudesFilters({
     rankingElite: !!initialFilters.rankingElite, 
     estadoEstudio: initialFilters.estadoEstudio || "", 
     filtroPromedio: initialFilters.filtroPromedio || "", 
-    limit: initialFilters.limit || 7,
+    limit: initialFilters.limit || 70,
     // 🟢 CAMPOS DE INTEGRACIÓN ANALYTICS
     es_renovacion: initialFilters.es_renovacion || "",
     promedioMin: initialFilters.promedioMin || "",

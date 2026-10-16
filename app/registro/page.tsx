@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, UserPlus, AlertCircle, Loader2 } from "lucide-react"
@@ -15,6 +15,11 @@ export default function RegistroPage() {
   const [step, setStep] = useState(1)
   const [error, setError] = useState<string | null>(null)
   const [isPending, setIsPending] = useState(false)
+  
+  // Referencia para hacer scroll automático hacia la alerta de error
+  const errorRef = useRef<HTMLDivElement>(null)
+
+  const [emailVerified, setEmailVerified] = useState(false)
 
   const [form, setForm] = useState({
     nombre: "",
@@ -32,8 +37,19 @@ export default function RegistroPage() {
     aceptaTerminos: false,
   })
 
+  // Función auxiliar para mostrar error y hacer scroll automático hacia él
+  const triggerError = (message: string) => {
+    setError(message);
+    setTimeout(() => {
+      errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
+  }
+
   function updateField(field: string, value: string | boolean) {
     setForm((prev) => ({ ...prev, [field]: value }))
+    if (field === "email") {
+      setEmailVerified(false)
+    }
   }
 
   const validatePassword = (password: string) => {
@@ -47,14 +63,18 @@ export default function RegistroPage() {
     setError(null)
     
     if (currentStep === 1) {
-      // Validación estricta de campos demográficos
       if (!form.nombre || !form.apellido || !form.cedula || !form.telefono || !form.email || !form.sexo || !form.fecha_nacimiento || !form.municipio) {
-        setError("Por favor completa todos los datos personales y demográficos");
+        triggerError("Por favor completa todos los datos personales y demográficos");
         return false;
       }
       
       if (!form.email.includes("@unimar.edu.ve")) {
-        setError("Debe usar su correo institucional @unimar.edu.ve");
+        triggerError("Debe usar su correo institucional @unimar.edu.ve");
+        return false;
+      }
+
+      if (!emailVerified) {
+        triggerError("Debe verificar su correo institucional con el código antes de continuar");
         return false;
       }
 
@@ -62,20 +82,24 @@ export default function RegistroPage() {
       try {
         const check = await checkExistence(form.cedula, form.email)
         if (check.exists) {
-          setError(check.error || "La cédula o el correo ya están registrados")
-          return false
+          // 🟢 Si el correo ya existe, desbloqueamos la edición del email para que pueda cambiarlo
+          if (check.field === 'email') {
+            setEmailVerified(false);
+          }
+          triggerError(check.error || "La cédula o el correo ya están registrados");
+          return false;
         }
       } catch (e) {
-        setError("Error de conexión al validar los datos")
-        return false
+        triggerError("Error de conexión al validar los datos");
+        return false;
       } finally {
         setIsPending(false)
       }
       
     } else if (currentStep === 2) {
       if (!form.carrera || !form.semestre) {
-        setError("Por favor selecciona tu carrera y trimestre actual")
-        return false
+        triggerError("Por favor selecciona tu carrera y trimestre actual");
+        return false;
       }
     }
     
@@ -85,31 +109,35 @@ export default function RegistroPage() {
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     
-    // Si no estamos en el último paso, avanzamos
     if (step < 3) {
       const isValid = await validateStep(step)
       if (isValid) setStep(step + 1)
       return
     }
     
-    // Validaciones finales del paso 3
     const passwordError = validatePassword(form.password);
-    if (passwordError) return setError(passwordError);
+    if (passwordError) {
+      triggerError(passwordError);
+      return;
+    }
 
-    if (form.password !== form.confirmPassword) return setError("Las contraseñas no coinciden")
-    if (!form.aceptaTerminos) return setError("Debe aceptar los términos y condiciones")
+    if (form.password !== form.confirmPassword) {
+      triggerError("Las contraseñas no coinciden");
+      return;
+    }
+    if (!form.aceptaTerminos) {
+      triggerError("Debe aceptar los términos y condiciones");
+      return;
+    }
 
     setIsPending(true)
     setError(null)
 
-    // 🟢 SOLUCIÓN AL PROBLEMA DEL SEXO VACÍO:
-    // Creamos un nuevo FormData y añadimos manualmente cada campo del estado 'form'.
-    // Esto asegura que el sexo (capturado en el paso 1) se incluya aunque el input esté desmontado.
     const formData = new FormData()
     formData.append("nombre", form.nombre.trim())
     formData.append("apellido", form.apellido.trim())
     formData.append("cedula", form.cedula.trim())
-    formData.append("sexo", form.sexo) // <--- Aquí forzamos el envío de 'M' o 'F'
+    formData.append("sexo", form.sexo)
     formData.append("fecha_nacimiento", form.fecha_nacimiento)
     formData.append("municipio", form.municipio)
     formData.append("telefono", form.telefono.trim())
@@ -121,15 +149,18 @@ export default function RegistroPage() {
     try {
       const result = await register(formData)
       if (result?.error) {
-        setError(result.error)
+        triggerError(result.error);
         setIsPending(false)
+        // Si el error de duplicado viene del registro final
+        if (result.error.includes("correo") || result.error.includes("usuario")) {
+          setEmailVerified(false);
+        }
       } else if (result?.success) {
-        // Redirección al login tras registro exitoso
         router.push("/")
         router.refresh()
       }
     } catch (e) {
-      setError("Error crítico de conexión con el servidor")
+      triggerError("Error crítico de conexión con el servidor");
       setIsPending(false)
     }
   }
@@ -142,7 +173,7 @@ export default function RegistroPage() {
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1e3a5f] shadow-sm">
               <span className="text-sm font-extrabold text-[#d4a843] font-serif">U</span>
             </div>
-            <span className="text-sm font-bold tracking-wide text-white font-serif uppercase tracking-widest">UNIMAR</span>
+            <span className="text-sm font-bold tracking-wide text-white font-serif uppercase">UNIMAR</span>
           </Link>
           <Link href="/" className="flex items-center gap-1.5 text-xs text-[#8a9bbd] hover:text-white transition-colors">
             <ArrowLeft className="h-3.5 w-3.5" /> Volver al Inicio
@@ -165,12 +196,15 @@ export default function RegistroPage() {
             <StepIndicator currentStep={step} onStepClick={(s) => step > s ? setStep(s) : null} />
 
             <div className="px-8 py-8">
-              {error && (
-                <div className="mb-6 flex items-center gap-3 rounded-lg bg-red-50 p-4 text-sm text-red-700 border-l-4 border-red-500 animate-in fade-in slide-in-from-top-2">
-                  <AlertCircle className="h-5 w-5 shrink-0" />
-                  <span className="font-medium">{error}</span>
-                </div>
-              )}
+              {/* 🟢 Referencia para que la página haga scroll automático y muestre la alerta claramente */}
+              <div ref={errorRef}>
+                {error && (
+                  <div className="mb-6 flex items-center gap-3 rounded-lg bg-red-50 p-4 text-sm text-red-700 border-l-4 border-red-500 shadow-sm animate-in fade-in slide-in-from-top-2">
+                    <AlertCircle className="h-5 w-5 shrink-0" />
+                    <span className="font-semibold">{error}</span>
+                  </div>
+                )}
+              </div>
 
               <form onSubmit={handleSubmit} className="space-y-5">
                 <StepContent 
@@ -180,7 +214,9 @@ export default function RegistroPage() {
                   showPassword={showPassword} 
                   setShowPassword={setShowPassword} 
                   showConfirm={showConfirm} 
-                  setShowConfirm={setShowConfirm} 
+                  setShowConfirm={setShowConfirm}
+                  emailVerified={emailVerified}
+                  setEmailVerified={setEmailVerified}
                 />
                 
                 <div className="flex flex-col sm:flex-row items-center gap-3 pt-4">

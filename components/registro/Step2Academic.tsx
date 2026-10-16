@@ -1,7 +1,13 @@
 import React from "react"
 import { BookOpen, Calendar } from "lucide-react"
+import { RegistroFormState } from "./Step1Personal"
 
-export const Step2Academic = ({ form, updateField }: any) => (
+interface Step2AcademicProps {
+  form: RegistroFormState;
+  updateField: (field: keyof RegistroFormState, value: string | boolean) => void;
+}
+
+export const Step2Academic = ({ form, updateField }: Step2AcademicProps) => (
   <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
     {/* SELECTOR DE CARRERA */}
     <div className="space-y-1.5">

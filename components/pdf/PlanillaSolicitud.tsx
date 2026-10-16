@@ -72,7 +72,7 @@ export const PlanillaSolicitud = ({ user, promedio }: { user: any, promedio: str
           <View style={tw('flex flex-col')}>
             <Text style={tw('text-xl font-black tracking-widest text-unimarBlue')}>UNIMAR</Text>
             <Text style={tw('text-[8px] font-bold text-gray-500 uppercase tracking-widest')}>Universidad de Margarita</Text>
-            <Text style={tw('text-[8px] text-gray-400')}>Dirección de Bienestar Estudiantil</Text>
+            <Text style={tw('text-[8px] text-gray-400')}>Dirección de Bienestar Estudiantil444444</Text>
           </View>
           <View style={tw('items-end')}>
             <Text style={tw('text-[7px] text-gray-400 mb-1')}>CÓDIGO DE EXPEDIENTE</Text>

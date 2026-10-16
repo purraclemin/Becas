@@ -142,7 +142,7 @@ export default function ActividadPage() {
                 recientes.map((s) => (
                   <tr 
                     key={s.id} 
-                    onClick={() => router.push(`/admin/solicitudes?search=${s.cedula}`)}
+                    onClick={() => router.push(`/admin/validarBeca?search=${s.cedula}`)}
                     className="group flex flex-col md:table-row bg-white border border-slate-200 rounded-xl shadow-sm md:shadow-none md:border-none md:rounded-none md:hover:bg-blue-50/50 transition-all cursor-pointer overflow-hidden"
                   >
                     <td className="order-6 md:order-none flex justify-between items-center md:table-cell px-4 py-2.5 md:px-6 md:py-3.5 border-t border-slate-100 md:border-none bg-slate-50/30 md:bg-transparent">

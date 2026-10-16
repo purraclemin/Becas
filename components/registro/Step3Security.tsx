@@ -1,10 +1,20 @@
 import React from "react"
 import { Lock, Eye, EyeOff, ShieldCheck } from "lucide-react"
 import { getPasswordStrength } from "./validations"
+import { RegistroFormState } from "./Step1Personal"
+
+interface Step3SecurityProps {
+  form: RegistroFormState;
+  updateField: (field: keyof RegistroFormState, value: string | boolean) => void;
+  showPassword: boolean;
+  setShowPassword: (show: boolean) => void;
+  showConfirm: boolean;
+  setShowConfirm: (show: boolean) => void;
+}
 
 export const Step3Security = ({ 
   form, updateField, showPassword, setShowPassword, showConfirm, setShowConfirm 
-}: any) => {
+}: Step3SecurityProps) => {
   const strength = getPasswordStrength(form.password);
   const strengthColor = ["bg-slate-200", "bg-red-500", "bg-amber-400", "bg-emerald-500"];
   const strengthText = ["", "Débil", "Media", "Segura"];
