@@ -1,4 +1,5 @@
 import Link from "next/link"
+import Image from "next/image" // 1. Importamos el componente de Next.js
 import { Facebook, Instagram, Twitter, Youtube, Mail } from "lucide-react"
 
 const footerLinks = {
@@ -34,8 +35,15 @@ export function Footer() {
           {/* Brand column */}
           <div>
             <div className="flex items-center gap-2.5">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1e3a5f]">
-                <span className="text-lg font-extrabold text-[#d4a843] font-serif">U</span>
+              {/* 2. Reemplazamos el círculo azul con la "U" por la imagen del logo */}
+              <div className="flex h-10 w-10 items-center justify-center relative overflow-hidden">
+                <Image 
+                  src="/images/logounimar.png" // O cambia .png por la extensión real (.jpg, .svg, etc.)
+                  alt="Logo UNIMAR"
+                  width={40}
+                  height={40}
+                  className="object-contain"
+                />
               </div>
               <div>
                 <span className="block text-sm font-extrabold tracking-wide text-[#ffffff] font-serif">UNIMAR</span>

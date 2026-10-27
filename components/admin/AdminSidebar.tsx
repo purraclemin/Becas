@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { 
   Settings, BarChart3, Users, ClipboardCheck, 
@@ -56,8 +57,16 @@ export function AdminSidebar({ onLogout, isCollapsed, onToggleCollapse }: Sideba
         {/* HEADER ESCRITORIO */}
         <div className="h-16 flex items-center px-3 border-b border-[#1e3a5f]/50 shrink-0 bg-[#152038] overflow-hidden">
           <div className={`flex items-center gap-2.5 w-full ${isCollapsed ? 'justify-center' : ''}`}>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#1e3a5f] to-[#0f172a] border border-[#d4a843]/40 shadow-inner shrink-0">
-              <span className="text-xs font-black text-[#d4a843]">U</span>
+            {/* Logotipo institucional de Unimar (Sidebar) */}
+            <div className="flex h-9 w-9 items-center justify-center relative overflow-hidden shrink-0">
+              <Image 
+                src="/images/logounimar3.png"
+                alt="Logo UNIMAR"
+                width={36}
+                height={36}
+                priority
+                className="object-contain w-full h-full"
+              />
             </div>
             {!isCollapsed && (
               <div className="leading-tight whitespace-nowrap overflow-hidden">

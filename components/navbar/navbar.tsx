@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import Image from "next/image" // 1. Importamos el componente de Next.js
 import { Menu, X, LogIn, UserPlus } from "lucide-react"
 import { getSession } from "@/lib/ActionsSession"
 import { UserActions } from "./UserActions"
@@ -40,8 +41,15 @@ export function Navbar() {
             </button>
 
             <Link href="/" className="flex items-center gap-2 sm:gap-3">
-              <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-[#1e3a5f] shadow-sm border border-[#d4a843]/30">
-                <span className="text-base sm:text-xl font-extrabold text-[#d4a843] font-serif">U</span>
+              {/* 2. Reemplazamos el círculo azul por la imagen del logotipo con dimensiones responsivas */}
+              <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center relative overflow-hidden">
+                <Image 
+                  src="/images/logounimar.png"
+                  alt="Logo UNIMAR"
+                  width={48} // Tamaño óptimo para la versión de escritorio
+                  height={48}
+                  className="object-contain w-full h-full"
+                />
               </div>
               <div>
                 <span className="block text-sm sm:text-lg font-extrabold tracking-wide text-[#1e3a5f] font-serif leading-none">UNIMAR</span>

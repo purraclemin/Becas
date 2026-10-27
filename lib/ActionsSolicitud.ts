@@ -63,7 +63,7 @@ export async function enviarSolicitud(formData: FormData) {
     });
 
     const numPromedio = parseFloat(promedio as string);
-    const estatusFinal = numPromedio < 16 ? 'Revisión Especial' : 'Pendiente';
+    const estatusFinal = numPromedio < 16 ? 'Rechazada' : 'Pendiente';
 
     // 4. SINCRONIZACIÓN DE PERIODO
     let periodoId = await obtenerOCrearPeriodoObjetivo();

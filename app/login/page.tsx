@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { Eye, EyeOff, LogIn, Mail, Lock, ArrowLeft, AlertCircle, Loader2 } from "lucide-react"
 import { login } from "@/lib/ActionsAuth"
 
@@ -49,12 +50,23 @@ export default function LoginPage() {
       {/* Barra Superior Institucional */}
       <div className="bg-[#1a2744]">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-2">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1e3a5f] shadow-sm">
-              <span className="text-sm font-extrabold text-[#d4a843] font-serif">U</span>
-            </div>
-            <span className="text-sm font-bold tracking-wide text-[#ffffff] font-serif uppercase ">UNIMAR</span>
-          </Link>
+          <Link href="/" className="flex items-center gap-2 sm:gap-3">
+              {/* Logotipo institucional de Unimar (Barra Superior) */}
+              <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center relative overflow-hidden">
+                <Image 
+                  src="/images/logounimar3.png"
+                  alt="Logo UNIMAR"
+                  width={48}
+                  height={48}
+                  priority
+                  className="object-contain w-full h-full"
+                />
+              </div>
+              <div>
+                <span className="block text-sm sm:text-lg font-extrabold tracking-wide text-[#ffffff] font-serif leading-none">UNIMAR</span>
+                <span className="block text-[8px] sm:text-[10px] font-medium uppercase tracking-widest text-[#8a9bbd] mt-0.5">Gestión de Becas</span>
+              </div>
+            </Link>
           <Link
             href="/"
             className="flex items-center gap-1.5 text-xs text-[#8a9bbd] transition-colors hover:text-[#ffffff]"
@@ -74,8 +86,15 @@ export default function LoginPage() {
             <div className="bg-[#1e3a5f] px-8 py-8 text-center relative">
               <div className="absolute top-0 left-0 w-full h-1 bg-[#d4a843]"></div>
               
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full border-2 border-[#d4a843] bg-[#1e3a5f] shadow-lg">
-                <span className="text-2xl font-extrabold text-[#d4a843] font-serif">U</span>
+              {/* Logotipo institucional de Unimar (Cabecera del Formulario - Ampliado) */}
+              <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-full border-2 border-[#d4a843] bg-[#1e3a5f] shadow-lg relative overflow-hidden p-2.5">
+                <Image 
+                  src="/images/logounimar3.png"
+                  alt="Logo UNIMAR"
+                  width={184}
+                  height={184}
+                  className="object-contain w-full h-full"
+                />
               </div>
               <h1 className="text-xl font-bold text-[#ffffff] font-serif uppercase tracking-tight">Iniciar Sesión</h1>
               <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-[#8a9bbd]">

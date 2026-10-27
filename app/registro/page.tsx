@@ -2,8 +2,9 @@
 
 import { useState, useRef } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, UserPlus, AlertCircle, Loader2 } from "lucide-react"
+import { ArrowLeft, AlertCircle, Loader2 } from "lucide-react"
 import { register, checkExistence } from "@/lib/actions-registro"
 import { StepIndicator } from "@/components/registro/StepIndicator"
 import { StepContent } from "@/components/registro/StepContent"
@@ -167,13 +168,25 @@ export default function RegistroPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-[#f0f4f8]">
+      
+      {/* Barra Superior Institucional */}
       <div className="bg-[#1a2744]">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-2">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1e3a5f] shadow-sm">
-              <span className="text-sm font-extrabold text-[#d4a843] font-serif">U</span>
+          <Link href="/" className="flex items-center gap-2 sm:gap-3">
+            <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center relative overflow-hidden">
+              <Image 
+                src="/images/logounimar3.png"
+                alt="Logo UNIMAR"
+                width={48}
+                height={48}
+                priority
+                className="object-contain w-full h-full"
+              />
             </div>
-            <span className="text-sm font-bold tracking-wide text-white font-serif uppercase">UNIMAR</span>
+            <div>
+              <span className="block text-sm sm:text-lg font-extrabold tracking-wide text-white font-serif leading-none">UNIMAR</span>
+              <span className="block text-[8px] sm:text-[10px] font-medium uppercase tracking-widest text-[#8a9bbd] mt-0.5">Gestión de Becas</span>
+            </div>
           </Link>
           <Link href="/" className="flex items-center gap-1.5 text-xs text-[#8a9bbd] hover:text-white transition-colors">
             <ArrowLeft className="h-3.5 w-3.5" /> Volver al Inicio
@@ -184,11 +197,22 @@ export default function RegistroPage() {
       <div className="flex flex-1 items-center justify-center px-4 py-12">
         <div className="w-full max-w-lg">
           <div className="overflow-hidden rounded-xl bg-white shadow-2xl border border-[#e2e8f0]">
+            
+            {/* Cabecera del Card */}
             <div className="bg-[#1e3a5f] px-8 py-8 text-center relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-1 bg-[#d4a843]"></div>
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full border-2 border-[#d4a843] bg-[#1a2744] shadow-inner">
-                <UserPlus className="h-8 w-8 text-[#d4a843]" />
+              
+              {/* Logotipo institucional de Unimar (Cabecera del Formulario - Ampliado) */}
+              <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-full border-2 border-[#d4a843] bg-[#1a2744] shadow-lg relative overflow-hidden p-2.5">
+                <Image 
+                  src="/images/logounimar3.png"
+                  alt="Logo UNIMAR"
+                  width={184}
+                  height={184}
+                  className="object-contain w-full h-full"
+                />
               </div>
+
               <h1 className="text-2xl font-black text-white font-serif uppercase tracking-tight">Crear Cuenta</h1>
               <p className="mt-1 text-xs font-medium text-[#8a9bbd] uppercase tracking-widest">Sistema de Gestión de Becas</p>
             </div>

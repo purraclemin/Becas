@@ -74,7 +74,7 @@ export async function renovarBeca(formData: FormData) {
      */
     let estatusFinal = 'Pendiente';
     if (tieneReprobadas || nuevoPromedio < 16) {
-        estatusFinal = 'Revisión Especial';
+        estatusFinal = 'Rechazada';
     }
 
     // 4. GESTIÓN DE CONEXIÓN Y TRANSACCIÓN

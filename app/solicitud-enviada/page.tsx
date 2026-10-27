@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { CheckCircle, ArrowRight, FileText, Mail, Download, Home } from "lucide-react"
 import { useState, useEffect } from "react" // <--- 1. Agregamos estos hooks
 
@@ -18,12 +19,23 @@ export default function SolicitudEnviadaPage() {
       {/* Top bar */}
       <div className="bg-[#1a2744] shadow-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1e3a5f] border border-[#d4a843]">
-              <span className="text-lg font-extrabold text-[#d4a843] font-serif">U</span>
+          <Link href="/" className="flex items-center gap-2.5 sm:gap-3">
+            {/* Logotipo institucional de Unimar (Barra Superior) */}
+            <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center relative overflow-hidden">
+              <Image 
+                src="/images/logounimar3.png"
+                alt="Logo UNIMAR"
+                width={48}
+                height={48}
+                priority
+                className="object-contain w-full h-full"
+              />
             </div>
-            <span className="text-base font-bold tracking-wide text-white font-serif">UNIMAR</span>
-          </div>
+            <div>
+              <span className="block text-sm sm:text-lg font-extrabold tracking-wide text-white font-serif leading-none">UNIMAR</span>
+              <span className="block text-[8px] sm:text-[10px] font-medium uppercase tracking-widest text-[#8a9bbd] mt-0.5">Gestión de Becas</span>
+            </div>
+          </Link>
         </div>
       </div>
 
