@@ -13,6 +13,13 @@ export interface StudentDataRecord {
   apellido?: string;
   cedula?: string;
   email?: string;
+  telefono?: string;
+  sexo?: string;
+  fecha_nacimiento?: string;
+  carrera?: string;
+  semestre?: number | string;
+  indice_global?: number | string;
+  municipio_residencia?: string;
   puntaje_admin?: number | null;
   puntaje?: number | null;
   puntaje_estudiante?: number | null;
@@ -41,7 +48,31 @@ interface SeccionCampoConfig {
 }
 
 export function ResultCard({ student, formData }: ResultCardProps) {
-  const displayData: Record<string, unknown> = { ...(student || {}), ...(formData || {}) };
+  // 🟢 PUENTE DE NORMALIZACIÓN MAESTRO: Unifica todas las variantes de nombres de variables
+  const rawData: Record<string, unknown> = { ...(student || {}), ...(formData || {}) };
+  
+  const displayData: Record<string, unknown> = {
+    ...rawData,
+    // Identificación y Ubicación
+    municipio_residencia: rawData.municipio_residencia || rawData.municipio || rawData.socio_municipio || "---",
+    telefono: rawData.telefono || rawData.socio_celular || rawData.socio_telf_hab || "---",
+    sexo: rawData.sexo || rawData.socio_sexo || "---",
+    fecha_nacimiento: rawData.fecha_nacimiento || rawData.socio_fecha_nac || "---",
+    
+    // Perfil Académico
+    carrera: rawData.carrera || rawData.socio_carrera || "---",
+    semestre: rawData.semestre || rawData.socio_trimestre || "---",
+    indice_global: rawData.indice_global || rawData.promedio_notas || rawData.promedio || "---",
+    
+    // Entorno Familiar
+    familia_relacion: rawData.familia_relacion || rawData.socio_relacion_fam || "Buena",
+    
+    // Análisis Económico y Empleo
+    situacion_laboral_jefe: rawData.situacion_laboral_jefe || rawData.posee_empleo_aspirante || rawData.posee_empleo || "No",
+    
+    // Salud
+    salud_condicion_especial: rawData.salud_condicion_especial || rawData.posee_enfermedad_aspirante || rawData.salud_condicion || "No",
+  };
   
   // Prioridad total a los datos del administrador para el reporte final (Lógica Intacta)
   const puntajeFinal = Number(student?.puntaje_admin ?? student?.puntaje ?? 0);
@@ -98,16 +129,18 @@ export function ResultCard({ student, formData }: ResultCardProps) {
 
   const formatValue = (key: string, value: unknown): string => {
     if (value instanceof Date) return value.toLocaleDateString();
-    if (value === "on" || value === "Posee" || value === "Si") return "Sí / Posee";
+    if (value === "on" || value === "Posee" || value === "Si" || value === "Sí") return "Sí / Posee";
     if (value === "off" || value === "No posee" || value === "No") return "No / No posee";
     if (value === "S") return "Semipresencial";
     if (value === "P") return "Presencial";
     if (value === "V") return "Virtual";
-    if (CAMPOS_MONETARIOS.includes(key) && value !== undefined && value !== null) {
+    if (value === "M") return "Masculino";
+    if (value === "F") return "Femenino";
+    if (CAMPOS_MONETARIOS.includes(key) && value !== undefined && value !== null && value !== "") {
       return `$ ${parseFloat(String(value)).toFixed(2)}`;
     }
-    if (key === "indice_global" && value) return `${String(value)} pts`;
-    return value !== null && value !== undefined ? String(value) : "---";
+    if (key === "indice_global" && value && value !== "---") return `${String(value)} pts`;
+    return value !== null && value !== undefined && String(value).trim() !== "" ? String(value) : "---";
   };
 
   return (

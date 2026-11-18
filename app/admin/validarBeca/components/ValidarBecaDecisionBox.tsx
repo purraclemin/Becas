@@ -246,9 +246,9 @@ export function ValidarBecaDecisionBox({
                     <option value="Bienestar Estudiantil" className="bg-[#1e3a5f] text-white">Bienestar Estudiantil</option>
                     <option value="Secretaría General" className="bg-[#1e3a5f] text-white">Secretaría General</option>
                     <option value="Control de Estudios" className="bg-[#1e3a5f] text-white">Control de Estudios</option>
-                    <option value="Decanato de Investigación" className="bg-[#1e3a5f] text-white">Decanato de Investigación</option>
+                    <option value="Decanato de Investigación" className="bg-[#1e3a5f] text-white">Servicio Comunitario</option>
                     <option value="Biblioteca" className="bg-[#1e3a5f] text-white">Biblioteca</option>
-                    <option value="Centro de Tecnologías" className="bg-[#1e3a5f] text-white">Centro de Tecnologías</option>
+                    <option value="Centro de Tecnologías" className="bg-[#1e3a5f] text-white">Centro de Salud</option>
                   </select>
                 </div>
 

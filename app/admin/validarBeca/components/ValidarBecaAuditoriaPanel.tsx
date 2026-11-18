@@ -63,6 +63,7 @@ export function ValidarBecaAuditoriaPanel({ solicitud, onStatusChange, onClose, 
       try {
         const resultados = await buscarEstudianteConEstudio(solicitud.cedula);
         
+        // 🟢 Tipado estricto (Record<string, unknown>) para prevenir errores de compilación en TS
         const estudioAdmin = (resultados as Array<Record<string, unknown>>)?.find((r) => {
           const tipo = r.tipo ? String(r.tipo).trim().toLowerCase() : "";
           return tipo === 'administrador' || r.puntaje_admin !== null || r.nivel_admin !== null;
@@ -70,12 +71,14 @@ export function ValidarBecaAuditoriaPanel({ solicitud, onStatusChange, onClose, 
 
         const baseData = estudioAdmin || (resultados && resultados.length > 0 ? (resultados[0] as Record<string, unknown>) : {});
         
+        const estudioAdminTyped = estudioAdmin as Record<string, unknown> | undefined;
+
         setExpedienteDetallado({
-          ...baseData,
           ...solicitud,
+          ...baseData, // 🟢 PRIORIDAD A BASEDATA: Evita que los campos vacíos de la solicitud pisen los datos reales de la BD
           email: solicitud.email_institucional,
-          puntaje_admin: estudioAdmin ? (estudioAdmin.puntaje_admin || estudioAdmin.puntaje) : null,
-          nivel_admin: estudioAdmin ? (estudioAdmin.nivel_admin || estudioAdmin.nivel_riesgo) : null,
+          puntaje_admin: estudioAdminTyped ? (estudioAdminTyped.puntaje_admin || estudioAdminTyped.puntaje) : null,
+          nivel_admin: estudioAdminTyped ? (estudioAdminTyped.nivel_admin || estudioAdminTyped.nivel_riesgo) : null,
           es_estudio_oficial: !!estudioAdmin
         });
       } catch (error) {

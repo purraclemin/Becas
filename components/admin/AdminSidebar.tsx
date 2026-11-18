@@ -54,28 +54,37 @@ export function AdminSidebar({ onLogout, isCollapsed, onToggleCollapse }: Sideba
           {isCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
         </button>
 
-        {/* HEADER ESCRITORIO */}
-        <div className="h-16 flex items-center px-3 border-b border-[#1e3a5f]/50 shrink-0 bg-[#152038] overflow-hidden">
-          <div className={`flex items-center gap-2.5 w-full ${isCollapsed ? 'justify-center' : ''}`}>
-            {/* Logotipo institucional de Unimar (Sidebar) */}
-            <div className="flex h-9 w-9 items-center justify-center relative overflow-hidden shrink-0">
-              <Image 
-                src="/images/logounimar3.png"
-                alt="Logo UNIMAR"
-                width={36}
-                height={36}
-                priority
-                className="object-contain w-full h-full"
-              />
-            </div>
-            {!isCollapsed && (
-              <div className="leading-tight whitespace-nowrap overflow-hidden">
-                 <p className="font-extrabold text-[11px] uppercase tracking-wider text-white">Unimar</p>
-                 <p className="text-[9px] text-[#8a9bbd] uppercase tracking-widest font-semibold">Panel Admin</p>
-              </div>
-            )}
-          </div>
-        </div>
+{/* HEADER ESCRITORIO */}
+<div className="h-24 flex items-center px-3 border-b border-[#1e3a5f]/50 shrink-0 bg-[#152038] overflow-hidden">
+  <div className={`flex flex-col gap-2 w-full items-center ${isCollapsed ? 'justify-center' : 'items-start pl-1'}`}>
+    
+    {/* Contenedor dinámico: Rectangular si está abierto, cuadrado si está colapsado */}
+    <div className={`relative flex items-center justify-center overflow-hidden transition-all ${
+      isCollapsed 
+        ? 'w-10 h-10' 
+        : 'w-36 h-12 sm:w-44 sm:h-14'
+    }`}>
+      <Image 
+        src={isCollapsed ? "/images/logounimarmini4.png" : "/images/logounimar4.png"}
+        alt="Logo UNIMAR"
+        width={isCollapsed ? 48 : 292} 
+        height={isCollapsed ? 48 : 100} 
+        priority
+        className="object-contain w-full h-full"
+      />
+    </div>
+
+    {/* Bloque de texto inferior (Solo visible si NO está colapsado) */}
+    {!isCollapsed && (
+      <div className="leading-none whitespace-nowrap overflow-hidden pl-1">
+         <span className="text-[10px] text-[#8a9bbd] uppercase tracking-widest font-bold">Panel Admin</span>
+      </div>
+    )}
+
+  </div>
+</div>
+
+
 
         {/* CONTENEDOR DE NAVEGACIÓN ESCRITORIO */}
         <nav className="flex-1 p-2.5 overflow-y-auto custom-scrollbar flex flex-col justify-between">

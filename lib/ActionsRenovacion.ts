@@ -1,3 +1,5 @@
+//acomodar la regla de negocio del alumno lo rechace cuando tenga promedio menor a 16 o materias reprobada . asegurar que el estatus se cambie  rechazada no se quede en pendiende
+//acomodar revisar ValidarBecaAuditoriaPanel los colores
 'use server'
 
 import { db } from './db'

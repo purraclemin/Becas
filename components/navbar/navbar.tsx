@@ -41,21 +41,22 @@ export function Navbar() {
             </button>
 
             <Link href="/" className="flex items-center gap-2 sm:gap-3">
-              {/* 2. Reemplazamos el círculo azul por la imagen del logotipo con dimensiones responsivas */}
-              <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center relative overflow-hidden">
+              {/* Contenedor responsivo ajustado a la proporción 292x100 */}
+              <div className="relative w-36 h-12 sm:w-56 sm:h-16 flex items-center justify-center overflow-hidden">
                 <Image 
-                  src="/images/logounimar.png"
+                  src="/images/logounimar2.png"
                   alt="Logo UNIMAR"
-                  width={48} // Tamaño óptimo para la versión de escritorio
-                  height={48}
+                  width={292} // Ancho real de tu captura
+                  height={100} // Alto real de tu captura
+                  priority // Carga el logo con prioridad por estar en el navbar
                   className="object-contain w-full h-full"
                 />
               </div>
               <div>
-                <span className="block text-sm sm:text-lg font-extrabold tracking-wide text-[#1e3a5f] font-serif leading-none">UNIMAR</span>
-                <span className="block text-[8px] sm:text-[10px] font-medium uppercase tracking-widest text-[#6b7280] mt-0.5">Gestión de Becas</span>
+                <span className="block text-sm sm:text-lg font-extrabold tracking-wide text-[#1e3a5f] font-serif leading-none">Gestión de Becas</span>
               </div>
             </Link>
+
           </div>
 
           {/* 2. Centro: Menú de Navegación Integrado (Escritorio) */}

@@ -1,19 +1,43 @@
-"use client"
+'use client'
 
 import { Card, CardContent } from "@/components/ui/card"
 import { Clock, CheckCircle2, XCircle, AlertCircle, ShieldAlert, FileSearch, RotateCcw, CalendarDays } from "lucide-react"
 
 /**
- * 🟢 COMPONENTE: ESTATUS VISUAL DEL PERFIL (PASO 5: FINALIZACIÓN)
- * Refleja fielmente el estado físico almacenado en la base de datos.
+ * 🟢 COMPONENTE: ESTATUS VISUAL DEL PERFIL
+ * Muestra el estatus de la solicitud y detecta si fue rechazada por materias.
  */
-export function ProfileStatus({ estatus }: { estatus: string }) {
+export function ProfileStatus({ estatus, materias, motivoRechazo }: { estatus: string; materias?: any; motivoRechazo?: string }) {
   // Normalización para evitar errores por tildes o mayúsculas
   const s = estatus?.toLowerCase()
     .trim()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "") || 'ninguna';
   
+  // 🟢 Extracción robusta de materias para verificar si hay notas < 10
+  let listaMaterias: Array<{ nombre: string; nota: number }> = [];
+  try {
+    let parsed = materias;
+    if (typeof materias === 'string') {
+      parsed = JSON.parse(materias);
+    }
+    if (parsed && typeof parsed === 'object' && Array.isArray(parsed.materias)) {
+      listaMaterias = parsed.materias;
+    } else if (Array.isArray(parsed)) {
+      listaMaterias = parsed;
+    }
+  } catch (e) {
+    listaMaterias = [];
+  }
+
+  // Detecta si tiene materias reprobadas (nota < 10)
+  const tieneReprobadas = listaMaterias.some(m => Number(m.nota) < 10);
+
+  // Mensaje inteligente para cuando está rechazada
+  const mensajeRechazo = (tieneReprobadas || s.includes('materia'))
+    ? "Su Solicitud fue rechazada porque tiene Materias Reprobadas."
+    : "Tu solicitud ha sido declinada. Dirígete a Bienestar Estudiantil para conocer los detalles.";
+
   const config = {
     aprobada: { 
       bg: "bg-green-50", 
@@ -53,7 +77,7 @@ export function ProfileStatus({ estatus }: { estatus: string }) {
       label: "Solicitud Rechazada", 
       icon: XCircle, 
       pulse: false, 
-      msg: "Tu solicitud ha sido declinada. Dirígete a Bienestar Estudiantil para conocer los detalles." 
+      msg: mensajeRechazo
     },
     especial: { 
       bg: "bg-orange-50", 
@@ -97,7 +121,6 @@ export function ProfileStatus({ estatus }: { estatus: string }) {
     }
   };
 
-  // Lógica de detección de etiquetas flexible incluyendo 'convocado'
   const key = (s.includes('aprob') || s.includes('aprov') || s === 'becado') ? 'aprobada' : 
               s.includes('convocad') ? 'convocado' :
               s.includes('pendiente') ? 'pendiente' :

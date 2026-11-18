@@ -38,7 +38,7 @@ export function Footer() {
               {/* 2. Reemplazamos el círculo azul con la "U" por la imagen del logo */}
               <div className="flex h-10 w-10 items-center justify-center relative overflow-hidden">
                 <Image 
-                  src="/images/logounimar.png" // O cambia .png por la extensión real (.jpg, .svg, etc.)
+                  src="/images/logounimar3.png"
                   alt="Logo UNIMAR"
                   width={40}
                   height={40}

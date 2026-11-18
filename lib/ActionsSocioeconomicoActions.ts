@@ -8,9 +8,9 @@ import { RowDataPacket } from 'mysql2/promise'
 
 /**
  * Obtiene el estudio socioeconómico para el panel de administración.
- * Prioriza el registro de tipo 'administrador' si ya fue editado/auditado,
- * de lo contrario, hereda y carga automáticamente el registro de tipo 'estudiante'
- * declarado en la postulación inicial para evitar desincronización o datos en blanco.
+ * Prioriza el registro de tipo 'administrador' si ya fue editado/auditado en el periodo actual,
+ * de lo contrario, hereda y carga automáticamente el último registro de tipo 'estudiante'
+ * disponible (independientemente del periodo) para evitar datos en blanco.
  */
 export async function obtenerEstudioSocioeconomico(studentId: number) {
   const session = await getSession();
@@ -20,7 +20,7 @@ export async function obtenerEstudioSocioeconomico(studentId: number) {
   const connection = await db.getConnection();
 
   try {
-    // 1. Buscar si ya existe un registro previo de tipo 'administrador' para este periodo
+    // 1. Buscar si ya existe un registro previo de tipo 'administrador' para este periodo actual
     const [rowsAdmin] = await connection.execute<RowDataPacket[]>(
       `SELECT * FROM estudios_socioeconomicos WHERE student_id = ? AND periodo_id = ? AND tipo = 'administrador' LIMIT 1`,
       [studentId, periodoIdActual]
@@ -30,10 +30,10 @@ export async function obtenerEstudioSocioeconomico(studentId: number) {
       return { data: rowsAdmin[0], origen: 'administrador' };
     }
 
-    // 2. Si no hay de administrador, buscar y heredar el registro de tipo 'estudiante'
+    // 2. Si no hay de administrador, buscar y heredar el registro de tipo 'estudiante' más reciente (sin dependencia estricta de periodo)
     const [rowsEstudiante] = await connection.execute<RowDataPacket[]>(
-      `SELECT * FROM estudios_socioeconomicos WHERE student_id = ? AND periodo_id = ? AND tipo = 'estudiante' LIMIT 1`,
-      [studentId, periodoIdActual]
+      `SELECT * FROM estudios_socioeconomicos WHERE student_id = ? AND tipo = 'estudiante' ORDER BY created_at DESC LIMIT 1`,
+      [studentId]
     );
 
     if (rowsEstudiante && rowsEstudiante.length > 0) {

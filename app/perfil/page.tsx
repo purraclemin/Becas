@@ -10,7 +10,7 @@ import { AcademicInfo } from "./components/AcademicInfo"
 import { ActionBanner, RenovationBanner, FinalistBanner } from "./components/ProfileBanners"
 import { GradesHistory } from "./components/GradesHistory"
 import { HistoryTimeline } from "./components/HistoryTimeline"
-import { AlertaConvocatoria } from "./components/AlertaConvocatoria" // 🟢 Importación del modal flotante
+import { AlertaConvocatoria } from "./components/AlertaConvocatoria"
 
 // 🟢 CRÍTICO: Fuerza a Next.js a no cachear esta página para ver cambios de estatus al instante
 export const dynamic = 'force-dynamic';
@@ -46,8 +46,6 @@ export default async function PerfilPage(props: { searchParams: Promise<{ view?:
   const currentView = searchParams.view || 'status'; 
 
   // 🟢 SEPARACIÓN ESTRATÉGICA DE DATOS:
-  // semestre: Es el valor REAL (ej. 5) para el Expediente y Ficha.
-  // trimestreEvaluado: Es el valor SUGERIDO (ej. 4) solo para la carga de notas.
   const academicStatus = {
     estatus: statusData.estatus,
     materias: statusData.materias,
@@ -64,7 +62,6 @@ export default async function PerfilPage(props: { searchParams: Promise<{ view?:
     ? historyDataResult 
     : { data: [], stats: { promedioHistorico: "0.00", totalMaterias: 0, totalPeriodos: 0 } };
 
-  // El objeto 'user' para los componentes de Expediente ahora tiene el semestre real
   const user = { ...sessionUser, ...academicStatus };
 
   // 🟢 LÓGICA DE FINALIZACIÓN: Basada en el semestre real
@@ -77,7 +74,7 @@ export default async function PerfilPage(props: { searchParams: Promise<{ view?:
   return (
     <div className="min-h-screen bg-[#f0f4f8] py-8 md:py-16">
       
-      {/* 🟢 ALERTA LLAMATIVA EN TODA LA PANTALLA (Modal Ocultable con Botón Entendido) */}
+      {/* 🟢 ALERTA LLAMATIVA EN TODA LA PANTALLA */}
       <AlertaConvocatoria estatus={user.estatus} />
 
       <div className="container mx-auto px-4 max-w-5xl animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -123,7 +120,8 @@ export default async function PerfilPage(props: { searchParams: Promise<{ view?:
           {/* COLUMNA IZQUIERDA: Muestra nivel real */}
           <div className="md:col-span-4 space-y-6">
             <ProfileIdentity user={user} />
-            <ProfileStatus estatus={user.estatus} />
+            {/* 🟢 SECCIÓN CORREGIDA: Pasamos user.materias para evaluar notas menores a 10 */}
+            <ProfileStatus estatus={user.estatus} materias={user.materias} />
           </div>
 
           {/* COLUMNA DERECHA: Muestra nivel real en AcademicInfo */}
@@ -157,7 +155,6 @@ export default async function PerfilPage(props: { searchParams: Promise<{ view?:
                         <RenovationBanner 
                             materias={user.materias} 
                             materiasSugeridas={statusData.materiasSugeridas}
-                            // 🟢 PASAMOS ÚNICAMENTE AQUÍ EL TRIMESTRE EVALUADO (semestre - 1)
                             trimestreActual={academicStatus.trimestreEvaluado}
                             periodo={user.periodoActual} 
                             periodoNotas={user.periodoNotas}

@@ -173,18 +173,18 @@ export default function RegistroPage() {
       <div className="bg-[#1a2744]">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-2">
           <Link href="/" className="flex items-center gap-2 sm:gap-3">
-            <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center relative overflow-hidden">
+            <div className="relative w-36 h-12 sm:w-56 sm:h-16 flex items-center justify-center overflow-hidden">
               <Image 
-                src="/images/logounimar3.png"
+                src="/images/logounimar4.png"
                 alt="Logo UNIMAR"
-                width={48}
-                height={48}
+                width={292}
+                height={100}
                 priority
                 className="object-contain w-full h-full"
               />
             </div>
             <div>
-              <span className="block text-sm sm:text-lg font-extrabold tracking-wide text-white font-serif leading-none">UNIMAR</span>
+           {/*   <span className="block text-sm sm:text-lg font-extrabold tracking-wide text-white font-serif leading-none">UNIMAR</span>*/}
               <span className="block text-[8px] sm:text-[10px] font-medium uppercase tracking-widest text-[#8a9bbd] mt-0.5">Gestión de Becas</span>
             </div>
           </Link>

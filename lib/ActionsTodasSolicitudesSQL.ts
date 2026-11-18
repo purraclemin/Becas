@@ -158,8 +158,20 @@ export async function fetchSolicitudesDesdeDB(filtros: FiltrosDB = {}) {
         s.notas_certificadas, s.carnet_discapacidad, s.documentos_filiacion,
         s.email_institucional, s.periodo_id, s.departamento_asignado,
         st.nombre, st.apellido, st.cedula, st.carrera, st.telefono,
-        st.semestre, st.municipio_residencia,
+        st.semestre, st.municipio_residencia, st.sexo, st.fecha_nacimiento, st.indice_global,
         e.puntaje, e.nivel_riesgo, e.monto_ingreso_familiar,
+        e.socio_lugar_nac, e.socio_nacionalidad, e.socio_estado_civil, e.socio_telf_hab,
+        e.direccion_completa, e.socio_trabajo_empresa, e.socio_trabajo_cargo,
+        e.monto_ingreso_sueldo, e.monto_ingreso_extra, e.monto_ingreso_pension, e.monto_ingreso_ayuda,
+        e.socio_ue_procedencia, e.socio_otros_estudios, e.socio_fecha_unimar, e.socio_modalidad,
+        e.padre_nombre, e.padre_edad, e.padre_ocupacion, e.padre_trabajo,
+        e.madre_nombre, e.madre_edad, e.madre_ocupacion, e.madre_trabajo,
+        e.rango_ingreso_familiar, e.vivienda_tipo, e.vivienda_estatus, e.serv_internet,
+        e.familia_num_hermanos, e.familia_hermanos_uni, e.familia_relacion,
+        e.monto_egreso_mercado, e.monto_egreso_vivienda, e.monto_egreso_salud, e.monto_egreso_servicios,
+        e.situacion_laboral_jefe, e.salud_condicion_especial,
+        e.serv_agua, e.serv_gas, e.serv_aseo, e.equip_lavadora, e.equip_nevera, e.serv_luz, e.equip_cable,
+        e.salud_enfermedad_desc, e.salud_tratamiento,
         (
           SELECT ROUND(AVG(promedio_notas), 2) 
           FROM solicitudes 

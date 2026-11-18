@@ -1,6 +1,6 @@
 "use client"
 
-import React from "react"
+import React, { useState, useEffect } from "react"
 import { ArrowLeft, ShieldCheck, Award } from "lucide-react"
 import { ValidarBecaAuditoriaPanel, SolicitudAuditoriaPanelData } from "./ValidarBecaAuditoriaPanel"
 import { getBadgeColor } from "@/app/admin/validarBeca/lib/ValidarBecaUtils"
@@ -25,14 +25,40 @@ export function ValidarBecaViewAuditoria({
   onClose, 
   periodoActualId 
 }: ValidarBecaViewAuditoriaProps) {
-  // Objeto seguro por defecto para evitar errores si selectedSolicitud es null
-  const solicitudSegura: SolicitudAuditoriaPanelData = selectedSolicitud || {
-    id: 0,
-    cedula: "",
-    periodo_id: periodoActualId,
-    estatus: "Pendiente",
-    email_institucional: ""
+  // Estado local reactivo para reflejar el cambio de estatus en tiempo real
+  const [estatusActual, setEstatusActual] = useState<string>(
+    String(selectedSolicitud?.estatus || "Pendiente")
+  );
+
+  // Sincroniza el estado local si cambia la solicitud seleccionada o si el padre actualiza la prop
+  useEffect(() => {
+    if (selectedSolicitud?.estatus) {
+      setEstatusActual(String(selectedSolicitud.estatus));
+    }
+  }, [selectedSolicitud?.id, selectedSolicitud?.estatus]);
+
+  // Interceptor que actualiza la UI instantáneamente y propaga el evento al componente padre
+  const handleStatusChangeLocal = (
+    id: number, 
+    status: string, 
+    observaciones?: string, 
+    confirmacionEspecial?: boolean, 
+    departamentoAsignado?: string
+  ) => {
+    setEstatusActual(status);
+    onStatusChange(id, status, observaciones, confirmacionEspecial, departamentoAsignado);
   };
+
+  // Objeto seguro por defecto sincronizado con el estatus en tiempo real
+  const solicitudSegura: SolicitudAuditoriaPanelData = selectedSolicitud 
+    ? { ...selectedSolicitud, estatus: estatusActual }
+    : {
+        id: 0,
+        cedula: "",
+        periodo_id: periodoActualId,
+        estatus: estatusActual,
+        email_institucional: ""
+      };
 
   return (
     <div className="space-y-4 animate-in fade-in duration-500 w-full max-w-[1600px] mx-auto px-4 md:px-8 py-4">
@@ -52,17 +78,17 @@ export function ValidarBecaViewAuditoria({
               <h1 className="text-xs md:text-sm font-black tracking-wider uppercase text-white">Auditoría y Validación de Beca</h1>
             </div>
             <p className="text-[10px] text-slate-300 font-medium">
-              {String(selectedSolicitud?.nombre || "")} {String(selectedSolicitud?.apellido || "")} • V-{String(selectedSolicitud?.cedula || "")}
+              {String(selectedSolicitud?.nombre || "")} {String(selectedSolicitud?.apellido || "")} V-{String(selectedSolicitud?.cedula || "")}
             </p>
           </div>
         </div>
 
-        {/* Estatus Actual con el color predeterminado idéntico al de la tabla */}
+        {/* Estatus Actual reactivo en tiempo real con el color predeterminado idéntico al de la tabla */}
         <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-[#172e4d] rounded-xl border border-white/10 shrink-0">
           <Award className="h-3.5 w-3.5 text-[#d4a843]" />
           <span className="text-[9px] font-black uppercase tracking-wider text-slate-300">Estatus:</span>
-          <span className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest border ${getBadgeColor(String(selectedSolicitud?.estatus || ''))}`}>
-            {String(selectedSolicitud?.estatus || "S/I")}
+          <span className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-colors duration-300 ${getBadgeColor(estatusActual)}`}>
+            {estatusActual || "S/I"}
           </span>
         </div>
       </div>
@@ -70,7 +96,7 @@ export function ValidarBecaViewAuditoria({
       {/* PANEL DE AUDITORÍA INTEGRADO Y AUTÓNOMO */}
       <ValidarBecaAuditoriaPanel 
         solicitud={solicitudSegura}
-        onStatusChange={onStatusChange}
+        onStatusChange={handleStatusChangeLocal}
         onClose={onClose}
         periodoActualId={periodoActualId}
       />
