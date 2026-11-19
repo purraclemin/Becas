@@ -18,7 +18,7 @@ export function ValidarBecaTrace({ solicitud }: ValidarBecaTraceProps) {
     <div className="p-4 bg-white rounded-2xl shadow-sm border border-slate-200 space-y-3">
       <div className="flex items-center gap-2.5">
         <History className="h-3.5 w-3.5 text-[#d4a843]" />
-        <span className="text-[8px] font-black text-[#1e3a5f] uppercase tracking-widest">Trazabilidad del Sistema</span>
+        <span className="text-[8px] font-black text-[#1e3a5f] uppercase tracking-widest">Historial del Sistema</span>
       </div>
       
       <div className="space-y-2.5">

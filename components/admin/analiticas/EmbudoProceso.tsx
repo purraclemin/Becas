@@ -7,21 +7,167 @@ import { CircleAlert, X, Info, Activity } from "lucide-react"
 
 const COLORS = ['#2563eb', '#4f46e5', '#f59e0b', '#eab308', '#10b981', '#059669'];
 
-export function EmbudoProceso({ data }: { data: any[] }) {
-  const [showInfo, setShowInfo] = useState(false);
+export interface IEmbudoProcesoItem {
+  name: string;
+  value?: number;
+  viejos?: number;
+  nuevos?: number;
+  [key: string]: unknown;
+}
+
+interface EmbudoProcesoProps {
+  data: IEmbudoProcesoItem[];
+}
+
+interface YAxisTickProps {
+  x?: string | number;
+  y?: string | number;
+  payload?: {
+    value?: string | number;
+  };
+}
+
+interface TooltipPayloadItem {
+  name?: string | number;
+  value?: string | number | Array<string | number>;
+  payload?: IEmbudoProcesoItem;
+}
+
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: TooltipPayloadItem[];
+}
+
+interface CustomLabelProps {
+  x?: string | number;
+  y?: string | number;
+  width?: string | number;
+  value?: string | number | boolean | null;
+}
+
+interface BarClickData {
+  payload?: IEmbudoProcesoItem;
+  name?: string;
+}
+
+function CustomYAxisTick({ x = 0, y = 0, payload }: YAxisTickProps) {
+  return (
+    <g transform={`translate(${Number(x)},${Number(y)})`}>
+      <text
+        x={-10}
+        y={0}
+        dy={4}
+        textAnchor="end"
+        fill="#64748b"
+        fontSize="8px"
+        fontWeight="900"
+        className="uppercase tracking-tighter"
+      >
+        {String(payload?.value ?? '')}
+      </text>
+    </g>
+  );
+}
+
+function CustomTooltipContent({ active, payload }: CustomTooltipProps) {
+  if (!active || !payload || payload.length === 0) {
+    return null;
+  }
+
+  const itemData = payload[0]?.payload;
+  const esBeneficiariosTotales = itemData?.name === 'BENEFICIARIOS TOTALES';
+
+  return (
+    <div
+      style={{
+        backgroundColor: '#ffffff',
+        borderRadius: '16px',
+        border: '1px solid #e2e8f0',
+        boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+        fontSize: '10px',
+        color: '#1e293b',
+      }}
+      className="px-3 py-2 space-y-1"
+    >
+      {payload.map((entry, idx) => {
+        const seriesName = String(entry.name ?? '');
+        const rawVal = Array.isArray(entry.value) ? entry.value[0] : entry.value;
+
+        if (esBeneficiariosTotales) {
+          if (seriesName === 'viejos') {
+            return (
+              <div key={idx} className="flex items-center justify-between gap-3 font-semibold">
+                <span>Becarios Antiguos:</span>
+                <span className="font-black">{String(rawVal ?? 0)}</span>
+              </div>
+            );
+          }
+          if (seriesName === 'nuevos') {
+            return (
+              <div key={idx} className="flex items-center justify-between gap-3 font-semibold">
+                <span>Nuevos Ingresos:</span>
+                <span className="font-black">{String(rawVal ?? 0)}</span>
+              </div>
+            );
+          }
+          return null;
+        }
+
+        if (seriesName === 'viejos') {
+          return (
+            <div key={idx} className="flex items-center justify-between gap-3 font-semibold">
+              <span>Total Estudiantes:</span>
+              <span className="font-black">{String(rawVal ?? 0)}</span>
+            </div>
+          );
+        }
+
+        return null;
+      })}
+    </div>
+  );
+}
+
+function CustomValueLabel({ x = 0, y = 0, width = 0, value }: CustomLabelProps) {
+  if (!value) return null;
+
+  const numX = Number(x);
+  const numY = Number(y);
+  const numWidth = Number(width);
+
+  return (
+    <g>
+      <rect x={numX + numWidth + 10} y={numY - 2} width={35} height={22} rx={6} fill="#f1f5f9" />
+      <text
+        x={numX + numWidth + 27}
+        y={numY + 12}
+        fill="#1e293b"
+        fontSize="10px"
+        fontWeight="900"
+        textAnchor="middle"
+      >
+        {String(value)}
+      </text>
+    </g>
+  );
+}
+
+export function EmbudoProceso({ data }: EmbudoProcesoProps) {
+  const [showInfo, setShowInfo] = useState<boolean>(false);
   const router = useRouter();
 
-  const maxVal = useMemo(() => {
+  const maxVal = useMemo<number>(() => {
     if (!data || data.length === 0) return 100;
-    const realMax = Math.max(...data.map(d => d.value || 0));
+    const realMax = Math.max(...data.map((d) => Number(d.value || 0)));
     return Math.max(realMax, 10) * 1.2;
   }, [data]);
 
-  const handleBarClick = (entry: any) => {
+  const handleBarClick = (entry: BarClickData) => {
+    const targetName = entry.payload?.name ?? entry.name;
     const baseUrl = "/admin/solicitudes";
     let params = "";
 
-    switch (entry.name) {
+    switch (targetName) {
       case 'SUPERVIVENCIA ACADÉMICA':
         params = "?es_renovacion=true&promedioMin=16";
         break;
@@ -44,7 +190,7 @@ export function EmbudoProceso({ data }: { data: any[] }) {
 
   return (
     <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-[400px] flex flex-col relative overflow-hidden group">
-      
+
       {/* Header Sincronizado con el Radar */}
       <div className="flex justify-between items-center mb-4 relative z-10">
         <div className="flex items-center gap-3">
@@ -60,10 +206,11 @@ export function EmbudoProceso({ data }: { data: any[] }) {
             </p>
           </div>
         </div>
-        
-        <button 
+
+        <button
+          type="button"
           onClick={() => setShowInfo(true)}
-          className="p-2 bg-slate-50 hover:bg-slate-100 text-slate-400 hover:text-slate-900 rounded-xl border border-slate-200 transition-all shadow-sm"
+          className="p-2 bg-slate-50 hover:bg-slate-100 text-slate-400 hover:text-slate-900 rounded-xl border border-slate-200 transition-all shadow-sm cursor-pointer"
         >
           <Info className="h-4 w-4" />
         </button>
@@ -78,66 +225,38 @@ export function EmbudoProceso({ data }: { data: any[] }) {
             margin={{ top: 5, right: 60, left: 10, bottom: 5 }}
           >
             <XAxis type="number" hide domain={[0, maxVal]} />
-            <YAxis 
-              dataKey="name" 
-              type="category" 
-              width={140} 
-              tick={(props) => {
-                const { x, y, payload } = props;
-                return (
-                  <g transform={`translate(${x},${y})`}>
-                    <text 
-                      x={-10} y={0} dy={4} 
-                      textAnchor="end" fill="#64748b" 
-                      fontSize="8px" fontWeight="900"
-                      className="uppercase tracking-tighter"
-                    >
-                      {payload.value}
-                    </text>
-                  </g>
-                );
-              }}
+            <YAxis
+              dataKey="name"
+              type="category"
+              width={140}
+              tick={<CustomYAxisTick />}
               axisLine={false}
               tickLine={false}
             />
-            <Tooltip 
+            <Tooltip
               cursor={{ fill: 'rgba(0, 0, 0, 0.02)' }}
-              contentStyle={{ 
-                backgroundColor: '#ffffff', 
-                borderRadius: '16px', border: '1px solid #e2e8f0',
-                boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
-                fontSize: '10px',
-                color: '#1e293b'
-              }}
-              formatter={(value: any, name: any, props: any) => {
-                if (props.payload.name === 'BENEFICIARIOS TOTALES') {
-                  if (name === "viejos") return [value, "Becarios Antiguos"];
-                  if (name === "nuevos") return [value, "Nuevos Ingresos"];
-                }
-                return name === "viejos" ? [value, "Total Estudiantes"] : [null, null];
-              }}
+              content={<CustomTooltipContent />}
             />
-            
-            <Bar 
+
+            <Bar
               name="viejos"
-              dataKey={(d) => d.name === 'BENEFICIARIOS TOTALES' ? d.viejos : d.value}
+              dataKey={(d: IEmbudoProcesoItem) => d.name === 'BENEFICIARIOS TOTALES' ? Number(d.viejos || 0) : Number(d.value || 0)}
               stackId="a"
               barSize={18}
               onClick={handleBarClick}
               className="cursor-pointer"
             >
               {data.map((entry, index) => (
-                <Cell 
-                  key={`cell-v-${index}`} 
-                  fill={entry.name === 'BENEFICIARIOS TOTALES' ? '#2563eb' : COLORS[index % COLORS.length]} 
-                  radius={entry.name === 'BENEFICIARIOS TOTALES' ? 0 : 10} 
+                <Cell
+                  key={`cell-v-${index}`}
+                  fill={entry.name === 'BENEFICIARIOS TOTALES' ? '#2563eb' : COLORS[index % COLORS.length]}
                 />
               ))}
             </Bar>
 
-            <Bar 
+            <Bar
               name="nuevos"
-              dataKey={(d) => d.name === 'BENEFICIARIOS TOTALES' ? d.nuevos : 0}
+              dataKey={(d: IEmbudoProcesoItem) => d.name === 'BENEFICIARIOS TOTALES' ? Number(d.nuevos || 0) : 0}
               stackId="a"
               radius={10}
               barSize={18}
@@ -147,25 +266,10 @@ export function EmbudoProceso({ data }: { data: any[] }) {
               {data.map((entry, index) => (
                 <Cell key={`cell-n-${index}`} fill="#10b981" />
               ))}
-              <LabelList 
-                dataKey="value" 
-                position="right" 
-                content={(props: any) => {
-                  const { x, y, width, value } = props;
-                  if (!value) return null;
-                  return (
-                    <g>
-                      <rect x={x + width + 10} y={y - 2} width={35} height={22} rx={6} fill="#f1f5f9" />
-                      <text 
-                        x={x + width + 27} y={y + 12} 
-                        fill="#1e293b" fontSize="10px" 
-                        fontWeight="900" textAnchor="middle"
-                      >
-                        {value}
-                      </text>
-                    </g>
-                  );
-                }}
+              <LabelList
+                dataKey="value"
+                position="right"
+                content={<CustomValueLabel />}
               />
             </Bar>
           </BarChart>
@@ -191,11 +295,15 @@ export function EmbudoProceso({ data }: { data: any[] }) {
             <h4 className="font-black text-slate-900 text-xs uppercase tracking-[0.2em] flex items-center gap-2">
               <CircleAlert className="h-4 w-4 text-blue-600" /> Glosario Técnico
             </h4>
-            <button onClick={() => setShowInfo(false)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-400">
+            <button
+              type="button"
+              onClick={() => setShowInfo(false)}
+              className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 cursor-pointer"
+            >
               <X className="h-4 w-4" />
             </button>
           </div>
-          
+
           <div className="space-y-3 overflow-y-auto flex-1 pr-2">
             {[
               { t: "Supervivencia", d: "Continuidad del periodo anterior con rendimiento alto.", c: "bg-blue-600" },
@@ -214,9 +322,10 @@ export function EmbudoProceso({ data }: { data: any[] }) {
             ))}
           </div>
 
-          <button 
+          <button
+            type="button"
             onClick={() => setShowInfo(false)}
-            className="mt-4 w-full bg-slate-900 hover:bg-slate-800 text-white py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+            className="mt-4 w-full bg-slate-900 hover:bg-slate-800 text-white py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer"
           >
             Cerrar Monitor
           </button>
