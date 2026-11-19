@@ -6,6 +6,18 @@ import { Input } from "@/components/ui/input"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Briefcase, Building2, BadgeDollarSign, Info, UserRoundSearch } from "lucide-react"
 import { cn } from "@/lib/utils"
+import type { PostulacionUser } from "../types"
+
+const sanitizarEnteroNoNegativoInicial = (val: string | number | undefined): string => {
+  if (val === undefined || val === null || val === "") return "";
+  const num = Math.trunc(Number(val));
+  return !isNaN(num) && num >= 0 ? String(num) : "";
+};
+
+const sanitizarSoloLetras = (val: string | undefined): string => {
+  if (!val || val === "NO") return "";
+  return val.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, "");
+};
 
 export function StepEncuestaSituacionLaboral({
   disabled,
@@ -13,28 +25,33 @@ export function StepEncuestaSituacionLaboral({
   onValidationChange
 }: {
   disabled: boolean;
-  user: any;
+  user: PostulacionUser;
   onValidationChange?: (isValid: boolean) => void;
 }) {
-  const [tieneEmpleo, setTieneEmpleo] = useState(
-    !!user?.socio_trabajo_empresa && user?.socio_trabajo_empresa !== "NO" || user?.posee_empleo_aspirante === "Si"
+  const [tieneEmpleo, setTieneEmpleo] = useState<boolean>(
+    (!!user?.socio_trabajo_empresa && user?.socio_trabajo_empresa !== "NO") ||
+    user?.posee_empleo_aspirante === "Si"
   );
-  const [sueldo, setSueldo] = useState(user?.monto_ingreso_sueldo ?? "0");
-  const [empresa, setEmpresa] = useState(
-    user?.socio_trabajo_empresa && user?.socio_trabajo_empresa !== "NO" ? user.socio_trabajo_empresa : ""
+  const [sueldo, setSueldo] = useState<string>(
+    sanitizarEnteroNoNegativoInicial(user?.monto_ingreso_sueldo) || "0"
   );
-  const [cargo, setCargo] = useState(
-    user?.socio_trabajo_cargo && user?.socio_trabajo_cargo !== "NO" ? user.socio_trabajo_cargo : ""
+  const [empresa, setEmpresa] = useState<string>(
+    sanitizarSoloLetras(user?.socio_trabajo_empresa)
+  );
+  const [cargo, setCargo] = useState<string>(
+    sanitizarSoloLetras(user?.socio_trabajo_cargo)
   );
 
-  const [hasAttemptedNext, setHasAttemptedNext] = useState(false);
+  const [hasAttemptedNext, setHasAttemptedNext] = useState<boolean>(false);
 
   const empresaRef = useRef<HTMLInputElement>(null);
   const cargoRef = useRef<HTMLInputElement>(null);
+  const sueldoRef = useRef<HTMLInputElement>(null);
 
   const isEmpresaValid = !tieneEmpleo || empresa.trim() !== "";
   const isCargoValid = !tieneEmpleo || cargo.trim() !== "";
-  const isValid = isEmpresaValid && isCargoValid;
+  const isSueldoValid = !tieneEmpleo || (sueldo.trim() !== "" && parseInt(sueldo, 10) >= 0);
+  const isValid = isEmpresaValid && isCargoValid && isSueldoValid;
 
   useEffect(() => {
     onValidationChange?.(isValid);
@@ -45,38 +62,47 @@ export function StepEncuestaSituacionLaboral({
       setHasAttemptedNext(true);
       if (!isEmpresaValid && empresaRef.current) empresaRef.current.focus();
       else if (!isCargoValid && cargoRef.current) cargoRef.current.focus();
+      else if (!isSueldoValid && sueldoRef.current) sueldoRef.current.focus();
     };
 
-    window.addEventListener('intentar-avanzar-laboral', handleValidationAttempt);
-    return () => window.removeEventListener('intentar-avanzar-laboral', handleValidationAttempt);
-  }, [isEmpresaValid, isCargoValid]);
+    window.addEventListener("intentar-avanzar-laboral", handleValidationAttempt);
+    return () => window.removeEventListener("intentar-avanzar-laboral", handleValidationAttempt);
+  }, [isEmpresaValid, isCargoValid, isSueldoValid]);
 
-  // Restricción para permitir solo letras y espacios en el cargo
+  // Restricción para permitir solo letras y espacios en empresa y cargo
+  const handleSoloLetrasEmpresa = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEmpresa(e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, ""));
+  };
+
   const handleSoloLetrasCargo = (e: React.ChangeEvent<HTMLInputElement>) => {
     setCargo(e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, ""));
   };
 
-  // Estándar UF-Scale optimizado sin scroll: h-10 en móvil, h-8 en PC
-  const editableClass = "h-10 lg:h-8 bg-slate-50 border-slate-200 font-bold text-[#1e3a5f] text-xs lg:text-[11px] focus:bg-white focus:ring-1 focus:ring-[#1e3a5f]/5 transition-all px-2.5 rounded-xl";
+  // Restricción estricta: solo números enteros no negativos
+  const handleSoloEnteroSueldo = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSueldo(e.target.value.replace(/\D/g, "").slice(0, 7));
+  };
+
+  const editableClass = "h-12 lg:h-9 bg-slate-50 border-slate-200 font-bold text-[#1e3a5f] text-sm lg:text-xs focus:bg-white focus:ring-1 focus:ring-[#1e3a5f]/5 transition-all px-2.5 rounded-xl";
 
   return (
     <div className="flex flex-col gap-2.5 animate-in fade-in duration-500 pb-12 lg:pb-0">
-      
+
       {/* SECCIÓN 1: PREGUNTA FILTRO */}
       <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm space-y-2">
         <div className="flex items-center gap-2">
-           <UserRoundSearch className="h-3.5 w-3.5 text-[#d4a843]" />
-           <Label className="text-[9px] font-black uppercase tracking-widest text-slate-500">
-             Actividad Laboral Actual
-           </Label>
+          <UserRoundSearch className="h-3.5 w-3.5 text-[#d4a843]" />
+          <Label className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+            Actividad Laboral Actual
+          </Label>
         </div>
-        
-        <Label className="text-[11px] font-bold text-[#1e3a5f] block leading-snug">
+
+        <Label className="text-xs lg:text-[11px] font-bold text-[#1e3a5f] block leading-snug">
           ¿Realiza usted actualmente alguna actividad laboral remunerada?
         </Label>
 
-        <RadioGroup 
-          value={tieneEmpleo ? "Si" : "No"} 
+        <RadioGroup
+          value={tieneEmpleo ? "Si" : "No"}
           onValueChange={(v) => {
             const esSi = v === "Si";
             setTieneEmpleo(esSi);
@@ -84,8 +110,10 @@ export function StepEncuestaSituacionLaboral({
               setSueldo("0");
               setEmpresa("");
               setCargo("");
+            } else if (sueldo === "0") {
+              setSueldo("");
             }
-          }} 
+          }}
           className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5"
           disabled={disabled}
         >
@@ -93,17 +121,17 @@ export function StepEncuestaSituacionLaboral({
             { id: "trabaja_si", val: "Si", label: "Sí, poseo empleo" },
             { id: "trabaja_no", val: "No", label: "No poseo empleo" }
           ].map((opt) => (
-            <label 
-              key={opt.id} 
+            <label
+              key={opt.id}
               htmlFor={opt.id}
-              className="flex items-center justify-center gap-2 px-3 h-10 lg:h-9 rounded-xl border border-slate-200 bg-slate-50/50 has-[:checked]:bg-[#1e3a5f]/5 has-[:checked]:border-[#1e3a5f] transition-all cursor-pointer w-full"
+              className="flex items-center justify-center gap-2 px-3 h-12 lg:h-9 rounded-xl border border-slate-200 bg-slate-50/50 has-[:checked]:bg-[#1e3a5f]/5 has-[:checked]:border-[#1e3a5f] transition-all cursor-pointer w-full"
             >
               <RadioGroupItem value={opt.val} id={opt.id} className="h-3.5 w-3.5 text-[#1e3a5f]" />
-              <span className="text-[9px] font-bold text-[#1e3a5f] cursor-pointer uppercase select-none">{opt.label}</span>
+              <span className="text-xs lg:text-[9px] font-bold text-[#1e3a5f] cursor-pointer uppercase select-none">{opt.label}</span>
             </label>
           ))}
         </RadioGroup>
-        
+
         <input type="hidden" name="posee_empleo_aspirante" value={tieneEmpleo ? "Si" : "No"} />
       </div>
 
@@ -118,8 +146,8 @@ export function StepEncuestaSituacionLaboral({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-            
-            {/* Empresa / Negocio */}
+
+            {/* Empresa / Negocio   */}
             <div className="space-y-0.5">
               <Label className={cn(
                 "text-[8px] font-black uppercase flex items-center gap-1.5 transition-colors",
@@ -127,12 +155,13 @@ export function StepEncuestaSituacionLaboral({
               )}>
                 <Building2 className="h-2.5 w-2.5 text-[#d4a843]" /> Empresa / Negocio {hasAttemptedNext && !isEmpresaValid && "*"}
               </Label>
-              <Input 
+              <Input
                 ref={empresaRef}
-                name="socio_trabajo_empresa" 
-                disabled={disabled} 
+                name="socio_trabajo_empresa"
+                type="text"
+                disabled={disabled}
                 value={empresa}
-                onChange={(e) => setEmpresa(e.target.value)}
+                onChange={handleSoloLetrasEmpresa}
                 placeholder="Nombre de la empresa"
                 required={tieneEmpleo}
                 className={cn(
@@ -142,7 +171,7 @@ export function StepEncuestaSituacionLaboral({
               />
             </div>
 
-            {/* Cargo (Solo Letras) */}
+            {/* Cargo   */}
             <div className="space-y-0.5">
               <Label className={cn(
                 "text-[8px] font-black uppercase flex items-center gap-1.5 transition-colors",
@@ -150,10 +179,11 @@ export function StepEncuestaSituacionLaboral({
               )}>
                 <Briefcase className="h-2.5 w-2.5 text-[#d4a843]" /> Cargo {hasAttemptedNext && !isCargoValid && "*"}
               </Label>
-              <Input 
+              <Input
                 ref={cargoRef}
-                name="socio_trabajo_cargo" 
-                disabled={disabled} 
+                name="socio_trabajo_cargo"
+                type="text"
+                disabled={disabled}
                 value={cargo}
                 onChange={handleSoloLetrasCargo}
                 placeholder="Ej. Asistente"
@@ -165,21 +195,31 @@ export function StepEncuestaSituacionLaboral({
               />
             </div>
 
-            {/* Sueldo Mensual */}
+            {/* Sueldo Mensual (Entero no negativo) */}
             <div className="space-y-0.5">
-              <Label className="text-[8px] font-black uppercase text-slate-500 flex items-center gap-1.5">
-                <BadgeDollarSign className="h-2.5 w-2.5 text-[#d4a843]" /> Sueldo Mensual ($)
+              <Label className={cn(
+                "text-[8px] font-black uppercase flex items-center gap-1.5 transition-colors",
+                hasAttemptedNext && !isSueldoValid ? "text-red-500 font-extrabold" : "text-slate-500"
+              )}>
+                <BadgeDollarSign className="h-2.5 w-2.5 text-[#d4a843]" /> Sueldo Mensual ($) {hasAttemptedNext && !isSueldoValid && "*"}
               </Label>
               <div className="relative">
-                <Input 
-                  name="monto_ingreso_sueldo" 
-                  type="number" 
-                  disabled={disabled} 
+                <Input
+                  ref={sueldoRef}
+                  name="monto_ingreso_sueldo"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={7}
+                  disabled={disabled}
                   value={sueldo}
-                  onChange={(e) => setSueldo(e.target.value)}
-                  placeholder="0.00"
+                  onChange={handleSoloEnteroSueldo}
+                  placeholder="0"
                   required={tieneEmpleo}
-                  className={cn(editableClass, "pl-6")}
+                  className={cn(
+                    editableClass,
+                    "pl-6",
+                    hasAttemptedNext && !isSueldoValid && "border-red-500 bg-red-50/50 text-red-900 focus:ring-red-500 animate-pulse"
+                  )}
                 />
                 <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">$</span>
               </div>

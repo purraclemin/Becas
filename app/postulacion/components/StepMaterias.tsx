@@ -5,14 +5,7 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { BookOpen, AlertCircle, Info } from "lucide-react"
 import { cn } from "@/lib/utils"
-
-interface Materia {
-  id: string;
-  nombre?: string;
-  codigo?: string;
-  nombre_materia?: string; 
-  codigo_materia?: string; 
-}
+import type { MateriaGuardada, MateriaPensum, PostulacionUser } from "../types"
 
 export function StepMaterias({
   disabled,
@@ -23,17 +16,17 @@ export function StepMaterias({
   onValidationChange
 }: {
   disabled: boolean;
-  materiasDelPensum?: Materia[];
+  materiasDelPensum?: MateriaPensum[];
   trimestreActual: string;
   onChangeTrimestre: (trimestre: string) => void;
   onChangeNotas: (notas: string[]) => void;
-  materiasGuardadas?: any[];
-  user?: any;
+  materiasGuardadas?: MateriaGuardada[];
+  user?: PostulacionUser;
   onValidationChange?: (isValid: boolean) => void;
 }) {
   const [notas, setNotas] = useState<string[]>([]);
   const [errores, setErrores] = useState<number[]>([]);
-  
+
   const onValidationChangeRef = useRef(onValidationChange);
   const onChangeNotasRef = useRef(onChangeNotas);
   const lastValidationRef = useRef<boolean | null>(null);
@@ -45,14 +38,24 @@ export function StepMaterias({
   }, [onValidationChange, onChangeNotas]);
 
   useEffect(() => {
-    const currentIds = materiasDelPensum.map(m => m.id).join(',');
-    
+    const currentIds = materiasDelPensum
+      .map(m => String(m.id ?? m.codigo_materia ?? m.codigo ?? ""))
+      .join(',');
+
     if (materiasDelPensum.length > 0 && currentIds !== lastMateriasIds) {
       const notasIniciales = materiasDelPensum.map(m => {
-        const guardada = materiasGuardadas.find(mg => mg.materia_id === m.id);
-        return guardada ? guardada.nota?.toString() : "";
+        const codigoMateria = m.codigo_materia || m.codigo;
+        const guardada = materiasGuardadas.find(mg =>
+          (m.id !== undefined && mg.materia_id === m.id) ||
+          (codigoMateria !== undefined && mg.codigo === codigoMateria)
+        );
+        if (guardada && guardada.nota !== undefined && guardada.nota !== "") {
+          const entero = Math.trunc(Number(guardada.nota));
+          return !isNaN(entero) && entero >= 1 && entero <= 20 ? String(entero) : "";
+        }
+        return "";
       });
-      
+
       setNotas(notasIniciales);
       if (onChangeNotasRef.current) onChangeNotasRef.current(notasIniciales);
       setLastMateriasIds(currentIds);
@@ -62,21 +65,22 @@ export function StepMaterias({
   useEffect(() => {
     if (notas.length === 0 && materiasDelPensum.length > 0) return;
 
-    let hasZero = false;
-    let newErrores: number[] = [];
+    const newErrores: number[] = [];
 
     notas.forEach((nota, index) => {
-      if (nota === "0" || nota === "00") {
-        hasZero = true;
-        newErrores.push(index);
+      if (nota !== "") {
+        const num = parseInt(nota, 10);
+        if (isNaN(num) || num < 1 || num > 20) {
+          newErrores.push(index);
+        }
       }
     });
 
     setErrores(newErrores);
 
     const allFilled = notas.length === materiasDelPensum.length && notas.every(n => n.trim() !== "");
-    const isValid = allFilled && !hasZero;
-    
+    const isValid = allFilled && newErrores.length === 0;
+
     if (lastValidationRef.current !== isValid) {
       lastValidationRef.current = isValid;
       if (onValidationChangeRef.current) {
@@ -85,13 +89,18 @@ export function StepMaterias({
     }
   }, [notas, materiasDelPensum.length]);
 
-  const handleNotaChange = (index: number, valor: string) => {
-    const num = parseFloat(valor);
-    if (valor !== "" && (isNaN(num) || num < 0 || num > 20)) return;
+  // Sanitización estricta: solo números enteros positivos entre 1 y 20
+  const handleNotaChange = (index: number, rawValor: string) => {
+    const soloDigitos = rawValor.replace(/\D/g, "").slice(0, 2);
+
+    if (soloDigitos !== "") {
+      const num = parseInt(soloDigitos, 10);
+      if (num > 20) return;
+    }
 
     const nuevasNotas = [...notas];
-    nuevasNotas[index] = valor;
-    
+    nuevasNotas[index] = soloDigitos;
+
     setNotas(nuevasNotas);
     if (onChangeNotasRef.current) onChangeNotasRef.current(nuevasNotas);
   };
@@ -111,11 +120,11 @@ export function StepMaterias({
           </div>
         </div>
 
-        <Input 
+        <Input
           readOnly
-          disabled={disabled} 
-          value={`TRIMESTRE ${trimestreActual}`} 
-          className="w-full sm:w-[160px] h-8 rounded-lg border-slate-200 font-black text-[10px] text-[#1e3a5f] bg-slate-200/50 shadow-inner text-center cursor-not-allowed"
+          disabled={disabled}
+          value={`TRIMESTRE ${trimestreActual}`}
+          className="w-full sm:w-[160px] h-12 lg:h-9 rounded-lg border-slate-200 font-black text-sm lg:text-xs text-[#1e3a5f] bg-slate-200/50 shadow-inner text-center cursor-not-allowed"
         />
         <input type="hidden" name="trimestre_seleccionado" value={trimestreActual} />
       </div>
@@ -127,14 +136,14 @@ export function StepMaterias({
           </Label>
           <div className="flex items-center gap-1.5 text-[7px] font-bold text-[#1e3a5f] bg-[#d4a843]/10 px-2 py-0.5 rounded-full border border-[#d4a843]/20 leading-none">
             <Info className="h-2 w-2" />
-            Solo valores entre 01 y 20
+            Solo enteros entre 01 y 20
           </div>
         </div>
 
         {errores.length > 0 && (
           <div className="bg-red-50 text-red-600 p-2 rounded-lg border border-red-200 flex items-center gap-2 text-[9px] font-bold mb-2 shrink-0 leading-none">
             <AlertCircle className="h-3 w-3 shrink-0" />
-            Existen materias con nota "0". Corríjalas para continuar.
+            Existen materias con nota inválida ("0"). Ingrese enteros del 1 al 20.
           </div>
         )}
 
@@ -145,10 +154,10 @@ export function StepMaterias({
               const tieneError = errores.includes(index);
               const codigoFinal = materia.codigo_materia || materia.codigo || "";
               const nombreFinal = materia.nombre_materia || materia.nombre || "";
-              
+
               return (
-                <div 
-                  key={`materia-row-${materia.id || index}`} 
+                <div
+                  key={`materia-row-${materia.id ?? (codigoFinal || index)}`}
                   className={cn(
                     "group flex flex-row items-center justify-between p-2.5 bg-white border rounded-xl transition-all duration-300 shadow-sm",
                     tieneError ? "border-red-300 bg-red-50/30" : "border-slate-100 hover:border-[#1e3a5f]/20"
@@ -161,7 +170,7 @@ export function StepMaterias({
                     <span className="text-[7px] font-black text-[#d4a843] uppercase tracking-widest leading-none mb-1 truncate">
                       {codigoFinal}
                     </span>
-                    <span className="text-[10px] font-bold text-[#1e3a5f] uppercase leading-tight line-clamp-1">
+                    <span className="text-sm lg:text-xs font-bold text-[#1e3a5f] uppercase leading-tight line-clamp-1">
                       {nombreFinal}
                     </span>
                   </div>
@@ -169,22 +178,22 @@ export function StepMaterias({
                   <div className="relative flex flex-col items-end shrink-0">
                     <Input
                       id={`nota-${index}`}
-                      name="materias_notas[]" 
-                      type="number"
-                      min="1"
-                      max="20"
+                      name="materias_notas[]"
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={2}
                       placeholder="00"
                       required
                       disabled={disabled}
                       value={notas[index] || ""}
                       onChange={(e) => handleNotaChange(index, e.target.value)}
                       className={cn(
-                        "w-14 h-9 text-center font-black text-[11px] rounded-lg transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-                        tieneError 
-                          ? "border-red-500 text-red-600 focus:border-red-600 bg-red-100" 
+                        "w-14 h-12 lg:h-9 text-center font-black text-sm lg:text-xs rounded-lg transition-all",
+                        tieneError
+                          ? "border-red-500 text-red-600 focus:border-red-600 bg-red-100"
                           : "border-slate-200 bg-slate-50 focus:bg-white focus:border-[#1e3a5f] text-[#1e3a5f]"
                       )}
-                      />
+                    />
                   </div>
                 </div>
               );

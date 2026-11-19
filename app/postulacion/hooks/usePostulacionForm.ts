@@ -1,56 +1,63 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 import { enviarSolicitud } from "@/lib/ActionsSolicitud"
+import type { PostulacionUser } from "../types"
 
 export const TABS_ENCUESTA = ["personal", "uni", "familia", "laboral", "ingresos", "hogar", "salud"];
 export const TOTAL_PASOS = 5;
 
 export interface UsePostulacionFormProps {
-  user: any;
-  trimestreActual?: any;
+  user: PostulacionUser;
+  trimestreActual?: string | number;
 }
 
 export function usePostulacionForm({ user, trimestreActual }: UsePostulacionFormProps) {
+  // Referencia React al formulario (Cero DOM nativo)
+  const formRef = useRef<HTMLFormElement>(null);
+
   // Estados principales de navegación y UI
-  const [pasoActual, setPasoActual] = useState(1);
-  const [isPending, setIsPending] = useState(false);
-  
+  const [pasoActual, setPasoActual] = useState<number>(1);
+  const [isPending, setIsPending] = useState<boolean>(false);
+
   // Estados de valores y validaciones generales
-  const [promedio, setPromedio] = useState(user?.promedio_notas?.toString() || "0.00");
-  const [materiasValidas, setMateriasValidas] = useState(false);
-  const [detallesValidos, setDetallesValidos] = useState(false);
-  const [encuestaValida, setEncuestaValida] = useState(false);
+  const [promedio, setPromedio] = useState<string>(user?.promedio_notas?.toString() || "0.00");
+  const [materiasValidas, setMateriasValidas] = useState<boolean>(false);
+  const [detallesValidos, setDetallesValidos] = useState<boolean>(false);
+  const [encuestaValida, setEncuestaValida] = useState<boolean>(false);
+  const [archivosValidos, setArchivosValidos] = useState<boolean>(false);
   const [tipoBecaSeleccionada, setTipoBecaSeleccionada] = useState<string>(user?.tipo_beca || "");
 
-  // 🟢 Estados individuales de validación para cada sub-pestaña de la Encuesta Socioeconómica
-  const [personalValido, setPersonalValido] = useState(false);
-  const [uniValido, setUniValido] = useState(true);
-  const [familiaValido, setFamiliaValido] = useState(true);
-  const [laboralValido, setLaboralValido] = useState(true);
-  const [ingresosValido, setIngresosValido] = useState(true);
-  const [hogarValido, setHogarValido] = useState(true);
-  const [saludValido, setSaludValido] = useState(true);
-  
+  // Estados individuales de validación para cada sub-pestaña de la Encuesta Socioeconómica
+  const [personalValido, setPersonalValido] = useState<boolean>(false);
+  const [uniValido, setUniValido] = useState<boolean>(true);
+  const [familiaValido, setFamiliaValido] = useState<boolean>(true);
+  const [laboralValido, setLaboralValido] = useState<boolean>(true);
+  const [ingresosValido, setIngresosValido] = useState<boolean>(true);
+  const [hogarValido, setHogarValido] = useState<boolean>(true);
+  const [saludValido, setSaludValido] = useState<boolean>(true);
+
   // Estado maestro para la persistencia de datos y control de pestañas
-  const [formData, setFormData] = useState<any>(user || {});
-  const [activeEncuestaTab, setActiveEncuestaTab] = useState("personal");
+  const [formData, setFormData] = useState<PostulacionUser>(user || {});
+  const [activeEncuestaTab, setActiveEncuestaTab] = useState<string>("personal");
 
   const { toast } = useToast();
   const router = useRouter();
-  
+
   const progreso = (pasoActual / TOTAL_PASOS) * 100;
 
-  // Sincronización del DOM al estado maestro
+  // Sincronización del formulario vía useRef al estado maestro
   const syncFormData = useCallback(() => {
-    const form = document.getElementById("form-postulacion") as HTMLFormElement;
+    const form = formRef.current;
     if (form) {
       const formObj = new FormData(form);
-      const data: any = { ...formData };
+      const data: PostulacionUser = { ...formData };
       formObj.forEach((value, key) => {
-        data[key] = value;
+        if (typeof value === "string") {
+          data[key] = value;
+        }
       });
       setFormData(data);
     }
@@ -97,19 +104,32 @@ export function usePostulacionForm({ user, trimestreActual }: UsePostulacionForm
         return;
       }
     }
-    
+
+    // Bloqueo de avance en Paso 4 (Documentación) si faltan archivos obligatorios
+    if (pasoActual === 4 && !archivosValidos) {
+      window.dispatchEvent(new CustomEvent('intentar-avanzar-archivos'));
+      toast({
+        variant: "destructive",
+        title: "Documentación Incompleta",
+        description: "Debe adjuntar todos los documentos obligatorios antes de continuar."
+      });
+      return;
+    }
+
     if (pasoActual < TOTAL_PASOS) setPasoActual(prev => prev + 1);
   }, [
-    pasoActual, 
-    activeEncuestaTab, 
-    personalValido, 
-    uniValido, 
-    familiaValido, 
-    laboralValido, 
-    ingresosValido, 
-    hogarValido, 
-    saludValido, 
-    syncFormData
+    pasoActual,
+    activeEncuestaTab,
+    personalValido,
+    uniValido,
+    familiaValido,
+    laboralValido,
+    ingresosValido,
+    hogarValido,
+    saludValido,
+    archivosValidos,
+    syncFormData,
+    toast
   ]);
 
   const handleAnterior = useCallback(() => {
@@ -132,9 +152,9 @@ export function usePostulacionForm({ user, trimestreActual }: UsePostulacionForm
   }, [router]);
 
   const handleMateriasChange = useCallback((notas: string[]) => {
-    const notasNumericas = notas.map(n => parseFloat(n)).filter(n => !isNaN(n));
-    setPromedio(notasNumericas.length > 0 
-      ? (notasNumericas.reduce((a, b) => a + b, 0) / notasNumericas.length).toFixed(2) 
+    const notasNumericas = notas.map(n => parseInt(n, 10)).filter(n => !isNaN(n) && n >= 1 && n <= 20);
+    setPromedio(notasNumericas.length > 0
+      ? (notasNumericas.reduce((a, b) => a + b, 0) / notasNumericas.length).toFixed(2)
       : "0.00"
     );
   }, []);
@@ -142,14 +162,23 @@ export function usePostulacionForm({ user, trimestreActual }: UsePostulacionForm
   // Envío de la Postulación
   const handleSubmit = async () => {
     syncFormData();
-    const form = document.getElementById("form-postulacion") as HTMLFormElement;
+    const form = formRef.current;
     if (!form) return;
+
+    if (!archivosValidos) {
+      toast({
+        variant: "destructive",
+        title: "Documentación Incompleta",
+        description: "Verifique que todos los documentos requeridos estén adjuntados."
+      });
+      return;
+    }
 
     const finalFormData = new FormData(form);
     finalFormData.set('promedio', promedio);
     finalFormData.set('trimestre_seleccionado', trimestreActual?.toString() || "");
     if (tipoBecaSeleccionada) finalFormData.set('tipo_beca', tipoBecaSeleccionada);
-    if (user?.id) finalFormData.append('user_id', user.id);
+    if (user?.id !== undefined) finalFormData.set('user_id', String(user.id));
 
     setIsPending(true);
 
@@ -162,7 +191,7 @@ export function usePostulacionForm({ user, trimestreActual }: UsePostulacionForm
         router.refresh();
         router.push("/perfil");
       }
-    } catch (error) {
+    } catch {
       toast({ variant: "destructive", title: "Error", description: "Error de comunicación." });
     } finally {
       setIsPending(false);
@@ -170,6 +199,7 @@ export function usePostulacionForm({ user, trimestreActual }: UsePostulacionForm
   };
 
   return {
+    formRef,
     // Estados
     pasoActual,
     isPending,
@@ -177,6 +207,7 @@ export function usePostulacionForm({ user, trimestreActual }: UsePostulacionForm
     materiasValidas,
     detallesValidos,
     encuestaValida,
+    archivosValidos,
     tipoBecaSeleccionada,
     formData,
     activeEncuestaTab,
@@ -195,6 +226,7 @@ export function usePostulacionForm({ user, trimestreActual }: UsePostulacionForm
     setMateriasValidas,
     setDetallesValidos,
     setEncuestaValida,
+    setArchivosValidos,
     setTipoBecaSeleccionada,
     setActiveEncuestaTab,
     setPersonalValido,

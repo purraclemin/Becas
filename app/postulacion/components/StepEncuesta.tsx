@@ -3,19 +3,20 @@
 import React, { useEffect } from "react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { 
-  ClipboardList, 
-  User, 
-  Briefcase, 
-  GraduationCap, 
-  Users, 
-  BadgeDollarSign, 
-  Home, 
+import {
+  ClipboardList,
+  User,
+  Briefcase,
+  GraduationCap,
+  Users,
+  BadgeDollarSign,
+  Home,
   HeartPulse,
   CheckCircle2,
   Layers
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import type { PostulacionUser } from "../types"
 
 // Importación de los sub-componentes especializados
 import { StepEncuestaPersonal } from "./StepEncuestaPersonal"
@@ -25,6 +26,27 @@ import { StepEncuestaGrupoFamiliar } from "./StepEncuestaGrupoFamiliar"
 import { StepEncuestaRangoIngreso } from "./StepEncuestaRangoIngreso"
 import { StepEncuestaHogar } from "./StepEncuestaHogar"
 import { StepEncuestaSalud } from "./StepEncuestaSalud"
+
+type SeccionId = "personal" | "uni" | "familia" | "laboral" | "ingresos" | "hogar" | "salud";
+
+interface SeccionEncuesta {
+  id: SeccionId;
+  label: string;
+  icon: React.ElementType;
+}
+
+const SECCIONES: ReadonlyArray<SeccionEncuesta> = [
+  { id: "personal", label: "Personal", icon: User },
+  { id: "uni", label: "Info Uni", icon: GraduationCap },
+  { id: "familia", label: "Familiar", icon: Users },
+  { id: "laboral", label: "Laboral", icon: Briefcase },
+  { id: "ingresos", label: "Ingresos", icon: BadgeDollarSign },
+  { id: "hogar", label: "Hogar", icon: Home },
+  { id: "salud", label: "Salud", icon: HeartPulse },
+];
+
+const SCROLLBAR_TAILWIND_CLASS =
+  "[&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-200 [&::-webkit-scrollbar-thumb]:rounded-full";
 
 export function StepEncuesta({
   disabled,
@@ -41,7 +63,7 @@ export function StepEncuesta({
   onSaludValidationChange
 }: {
   disabled: boolean;
-  user: any;
+  user: PostulacionUser;
   activeTab: string;
   onTabChange: (tab: string) => void;
   onValidationChange?: (isValid: boolean) => void;
@@ -53,34 +75,21 @@ export function StepEncuesta({
   onHogareValidationChange?: (isValid: boolean) => void;
   onSaludValidationChange?: (isValid: boolean) => void;
 }) {
-
   useEffect(() => {
-    if (onValidationChange) {
-      onValidationChange(true)
-    }
-  }, [onValidationChange])
-
-  const SECCIONES = [
-    { id: "personal", label: "Personal", icon: User },
-    { id: "uni", label: "Info Uni", icon: GraduationCap },
-    { id: "familia", label: "Familiar", icon: Users },
-    { id: "laboral", label: "Laboral", icon: Briefcase },
-    { id: "ingresos", label: "Ingresos", icon: BadgeDollarSign },
-    { id: "hogar", label: "Hogar", icon: Home },
-    { id: "salud", label: "Salud", icon: HeartPulse },
-  ]
+    onValidationChange?.(true);
+  }, [onValidationChange]);
 
   const currentIndex = SECCIONES.findIndex(s => s.id === activeTab);
 
   const handleTabSelection = (newTabId: string) => {
     const targetIndex = SECCIONES.findIndex(s => s.id === newTabId);
-    if (targetIndex > currentIndex) return; 
+    if (targetIndex === -1 || targetIndex > currentIndex) return;
     onTabChange(newTabId);
   };
 
   return (
     <div className="h-full flex flex-col animate-in fade-in duration-500 overflow-hidden pb-16 lg:pb-0">
-      
+
       {/* Encabezado */}
       <div className="flex items-center justify-between mb-3 shrink-0">
         <div className="flex items-center gap-2">
@@ -88,27 +97,33 @@ export function StepEncuesta({
             <ClipboardList className="h-4 w-4 text-[#1e3a5f]" />
           </div>
           <div>
-            <h3 className="text-[#1e3a5f] font-black text-xs uppercase tracking-tight leading-none">Investigación Socioeconómica</h3>
-            <p className="text-slate-400 text-[8px] font-bold mt-1 uppercase tracking-widest leading-none">Estudio de vulnerabilidad y entorno</p>
+            <h3 className="text-[#1e3a5f] font-black text-xs uppercase tracking-tight leading-none">
+              Investigación Socioeconómica
+            </h3>
+            <p className="text-slate-400 text-[8px] font-bold mt-1 uppercase tracking-widest leading-none">
+              Estudio de vulnerabilidad y entorno
+            </p>
           </div>
         </div>
 
         <div className="lg:hidden flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 rounded-lg border border-slate-200">
-          <span className="text-[9px] font-black text-[#1e3a5f]">0{currentIndex + 1}</span>
+          <span className="text-[9px] font-black text-[#1e3a5f]">0{Math.max(1, currentIndex + 1)}</span>
           <span className="text-[9px] text-slate-400">/</span>
           <span className="text-[9px] font-bold text-slate-500">0{SECCIONES.length}</span>
         </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={handleTabSelection} className="flex-1 flex flex-col min-h-0">
-        
+
         {/* SELECTOR MÓVIL (< 1024px) */}
         <div className="block lg:hidden w-full mb-3 shrink-0">
           <div className="flex items-center gap-1.5 mb-1.5">
             <Layers className="h-3 w-3 text-[#d4a843]" />
-            <span className="text-[9px] font-black uppercase tracking-wider text-slate-400">Seleccione la sección a completar:</span>
+            <span className="text-[9px] font-black uppercase tracking-wider text-slate-400">
+              Seleccione la sección a completar:
+            </span>
           </div>
-          
+
           <Select value={activeTab} onValueChange={handleTabSelection} disabled={disabled}>
             <SelectTrigger className="h-12 border-slate-200 text-sm font-bold uppercase rounded-xl bg-slate-50 text-[#1e3a5f] focus:ring-[#1e3a5f]">
               <SelectValue placeholder="Seleccione una sección..." />
@@ -118,52 +133,52 @@ export function StepEncuesta({
                 const Icono = s.icon;
                 const isLocked = idx > currentIndex;
                 return (
-                  <SelectItem 
-                    key={s.id} 
-                    value={s.id} 
+                  <SelectItem
+                    key={s.id}
+                    value={s.id}
                     disabled={isLocked}
-                    className={cn("text-xs font-bold uppercase py-2.5 gap-2", isLocked && "opacity-45 cursor-not-allowed")}
+                    className={cn("text-sm font-bold uppercase py-2.5 gap-2", isLocked && "opacity-45 cursor-not-allowed")}
                   >
                     <div className="flex items-center gap-2">
                       <Icono className="h-3.5 w-3.5 text-[#1e3a5f]" />
                       <span>{idx + 1}. {s.label} {isLocked && "(Bloqueado)"}</span>
                     </div>
                   </SelectItem>
-                )
+                );
               })}
             </SelectContent>
           </Select>
         </div>
 
         {/* SELECTOR DE ESCRITORIO (>= 1024px) */}
-        <div className="hidden lg:block w-full overflow-x-auto pb-1.5 custom-scrollbar shrink-0">
+        <div className={cn("hidden lg:block w-full overflow-x-auto pb-1.5 shrink-0", SCROLLBAR_TAILWIND_CLASS)}>
           <TabsList className="bg-slate-100 p-1 rounded-xl w-full border border-slate-200 flex h-auto justify-between gap-1">
             {SECCIONES.map((s, idx) => {
               const Icono = s.icon;
               const isLocked = idx > currentIndex;
 
               return (
-                <TabsTrigger 
-                  key={s.id} 
-                  value={s.id} 
+                <TabsTrigger
+                  key={s.id}
+                  value={s.id}
                   disabled={isLocked}
                   className={cn(
-                    "flex-1 rounded-lg px-3 py-2 text-[9px] font-black uppercase tracking-tight gap-2 transition-all",
+                    "flex-1 h-9 rounded-lg px-2.5 text-xs font-black uppercase tracking-tight gap-1.5 transition-all",
                     "data-[state=active]:bg-[#1e3a5f] data-[state=active]:text-white data-[state=active]:shadow-sm",
                     isLocked ? "opacity-40 cursor-not-allowed" : "hover:bg-slate-200/60 text-slate-600"
                   )}
                 >
-                  <Icono className="h-3.5 w-3.5 shrink-0" /> 
+                  <Icono className="h-3.5 w-3.5 shrink-0" />
                   <span className="truncate">{s.label}</span>
                 </TabsTrigger>
-              )
+              );
             })}
           </TabsList>
         </div>
 
         {/* Contenedor de Contenido Persistente */}
-        <div className="flex-1 overflow-y-auto pr-1 pb-2 custom-scrollbar mt-1 lg:mt-2 bg-white/50 rounded-xl border border-slate-50 relative">
-          
+        <div className={cn("flex-1 overflow-y-auto pr-1 pb-2 mt-1 lg:mt-2 bg-white/50 rounded-xl border border-slate-50 relative", SCROLLBAR_TAILWIND_CLASS)}>
+
           <div className={cn("mt-0 outline-none p-1 h-full", activeTab === "personal" ? "block animate-in fade-in" : "hidden")}>
             <StepEncuestaPersonal disabled={disabled} user={user} onValidationChange={onPersonalValidationChange} />
           </div>
@@ -201,12 +216,6 @@ export function StepEncuesta({
           <CheckCircle2 className="h-2.5 w-2.5" /> Información bajo fe de juramento
         </div>
       </div>
-
-      <style jsx global>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 3px; height: 3px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
-      `}</style>
     </div>
   )
 }
