@@ -50,17 +50,19 @@ export const getPasswordStrength = (pass: string): number => {
 
 // 3. Esquema Zod para el Paso 1 (Datos Personales + Correo Institucional)
 export const personalStepSchema = z.object({
-  nombre: z.string().min(2, "El nombre es obligatorio"),
-  apellido: z.string().min(2, "El apellido es obligatorio"),
-  cedula: z.string().regex(/^\d{7,8}$/, "Cédula inválida (7 u 8 dígitos)"),
+  nombre: z.string().min(2, "El nombre debe tener al menos 2 letras"),
+  apellido: z.string().min(2, "El apellido debe tener al menos 2 letras"),
+  cedula: z.string().regex(/^\d{7,8}$/, "Cédula inválida (debe tener 7 u 8 dígitos)"),
   sexo: z.enum(["M", "F"], { message: "Selecciona el sexo" }),
   fecha_nacimiento: z.string().min(1, "La fecha de nacimiento es obligatoria"),
-  municipio: z.string().min(1, "Selecciona tu municipio"),
-  telefono: z.string().regex(/^04\d{9}$/, "Teléfono inválido (Ej: 04121234567)"),
+  municipio: z.enum(MUNICIPIOS_MARGARITA_LIST, {
+    message: "Selecciona un municipio de residencia válido",
+  }),
+  telefono: z.string().regex(/^04\d{9}$/, "Teléfono inválido (11 dígitos, ej: 04121234567)"),
   email: z
     .string()
-    .email("Correo inválido")
-    .refine((val) => val.endsWith("@unimar.edu.ve"), {
+    .email("Formato de correo institucional inválido")
+    .refine((val) => val.toLowerCase().endsWith("@unimar.edu.ve"), {
       message: "Debe usar estrictamente su correo institucional @unimar.edu.ve",
     }),
 });
@@ -81,11 +83,11 @@ export const securityStepSchema = z
     password: z
       .string()
       .min(8, "La contraseña debe tener al menos 8 caracteres")
-      .regex(/[A-Z]/, "Debe incluir al menos una letra mayúscula")
-      .regex(/[0-9]/, "Debe incluir al menos un número"),
+      .regex(/[A-Z]/, "La contraseña debe incluir al menos una letra mayúscula")
+      .regex(/[0-9]/, "La contraseña debe incluir al menos un número"),
     confirmPassword: z.string(),
     aceptaTerminos: z.literal(true, {
-      errorMap: () => ({ message: "Debes aceptar los términos y condiciones" }),
+      errorMap: () => ({ message: "Debes aceptar la declaración jurada y términos" }),
     }),
   })
   .refine((data) => data.password === data.confirmPassword, {

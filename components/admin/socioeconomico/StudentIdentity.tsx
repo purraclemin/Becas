@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Loader2, Edit3, Trash2, X, Mail, ShieldAlert, ShieldCheck, Shield, Activity, Info, FileText, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Search, Loader2, Edit3, Trash2, X, Mail, ShieldAlert, ShieldCheck, Shield, Activity, Info, FileText, AlertTriangle, CheckCircle2, FileDown } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface StudentData {
@@ -29,6 +29,7 @@ interface StudentIdentityProps {
   setStudent: (val: StudentData | null) => void;
   onVerExpediente?: (student: StudentData) => void;
   onView?: (student: StudentData) => void;
+  onExport?: (student: StudentData) => void;
 }
 
 export function StudentIdentity({ 
@@ -42,7 +43,8 @@ export function StudentIdentity({
   setPasoActual, 
   borrarEstudio, 
   setStudent,
-  onVerExpediente 
+  onVerExpediente,
+  onExport
 }: StudentIdentityProps) {
 
   const router = useRouter();
@@ -90,6 +92,15 @@ export function StudentIdentity({
     setMostrarConfirmacionEditar(false);
   };
 
+  const ejecutarAccionExportar = () => {
+    if (!student) return;
+    if (onExport) {
+      onExport(student);
+    } else {
+      window.print();
+    }
+  };
+
   const confirmarBorradoEstudio = async () => {
     if (!student) return;
     try {
@@ -107,9 +118,9 @@ export function StudentIdentity({
   return (
     <div className="w-full">
       
-      {/* --- BUSCADOR CON BARRA COMPACTA Y ALTA DENSIDAD ESPACIAL (UF-Scale) --- */}
+      {/* --- BUSCADOR (Se oculta al imprimir) --- */}
       {!student && (
-        <div className="bg-white p-1.5 pl-4 rounded-xl shadow-xs border border-slate-200 flex flex-col md:flex-row items-center gap-2 transition-all focus-within:shadow-md focus-within:border-[#1e3a5f]">
+        <div className="bg-white p-1.5 pl-4 rounded-xl shadow-xs border border-slate-200 flex flex-col md:flex-row items-center gap-2 transition-all focus-within:shadow-md focus-within:border-[#1e3a5f] print:hidden">
           <Search className="h-4 w-4 text-slate-400 shrink-0" />
           <input 
             type="text" 
@@ -130,24 +141,25 @@ export function StudentIdentity({
         </div>
       )}
 
-      {/* --- FICHA DEL ESTUDIANTE (UNIMAR ACADEMIC MINIMALIST & UF-SCALE) --- */}
+      {/* --- FICHA DEL ESTUDIANTE (Se oculta por completo al imprimir para evitar duplicidad) --- */}
       {student && (
-        <div className="relative bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden animate-in fade-in slide-in-from-top-2 duration-400">
+        <div className="relative bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden animate-in fade-in slide-in-from-top-2 duration-400 print:hidden">
           
           {/* BOTÓN CERRAR */}
           <button 
             type="button"
             onClick={handleClose}
-            className="absolute top-4 right-4 flex flex-col items-center justify-center w-10 h-10 bg-slate-100 text-slate-600 hover:bg-[#d4a843] hover:text-[#1e3a5f] rounded-xl border border-slate-200 transition-all z-20 active:scale-90 group cursor-pointer shadow-xs"
+            className="absolute top-3 right-3 flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-700 hover:bg-rose-50 hover:text-rose-600 rounded-xl border border-slate-200 hover:border-rose-200 transition-all z-20 active:scale-95 group cursor-pointer shadow-xs"
+            title="Cerrar ventana"
           >
-            <X className="h-4 w-4 md:h-3.5 md:w-3.5" />
-            <span className="text-[7px] md:text-[6px] font-black uppercase mt-0.5">Cerrar</span>
+            <X className="h-3.5 w-3.5 group-hover:rotate-90 transition-transform duration-300" />
+            <span className="text-[9px] font-black uppercase tracking-wider">Cerrar</span>
           </button>
 
-          <div className="flex flex-col p-4 md:p-3">
+          <div className="flex flex-col p-4 md:p-4">
             
             {/* BLOQUE SUPERIOR: Auditoría e Información Principal */}
-            <div className="flex flex-col md:flex-row items-center gap-4 md:gap-4 mb-3 pb-3 border-b border-slate-100">
+            <div className="flex flex-col md:flex-row items-center gap-4 md:gap-4 mb-3 pb-3 border-b border-slate-100 pr-0 md:pr-24">
               
               {/* Avatar */}
               <div className={`h-14 w-14 shrink-0 rounded-xl ${theme.bg} border ${theme.border} flex items-center justify-center text-[#1e3a5f] dark:text-[#d4a843] font-black text-xl shadow-xs`}>
@@ -186,11 +198,22 @@ export function StudentIdentity({
                 </div>
               </div>
 
-              {/* ACCIONES (Ordenadas: Expediente primero, luego Editar y Borrar) */}
+              {/* ACCIONES */}
               {mostrarResultado && (
-                <div className="flex items-center gap-2 md:mr-14">
+                <div className="flex items-center gap-2">
 
-                  {/* 2. Botón Editar (Activa su panel de confirmación) */}
+                  {/* 1. Botón EXPORTAR2 */}
+                  <button 
+                    type="button"
+                    onClick={ejecutarAccionExportar}
+                    className="flex items-center gap-1.5 bg-gradient-to-r from-[#d4a843] to-[#c29636] hover:from-[#c29636] hover:to-[#b0832a] text-[#1a2744] px-3.5 py-2 md:py-1.5 rounded-xl transition-all shadow-sm active:scale-95 group border border-[#d4a843]/40 cursor-pointer"
+                    title="Exportar documento o reporte"
+                  >
+                    <FileDown className="h-3.5 w-3.5 group-hover:scale-110 transition-transform" />
+                    <span className="text-[9px] font-black uppercase tracking-widest">Exportar2</span>
+                  </button>
+
+                  {/* 2. Botón EDITAR */}
                   <button 
                     type="button"
                     onClick={() => {
@@ -198,14 +221,14 @@ export function StudentIdentity({
                       setMostrarConfirmacionExpediente(false);
                       setMostrarConfirmacionBorrar(false);
                     }} 
-                    className="flex flex-col items-center justify-center w-12 h-12 md:w-9 md:h-9 bg-slate-50 border border-slate-200 rounded-xl text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white transition-all active:scale-95 group cursor-pointer shadow-xs"
+                    className="flex items-center gap-1.5 px-3.5 py-2 md:py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white transition-all active:scale-95 group cursor-pointer shadow-xs"
                     title="Editar estudio"
                   >
-                    <Edit3 className="h-4 w-4 md:h-3.5 md:w-3.5 mb-0.5 group-hover:scale-110 transition-transform" />
-                    <span className="text-[8px] md:text-[7px] font-black uppercase tracking-wider">Editar</span>
+                    <Edit3 className="h-3.5 w-3.5 group-hover:scale-110 transition-transform" />
+                    <span className="text-[9px] font-black uppercase tracking-wider">Editar</span>
                   </button>
 
-                  {/* 3. Botón Borrar (Activa su panel de confirmación) */}
+                  {/* 3. Botón BORRAR */}
                   <button 
                     type="button"
                     onClick={() => {
@@ -213,11 +236,11 @@ export function StudentIdentity({
                       setMostrarConfirmacionExpediente(false);
                       setMostrarConfirmacionEditar(false);
                     }} 
-                    className="flex flex-col items-center justify-center w-12 h-12 md:w-9 md:h-9 bg-rose-50 border border-rose-200 rounded-xl text-rose-600 hover:bg-rose-600 hover:text-white transition-all active:scale-95 group cursor-pointer shadow-xs"
+                    className="flex items-center gap-1.5 px-3.5 py-2 md:py-1.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-600 hover:bg-rose-600 hover:text-white transition-all active:scale-95 group cursor-pointer shadow-xs"
                     title="Borrar estudio"
                   >
-                    <Trash2 className="h-4 w-4 md:h-3.5 md:w-3.5 mb-0.5 group-hover:scale-110 transition-transform" />
-                    <span className="text-[8px] md:text-[7px] font-black uppercase tracking-wider">Borrar</span>
+                    <Trash2 className="h-3.5 w-3.5 group-hover:scale-110 transition-transform" />
+                    <span className="text-[9px] font-black uppercase tracking-wider">Borrar</span>
                   </button>
                 </div>
               )}

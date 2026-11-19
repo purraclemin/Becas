@@ -4,14 +4,12 @@ import React, { useState, useEffect, Suspense, useCallback } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { CheckCircle2, AlertCircle, Loader2, ChevronRight, Fingerprint } from "lucide-react"
 import { buscarEstudianteConEstudio, guardarOActualizarEstudio, borrarEstudio } from "@/lib/ActionsSocioeconomico"
-import { generarAnalisisIaEstudio } from "@/lib/diagnosticoIA"
 
-// Componentes modulares unificados
+// Componentes modulares unificados (Sin AnalisisIA)
 import { PageHeader } from "@/components/admin/PageHeader"
 import { ResultCard } from "@/components/admin/socioeconomico/ResultCard"
 import { StepForm } from "@/components/admin/socioeconomico/StepForm"
 import { StudentIdentity } from "@/components/admin/socioeconomico/StudentIdentity"
-import { AnalisisIA } from "@/components/admin/socioeconomico/AnalisisIA"
 
 interface EstudianteData {
   id: number | string;
@@ -25,7 +23,7 @@ interface EstudianteData {
 
 function SocioeconomicoContent() {
   const searchParams = useSearchParams();
-  const router = useRouter(); // 🟢 Hook para manejar la redirección inteligente
+  const router = useRouter(); 
   const [loading, setLoading] = useState<boolean>(false)
   const [cedulaBusqueda, setCedulaBusqueda] = useState<string>("")
   
@@ -35,10 +33,6 @@ function SocioeconomicoContent() {
   const [pasoActual, setPasoActual] = useState<number>(1)
   const [mostrarResultado, setMostrarResultado] = useState<boolean>(false)
   const [notificacion, setNotificacion] = useState<{msg: string, tipo: 'success' | 'error'} | null>(null)
-  
-  // Estados para la IA real
-  const [cargandoIA, setCargandoIA] = useState<boolean>(false)
-  const [resumenIA, setResumenIA] = useState<string>("")
 
   const initialFormState: Record<string, unknown> = {
     socio_estado_civil: "",
@@ -77,7 +71,6 @@ function SocioeconomicoContent() {
   const selectCandidate = (selected: EstudianteData) => {
     setStudent(selected);
     setCandidates([]); 
-    setResumenIA(""); 
     
     if (selected.puntaje_admin !== null && selected.puntaje_admin !== undefined) {
       setFormData({ ...initialFormState, ...selected });
@@ -145,7 +138,6 @@ function SocioeconomicoContent() {
     if (res && res.success) {
       notify("Auditoría guardada correctamente.", "success");
       
-      // 🟢 REDIRECCIÓN INTELIGENTE: Vuelve a validar becas y abre directamente el expediente del estudiante
       setTimeout(() => {
         router.push(`/admin/validarBeca?abrirAuditoria=${student.cedula}`);
       }, 800);
@@ -156,29 +148,6 @@ function SocioeconomicoContent() {
     }
   };
 
-  const handleGenerarAnalisisIA = async () => {
-    if (!student?.id) return;
-    
-    setCargandoIA(true);
-    setResumenIA("");
-
-    try {
-      const res = await generarAnalisisIaEstudio(Number(student.id)) as { success?: boolean; analisis?: string; error?: string };
-
-      if (res && res.success) {
-        setResumenIA(res.analisis ?? "");
-      } else {
-        setResumenIA(res.error ?? "No se pudo generar el diagnóstico ejecutivo.");
-      }
-    } catch (error) {
-      console.error("Error al invocar la API de IA:", error);
-      setResumenIA("Ocurrió un error inesperado al procesar la inteligencia artificial.");
-    } finally {
-      setCargandoIA(false);
-    }
-  };
-
-  // Envoltorio compatible con la interfaz requerida por StudentIdentity
   const handleBorrarEstudio = async (studentId: string | number): Promise<{ success: boolean }> => {
     const numericId = typeof studentId === 'string' ? Number(studentId) : studentId;
     const res = await borrarEstudio(numericId);
@@ -269,20 +238,11 @@ function SocioeconomicoContent() {
           </div>
         )}
 
-        {/* ÁREA DE TRABAJO (FORMULARIO O RESULTADO) - ANCHO FLUIDO TOTAL */}
+        {/* ÁREA DE TRABAJO (FORMULARIO O RESULTADO) */}
         {student ? (
           <div className="w-full animate-in fade-in slide-in-from-bottom-2 duration-700 space-y-4">
             {mostrarResultado ? (
-              <>
-                {/* COMPONENTE ANALISIS IA REAL INTEGRADO */}
-                <AnalisisIA 
-                  onGenerarAnalisisIA={handleGenerarAnalisisIA}
-                  cargandoIA={cargandoIA}
-                  resumenIA={resumenIA}
-                />
-
-                <ResultCard student={student} formData={formData} />
-              </>
+              <ResultCard student={student} formData={formData} />
             ) : (
               <div className="w-full bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 <div className="bg-[#1e3a5f] h-1 w-full"></div>

@@ -7,14 +7,14 @@ import { Loader2, Calendar } from "lucide-react"
 import { PageHeader } from "@/components/admin/PageHeader"
 import { FiltrosEstudiantes } from "@/components/admin/estudiantes/FiltrosEstudiantes"
 import { FilaEstudiante } from "@/components/admin/estudiantes/FilaEstudiante"
+import { PrintReportLayout } from "@/components/imprimirReporte"
 
 // Importamos las acciones
-import { obtenerEstudiantesConSolicitud } from "@/lib/Actionsestudiantes" 
+import { obtenerEstudiantesConSolicitud } from "@/lib/Actionsestudiantes"
 
 // 1. TIPADO ESTRICTO (Cero 'any')
 export interface IEstudianteAdmin {
   id: number | string;
-  // Campos base inferidos (FilaEstudiante manejará el detalle, pero evitamos 'any')
   cedula?: string;
   nombre?: string;
   apellido?: string;
@@ -22,8 +22,11 @@ export interface IEstudianteAdmin {
   telefono?: string;
   carrera?: string;
   fecha_ingreso?: string;
-  // Index signature para flexibilidad controlada si vienen más datos de la BD
-  [key: string]: unknown; 
+  fecha_registro?: string;
+  fecha_solicitud?: string;
+  created_at?: string;
+  fecha?: string;
+  [key: string]: unknown;
 }
 
 interface IEstudiantesResponse {
@@ -36,7 +39,7 @@ export default function EstudiantesAdminPage() {
   const [estudiantes, setEstudiantes] = useState<IEstudianteAdmin[]>([])
   const [busqueda, setBusqueda] = useState("")
   const [loading, setLoading] = useState(true)
-  
+
   // Estados de Paginación
   const [page, setPage] = useState(1)
   const [totalPaginas, setTotalPaginas] = useState(1)
@@ -55,8 +58,7 @@ export default function EstudiantesAdminPage() {
     setLoading(true)
 
     try {
-      // Aserción de tipo segura a la interfaz de respuesta
-      const data = await obtenerEstudiantesConSolicitud(termino, pagina, 12) as IEstudiantesResponse;
+      const data = await obtenerEstudiantesConSolicitud(termino, pagina, 12) as IEstudiantesResponse
 
       if (controller.signal.aborted) return
 
@@ -95,21 +97,42 @@ export default function EstudiantesAdminPage() {
     setPage(1)
   }, [busqueda])
 
-  return (
-    <div className="space-y-4 md:space-y-6">
-      
-      {/* HEADER UNIFICADO */}
-      <PageHeader 
-        titulo="Base de Estudiantes" 
-        subtitulo="Gestión y Control de Datos Académicos"
-        mostrarExportar={true}
-      />
+  const handleExportar = () => {
+    window.print()
+  }
 
-      {/* --- CONTENIDO AJUSTADO AL LAYOUT RESPONSIVO --- */}
-      <div className="space-y-4">
-        
+  const formatearFechaImpresion = (row: IEstudianteAdmin): string => {
+    const valorFecha =
+      row.fecha_ingreso ||
+      row.fecha_registro ||
+      row.fecha_solicitud ||
+      row.created_at ||
+      row.fecha
+
+    if (!valorFecha) return "---"
+    const fechaParseada = new Date(String(valorFecha))
+    if (Number.isNaN(fechaParseada.getTime())) return String(valorFecha)
+    return fechaParseada.toLocaleDateString()
+  }
+
+  return (
+    <div className="space-y-4 md:space-y-6 print:space-y-0 print:overflow-visible print:h-auto">
+
+      {/* HEADER UNIFICADO (Se oculta al imprimir, conserva el botón existente) */}
+      <div className="print:hidden">
+        <PageHeader
+          titulo="Base de Estudiantes"
+          subtitulo="Gestión y Control de Datos Académicos"
+          mostrarExportar={true}
+          onExport={handleExportar}
+        />
+      </div>
+
+      {/* --- CONTENIDO AJUSTADO AL LAYOUT RESPONSIVO (Se oculta al imprimir) --- */}
+      <div className="space-y-4 print:hidden">
+
         {/* COMPONENTE MODULAR DE FILTROS */}
-        <FiltrosEstudiantes 
+        <FiltrosEstudiantes
           busqueda={busqueda}
           setBusqueda={setBusqueda}
           loading={loading}
@@ -123,10 +146,10 @@ export default function EstudiantesAdminPage() {
         <div className="bg-transparent md:bg-white md:rounded-xl md:shadow-sm overflow-hidden md:border border-slate-200">
           <div className="w-full">
             <table className="w-full text-left block md:table border-collapse">
-              
+
               {/* Cabecera oculta en móviles */}
               <thead className="hidden md:table-header-group sticky top-0 z-20">
-                <tr className="bg-slate-50 border-b border-slate-200 text-[#1a2744] text-[8.5px] font-black uppercase tracking-wider">
+                <tr className="bg-slate-50 border-b border-slate-200 text-[#1e3a5f] text-[8.5px] font-black uppercase tracking-wider">
                   <th className="px-6 py-4">Datos Personales</th>
                   <th className="px-6 py-4">Información de Contacto</th>
                   <th className="px-6 py-4">Perfil Académico</th>
@@ -137,7 +160,7 @@ export default function EstudiantesAdminPage() {
                   </th>
                 </tr>
               </thead>
-              
+
               {/* Transformación a flex-col en móviles para que FilaEstudiante sea una tarjeta */}
               <tbody className="flex flex-col gap-4 md:table-row-group md:gap-0 divide-y-0 md:divide-y md:divide-slate-100">
                 {loading && estudiantes.length === 0 ? (
@@ -164,7 +187,7 @@ export default function EstudiantesAdminPage() {
             </table>
           </div>
         </div>
-        
+
         {/* INFO DE PÁGINA INFERIOR COMPACTA */}
         {totalPaginas > 1 && (
           <div className="flex justify-center pt-2">
@@ -174,6 +197,39 @@ export default function EstudiantesAdminPage() {
           </div>
         )}
       </div>
+
+      {/* PLANTILLA DE IMPRESIÓN LIMPIA E INSTITUCIONAL */}
+      <PrintReportLayout
+        titulo="Base de Estudiantes"
+        subtitulo={busqueda ? `Filtro aplicado: "${busqueda}" — Página ${page}` : `Gestión y Control de Datos Académicos — Página ${page}`}
+        columnas={["Estudiante / Cédula", "Contacto", "Carrera", "Fecha Ingreso"]}
+        datos={estudiantes}
+        renderFila={(row: Record<string, unknown>, idx: number) => {
+          const item = row as IEstudianteAdmin
+          return (
+            <tr key={String(item.id ?? idx)} className="border-b border-slate-200 break-inside-avoid">
+              <td className="p-1.5 border border-slate-400">
+                <span className="font-bold text-[#1e3a5f] uppercase block">
+                  {String(item.nombre || "")} {String(item.apellido || "")}
+                </span>
+                <span className="text-[8px] text-slate-500 font-semibold">
+                  {String(item.cedula || "---")}
+                </span>
+              </td>
+              <td className="p-1.5 border border-slate-400 text-[8px]">
+                <span className="block text-slate-700">{String(item.correo || item.email || "---")}</span>
+                <span className="block text-slate-500">{String(item.telefono || "---")}</span>
+              </td>
+              <td className="p-1.5 border border-slate-400 uppercase font-semibold">
+                {String(item.carrera || "---")}
+              </td>
+              <td className="p-1.5 border border-slate-400 text-[8px] font-semibold text-slate-700">
+                {formatearFechaImpresion(item)}
+              </td>
+            </tr>
+          )
+        }}
+      />
     </div>
   )
 }

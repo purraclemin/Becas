@@ -59,12 +59,19 @@ body {
   }
 }
 
-/* Regla optimizada para que el reporte suba al tope y elimine páginas vacías */
+/* Regla optimizada para que el reporte suba al tope y permita paginación fluida */
 @media print {
-  /* Forzamos al navegador a eliminar sus márgenes por defecto y usar los nuestros */
+  /* Margen más reducido para ganar espacio en la parte superior */
   @page {
     size: letter;
-    margin: 8mm; /* Margen general de la hoja de impresión */
+    margin: 4mm 8mm 8mm 8mm;
+  }
+
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
   }
 
   /* Ocultamos todo lo demás de la aplicación */
@@ -72,26 +79,29 @@ body {
     visibility: hidden !important;
   }
   
-  /* Hacemos visible únicamente la sección de impresión */
+  /* Hacemos visible únicamente la sección de impresión y sus hijos */
   #print-section, #print-section * {
     visibility: visible !important;
   }
 
-  /* Alineamos el reporte exactamente en la esquina superior */
+  /* Mantenemos el flujo estático/normal con altura automática para permitir que el navegador pagine todas las hojas */
   #print-section {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
+    position: static !important;
     width: 100% !important;
+    height: auto !important;
     margin: 0 !important;
     padding: 0 !important;
     background: white !important;
     display: block !important;
+    page-break-inside: auto !important;
   }
 
-  /* Evitamos que bloques internos fuercen saltos de página extra al final */
-  #print-section div {
-    page-break-after: avoid;
-    break-after: avoid;
+  /* Permitimos flujo libre de páginas para que no corte los registros del final */
+  table {
+    page-break-inside: auto;
+  }
+  tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
   }
 }

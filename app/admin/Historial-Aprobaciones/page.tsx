@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react"
 import { PageHeader } from "@/components/admin/PageHeader"
+import { PrintReportLayout } from "@/components/imprimirReporte"
 import { Search, Loader2, Calendar, UserCheck, FileText, BookOpen, AlertCircle } from "lucide-react"
 import { obtenerHistorialAprobaciones } from "@/lib/ActionsHistorialAprobacion"
 
@@ -49,20 +50,25 @@ export default function HistorialAprobacionesPage() {
       case 'Renovacion': 
       case 'Renovación': return 'bg-indigo-100 text-indigo-700 border-indigo-200';
       case 'Revisión Especial': 
-      case 'Revision Especial': return 'bg-purple-100 text-purple-700 border-purple-200'; // Rosa/Morado según Dashboard
+      case 'Revision Especial': return 'bg-purple-100 text-purple-700 border-purple-200';
       default: return 'bg-slate-100 text-slate-600 border-slate-200';
     }
   }
 
   return (
     <div className="space-y-4">
-      <PageHeader 
-        titulo="Historial de Decisiones" 
-        subtitulo="Auditoría de aprobaciones y rechazos de becas"
-        mostrarExportar={true}
-      />
+      {/* Cabecera con la acción de exportar conectada a window.print() */}
+      <div className="print:hidden">
+        <PageHeader 
+          titulo="Historial de Decisiones" 
+          subtitulo="Auditoría de aprobaciones y rechazos de becas"
+          mostrarExportar={true}
+          onExport={() => window.print()}
+        />
+      </div>
 
-      <div className="bg-white p-3 rounded-xl shadow-sm border border-slate-200 flex flex-wrap gap-3 items-end">
+      {/* Filtros de búsqueda (Se ocultan al imprimir) */}
+      <div className="bg-white p-3 rounded-xl shadow-sm border border-slate-200 flex flex-wrap gap-3 items-end print:hidden">
         <div className="flex flex-col gap-1">
           <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest ml-1">Desde</span>
           <div className="relative">
@@ -97,7 +103,8 @@ export default function HistorialAprobacionesPage() {
         </button>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      {/* Tabla interactiva visual en pantalla (Se oculta al imprimir) */}
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden print:hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -243,6 +250,34 @@ export default function HistorialAprobacionesPage() {
           </table>
         </div>
       </div>
+
+      {/* PLANTILLA DE IMPRESIÓN LIMPIA E INSTITUCIONAL (Se oculta en web y se muestra SOLO al imprimir) */}
+      <PrintReportLayout 
+        titulo="Historial de Decisiones"
+        subtitulo="Auditoría de Aprobaciones y Rechazos de Becas"
+        columnas={["Estudiante / Cédula", "Periodo", "Cambio de Estatus", "Baremo", "Fecha y Hora"]}
+        datos={historial}
+        renderFila={(reg, idx) => (
+          <tr key={idx} className="border-b border-slate-200">
+            <td className="p-2 border border-slate-300">
+              <span className="font-bold text-[#1a2744] uppercase block">{reg.nombre} {reg.apellido}</span>
+              <span className="text-[8px] text-slate-500 font-semibold">{reg.cedula}</span>
+            </td>
+            <td className="p-2 border border-slate-300 font-semibold">
+              {reg.periodo_nombre}
+            </td>
+            <td className="p-2 border border-slate-300">
+              <span className="font-semibold text-slate-700">{reg.estatus_previo}</span> → <span className="font-bold text-[#1a2744]">{reg.estatus_nuevo}</span>
+            </td>
+            <td className="p-2 border border-slate-300 text-center font-bold">
+              {reg.puntaje_baremo_}
+            </td>
+            <td className="p-2 border border-slate-300 text-[9px]">
+              {new Date(reg.fecha_aprobacion).toLocaleString()}
+            </td>
+          </tr>
+        )}
+      />
     </div>
   )
 }

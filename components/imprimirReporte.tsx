@@ -1,0 +1,74 @@
+import React from "react"
+
+interface PrintReportLayoutProps {
+  titulo: string
+  subtitulo?: string
+  columnas: string[]
+  datos: Array<Record<string, any>>
+  renderFila: (item: Record<string, any>, index: number) => React.ReactNode
+}
+
+export const PrintReportLayout = ({
+  titulo,
+  subtitulo,
+  columnas,
+  datos,
+  renderFila
+}: PrintReportLayoutProps) => {
+  return (
+    <div id="print-section" className="hidden print:block w-full bg-white text-slate-900 p-0 m-0">
+      {/* Encabezado Oficial Institucional Unimar */}
+      <div className="border-b-2 border-[#1e3a5f] pb-2 mb-3 flex justify-between items-end">
+        <div className="flex items-center gap-3">
+          <div className="w-2 h-8 bg-[#d4a843] rounded-sm"></div>
+          <div>
+            <h1 className="text-xs font-black uppercase text-[#1e3a5f] tracking-wide">
+              Universidad de Margarita — Departamento de Bienestar Estudiantil
+            </h1>
+            <p className="text-[11px] font-bold text-slate-700 uppercase mt-0.5">
+              {titulo}
+            </p>
+            {subtitulo && (
+              <p className="text-[9px] text-slate-500 uppercase">{subtitulo}</p>
+            )}
+          </div>
+        </div>
+        <div className="text-right">
+          <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest block">
+            Sistema de Becas UNIMAR
+          </span>
+          <span className="text-[9px] text-slate-600 font-semibold">
+            Emisión: {new Date().toLocaleDateString("es-VE")}
+          </span>
+        </div>
+      </div>
+
+      {/* Tabla Genérica Limpia con cierre estructurado */}
+      <table className="w-full border-collapse text-left text-[9px]">
+        <thead>
+          <tr className="bg-[#1e3a5f] text-white uppercase tracking-wider">
+            {columnas.map((col, idx) => (
+              <th key={idx} className="p-1.5 border border-slate-400 font-bold">
+                {col}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {datos.map((item, index) => renderFila(item, index))}
+        </tbody>
+      </table>
+
+      {/* Pie de página institucional y Copyright */}
+      <div className="mt-4 pt-2 border-t border-slate-300 flex flex-col gap-1 text-[8px] text-slate-500">
+        <div className="flex justify-between">
+          <span>Documento oficial generado por plataforma web institucional.</span>
+          <span>Página impresa de registros de auditoría.</span>
+        </div>
+        <div className="text-center font-bold text-slate-600 mt-1 pt-1 border-t border-slate-100 uppercase tracking-wider">
+          © Copyright 2026-2026 Universidad de Margarita, Rif: J-30660040-0. Isla de Margarita - Venezuela
+        </div>
+      </div>
+    </div>
+  )
+}

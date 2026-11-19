@@ -8,6 +8,12 @@ import { ArrowLeft, AlertCircle, Loader2 } from "lucide-react"
 import { register, checkExistence } from "@/lib/actions-registro"
 import { StepIndicator } from "@/components/registro/StepIndicator"
 import { StepContent } from "@/components/registro/StepContent"
+import { RegistroFormState } from "@/components/registro/Step1Personal"
+import {
+  personalStepSchema,
+  academicStepSchema,
+  securityStepSchema,
+} from "@/components/registro/validations"
 
 export default function RegistroPage() {
   const router = useRouter()
@@ -22,7 +28,7 @@ export default function RegistroPage() {
 
   const [emailVerified, setEmailVerified] = useState(false)
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<RegistroFormState>({
     nombre: "",
     apellido: "",
     cedula: "",
@@ -46,31 +52,20 @@ export default function RegistroPage() {
     }, 100);
   }
 
-  function updateField(field: string, value: string | boolean) {
+  function updateField(field: keyof RegistroFormState, value: string | boolean) {
     setForm((prev) => ({ ...prev, [field]: value }))
     if (field === "email") {
       setEmailVerified(false)
     }
   }
 
-  const validatePassword = (password: string) => {
-    if (password.length < 8) return "La contraseña debe tener al menos 8 caracteres";
-    if (!/[A-Z]/.test(password)) return "La contraseña debe incluir al menos una letra mayúscula";
-    if (!/[0-9]/.test(password)) return "La contraseña debe incluir al menos un número";
-    return null;
-  }
-
   const validateStep = async (currentStep: number) => {
     setError(null)
     
     if (currentStep === 1) {
-      if (!form.nombre || !form.apellido || !form.cedula || !form.telefono || !form.email || !form.sexo || !form.fecha_nacimiento || !form.municipio) {
-        triggerError("Por favor completa todos los datos personales y demográficos");
-        return false;
-      }
-      
-      if (!form.email.includes("@unimar.edu.ve")) {
-        triggerError("Debe usar su correo institucional @unimar.edu.ve");
+      const parsedPersonal = personalStepSchema.safeParse(form);
+      if (!parsedPersonal.success) {
+        triggerError(parsedPersonal.error.issues[0]?.message || "Por favor revisa tus datos personales");
         return false;
       }
 
@@ -83,14 +78,13 @@ export default function RegistroPage() {
       try {
         const check = await checkExistence(form.cedula, form.email)
         if (check.exists) {
-          // 🟢 Si el correo ya existe, desbloqueamos la edición del email para que pueda cambiarlo
           if (check.field === 'email') {
             setEmailVerified(false);
           }
           triggerError(check.error || "La cédula o el correo ya están registrados");
           return false;
         }
-      } catch (e) {
+      } catch {
         triggerError("Error de conexión al validar los datos");
         return false;
       } finally {
@@ -98,8 +92,9 @@ export default function RegistroPage() {
       }
       
     } else if (currentStep === 2) {
-      if (!form.carrera || !form.semestre) {
-        triggerError("Por favor selecciona tu carrera y trimestre actual");
+      const parsedAcademic = academicStepSchema.safeParse(form);
+      if (!parsedAcademic.success) {
+        triggerError(parsedAcademic.error.issues[0]?.message || "Por favor selecciona tu carrera y trimestre actual");
         return false;
       }
     }
@@ -116,18 +111,9 @@ export default function RegistroPage() {
       return
     }
     
-    const passwordError = validatePassword(form.password);
-    if (passwordError) {
-      triggerError(passwordError);
-      return;
-    }
-
-    if (form.password !== form.confirmPassword) {
-      triggerError("Las contraseñas no coinciden");
-      return;
-    }
-    if (!form.aceptaTerminos) {
-      triggerError("Debe aceptar los términos y condiciones");
+    const parsedSecurity = securityStepSchema.safeParse(form);
+    if (!parsedSecurity.success) {
+      triggerError(parsedSecurity.error.issues[0]?.message || "Verifica los datos de seguridad");
       return;
     }
 
@@ -142,7 +128,7 @@ export default function RegistroPage() {
     formData.append("fecha_nacimiento", form.fecha_nacimiento)
     formData.append("municipio", form.municipio)
     formData.append("telefono", form.telefono.trim())
-    formData.append("email", form.email.trim())
+    formData.append("email", form.email.trim().toLowerCase())
     formData.append("password", form.password)
     formData.append("carrera", form.carrera)
     formData.append("semestre", form.semestre)
@@ -152,7 +138,6 @@ export default function RegistroPage() {
       if (result?.error) {
         triggerError(result.error);
         setIsPending(false)
-        // Si el error de duplicado viene del registro final
         if (result.error.includes("correo") || result.error.includes("usuario")) {
           setEmailVerified(false);
         }
@@ -160,18 +145,21 @@ export default function RegistroPage() {
         router.push("/")
         router.refresh()
       }
-    } catch (e) {
+    } catch {
       triggerError("Error crítico de conexión con el servidor");
       setIsPending(false)
     }
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#f0f4f8]">
+    <div className="flex min-h-screen flex-col bg-[#f8fafc] bg-[url('/images/Camino.jpg')] bg-cover bg-center bg-no-repeat relative overflow-x-hidden">
       
-      {/* Barra Superior Institucional */}
-      <div className="bg-[#1a2744]">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-2">
+      {/* Capa de superposición semitransparente para contraste óptimo */}
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] pointer-events-none"></div>
+
+      {/* Barra Superior Institucional con Brillo Neón Azul */}
+      <div className="bg-[#1a2744] relative z-10 border-b-2 border-blue-400/60 shadow-[0_0_25px_rgba(30,58,95,0.8)]">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-2.5">
           <Link href="/" className="flex items-center gap-2 sm:gap-3">
             <div className="relative w-36 h-12 sm:w-56 sm:h-16 flex items-center justify-center overflow-hidden">
               <Image 
@@ -184,53 +172,54 @@ export default function RegistroPage() {
               />
             </div>
             <div>
-           {/*   <span className="block text-sm sm:text-lg font-extrabold tracking-wide text-white font-serif leading-none">UNIMAR</span>*/}
               <span className="block text-[8px] sm:text-[10px] font-medium uppercase tracking-widest text-[#8a9bbd] mt-0.5">Gestión de Becas</span>
             </div>
           </Link>
-          <Link href="/" className="flex items-center gap-1.5 text-xs text-[#8a9bbd] hover:text-white transition-colors">
+          <Link href="/" className="flex items-center gap-1.5 text-xs text-[#8a9bbd] hover:text-white transition-all duration-300 hover:drop-shadow-[0_0_8px_rgba(59,130,246,0.9)]">
             <ArrowLeft className="h-3.5 w-3.5" /> Volver al Inicio
           </Link>
         </div>
       </div>
 
-      <div className="flex flex-1 items-center justify-center px-4 py-12">
-        <div className="w-full max-w-lg">
-          <div className="overflow-hidden rounded-xl bg-white shadow-2xl border border-[#e2e8f0]">
+      {/* Contenedor principal con diseño equilibrado, alineado a la izquierda y divisor central */}
+      <div className="flex flex-1 items-center justify-start px-4 sm:px-12 py-6 sm:py-8 relative z-10">
+        
+        {/* Tarjeta de Registro con ancho ampliado (max-w-xl) y alineada a la izquierda */}
+        <div className="w-full max-w-xl">
+          <div className="overflow-hidden rounded-xl bg-white shadow-[0_0_30px_rgba(30,58,95,0.6)] hover:shadow-[0_0_40px_rgba(59,130,246,0.8)] border-2 border-blue-400/40 transition-all duration-300">
             
-            {/* Cabecera del Card */}
-            <div className="bg-[#1e3a5f] px-8 py-8 text-center relative overflow-hidden">
+            {/* Cabecera del Card Minimalista y Compacta */}
+            <div className="bg-[#1e3a5f] px-5 sm:px-6 py-4 sm:py-5 text-center relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-1 bg-[#d4a843]"></div>
               
-              {/* Logotipo institucional de Unimar (Cabecera del Formulario - Ampliado) */}
-              <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-full border-2 border-[#d4a843] bg-[#1a2744] shadow-lg relative overflow-hidden p-2.5">
+              {/* Logotipo institucional de Unimar Reducido */}
+              <div className="mx-auto mb-2.5 flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-full border-2 border-[#d4a843] bg-[#1a2744] shadow-md relative overflow-hidden p-1.5">
                 <Image 
                   src="/images/logounimar3.png"
                   alt="Logo UNIMAR"
-                  width={184}
-                  height={184}
+                  width={120}
+                  height={120}
                   className="object-contain w-full h-full"
                 />
               </div>
 
-              <h1 className="text-2xl font-black text-white font-serif uppercase tracking-tight">Crear Cuenta</h1>
-              <p className="mt-1 text-xs font-medium text-[#8a9bbd] uppercase tracking-widest">Sistema de Gestión de Becas</p>
+              <h1 className="text-lg sm:text-xl font-black text-white font-serif uppercase tracking-tight">Crear Cuenta</h1>
+              <p className="mt-0.5 text-[10px] font-medium text-[#8a9bbd] uppercase tracking-widest">Sistema de Gestión de Becas</p>
             </div>
 
             <StepIndicator currentStep={step} onStepClick={(s) => step > s ? setStep(s) : null} />
 
-            <div className="px-8 py-8">
-              {/* 🟢 Referencia para que la página haga scroll automático y muestre la alerta claramente */}
+            <div className="px-5 sm:px-6 py-5 sm:py-6">
               <div ref={errorRef}>
                 {error && (
-                  <div className="mb-6 flex items-center gap-3 rounded-lg bg-red-50 p-4 text-sm text-red-700 border-l-4 border-red-500 shadow-sm animate-in fade-in slide-in-from-top-2">
-                    <AlertCircle className="h-5 w-5 shrink-0" />
+                  <div className="mb-4 flex items-center gap-2 rounded-lg bg-red-50 p-3 text-xs text-red-700 border-l-4 border-red-500 shadow-sm animate-in fade-in slide-in-from-top-2">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
                     <span className="font-semibold">{error}</span>
                   </div>
                 )}
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-5">
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <StepContent 
                   step={step} 
                   form={form} 
@@ -243,12 +232,12 @@ export default function RegistroPage() {
                   setEmailVerified={setEmailVerified}
                 />
                 
-                <div className="flex flex-col sm:flex-row items-center gap-3 pt-4">
+                <div className="flex flex-col sm:flex-row items-center gap-2.5 pt-3">
                   {step > 1 && (
                     <button 
                       type="button" 
                       onClick={() => setStep(step - 1)} 
-                      className="w-full sm:w-1/3 rounded-lg border border-[#e2e8f0] py-3 text-xs font-black uppercase tracking-widest text-[#1e3a5f] hover:bg-[#f8fafc] transition-all"
+                      className="w-full sm:w-1/3 h-10 sm:h-9 rounded-lg border border-[#e2e8f0] text-[11px] font-black uppercase tracking-widest text-[#1e3a5f] hover:bg-[#f8fafc] transition-all"
                     >
                       Anterior
                     </button>
@@ -256,7 +245,7 @@ export default function RegistroPage() {
                   <button 
                     type="submit" 
                     disabled={isPending} 
-                    className={`w-full ${step > 1 ? "sm:w-2/3" : "w-full"} rounded-lg py-3 text-xs font-black uppercase tracking-widest text-white shadow-lg transition-all ${
+                    className={`w-full ${step > 1 ? "sm:w-2/3" : "w-full"} h-10 sm:h-9 rounded-lg text-[11px] font-black uppercase tracking-widest text-white shadow-md transition-all ${
                       step === 3 ? "bg-[#d4a843] hover:bg-[#c29a3a]" : "bg-[#1e3a5f] hover:bg-[#162d4a]"
                     }`}
                   >
@@ -269,8 +258,8 @@ export default function RegistroPage() {
                 </div>
               </form>
 
-              <div className="mt-8 text-center border-t border-[#e2e8f0] pt-6">
-                <p className="text-xs text-[#6b7280] font-medium uppercase tracking-wide">
+              <div className="mt-6 text-center border-t border-[#e2e8f0] pt-4">
+                <p className="text-[11px] text-[#6b7280] font-medium uppercase tracking-wide">
                   ¿Ya tienes una cuenta?{" "}
                   <Link href="/login" className="font-black text-[#1e3a5f] hover:text-[#d4a843] transition-colors">
                     Inicia Sesión
@@ -280,6 +269,10 @@ export default function RegistroPage() {
             </div>
           </div>
         </div>
+
+        {/* Línea Divisoria Brillante en el medio de la página */}
+        <div className="hidden lg:flex absolute left-1/2 top-24 bottom-10 w-0.5 -translate-x-1/2 bg-gradient-to-b from-blue-400 via-[#d4a843] to-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.9)] z-20 pointer-events-none"></div>
+
       </div>
     </div>
   )

@@ -32,7 +32,7 @@ export const PageHeader = ({ titulo, subtitulo, mostrarExportar = true, onExport
             className="flex items-center gap-1.5 bg-gradient-to-r from-[#d4a843] to-[#c29636] hover:from-[#c29636] hover:to-[#b0832a] text-[#1a2744] px-3.5 py-1.5 rounded-lg transition-all shadow-sm active:scale-95 group border border-[#d4a843]/30"
           >
             <FileDown className="h-3.5 w-3.5" />
-            <span className="text-[9px] font-black uppercase tracking-widest">Exportar</span>
+            <span className="text-[9px] font-black uppercase tracking-widest">Exportar2</span>
           </button>
         </div>
       )}
