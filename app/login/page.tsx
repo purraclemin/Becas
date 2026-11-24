@@ -63,8 +63,7 @@ export default function LoginPage() {
             />
           </div>
           <div>
-            <span className="block text-sm sm:text-lg font-extrabold tracking-wide text-[#ffffff] font-serif leading-none">UNIMAR</span>
-            <span className="block text-[8px] sm:text-[10px] font-medium uppercase tracking-widest text-[#8a9bbd] mt-0.5">Gestión de Becas</span>
+            <span className="block text-sm sm:text-lg font-extrabold tracking-wide text-[#ffffff] font-serif leading-none">Gestión de Becas</span>
           </div>
         </Link>
 
@@ -87,15 +86,17 @@ export default function LoginPage() {
             <div className="bg-[#1e3a5f] px-8 py-8 text-center relative">
               <div className="absolute top-0 left-0 w-full h-1 bg-[#d4a843]"></div>
               
-              {/* Logotipo institucional de Unimar (Cabecera del Formulario - Ampliado) */}
-              <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-full border-2 border-[#d4a843] bg-[#1e3a5f] shadow-lg relative overflow-hidden p-2.5">
-                <Image 
-                  src="/images/logounimar3.png"
-                  alt="Logo UNIMAR"
-                  width={184}
-                  height={184}
-                  className="object-contain w-full h-full"
-                />
+              {/* Logotipo institucional de Unimar (Cabecera del Formulario - Círculo Centrado) */}
+              <div className="mx-auto mb-4 flex h-24 w-24 shrink-0 items-center justify-center rounded-full border-2 border-[#d4a843] bg-[#1e3a5f] shadow-lg">
+                <div className="flex h-16 w-16 items-center justify-center">
+                  <Image 
+                    src="/images/logounimarmini4.png"
+                    alt="Logo UNIMAR"
+                    width={184}
+                    height={184}
+                    className="h-full w-full object-contain"
+                  />
+                </div>
               </div>
               <h1 className="text-xl font-bold text-[#ffffff] font-serif uppercase tracking-tight">Iniciar Sesión</h1>
               <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-[#8a9bbd]">

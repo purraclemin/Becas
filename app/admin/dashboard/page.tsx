@@ -99,11 +99,11 @@ export default function AdminDashboard() {
           />
 
           <StatCard 
-            label="Rev. Especial" 
+            label="Convocado a entrevista" 
             value={cantRevisionEspecial} 
             icon={AlertCircle} 
             color="bg-purple-600" 
-            onClick={() => irAStatus('Revisión Especial')} 
+            onClick={() => irAStatus('Convocado a entrevista')} 
           />
 
           <StatCard label="Pendientes" value={cantPendientes} icon={Clock} color="bg-[#d4a843]" onClick={() => irAStatus('Pendiente')} />
@@ -135,12 +135,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Modal de Informe Inteligente con Gemini */}
-      <ImprimirConIAModal 
-        isOpen={isAIModalOpen}
-        onClose={() => setIsAIModalOpen(false)}
-        stats={stats}
-        ranking={ranking}
-      />
+      
     </div>
   )
 }

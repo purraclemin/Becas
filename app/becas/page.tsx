@@ -1,4 +1,4 @@
-import { Navbar } from "@/components/navbar/navbar"
+ 
 import { Footer } from "@/components/footer"
 import { ArrowRight, CheckCircle2 } from "lucide-react"
 import Link from "next/link"
@@ -7,10 +7,10 @@ import { BECAS_DATA, BECAS_STATS } from "@/lib/scholarships-data"
 export default function BecasPage() {
   return (
     <main className="min-h-screen">
-      <Navbar />
+    
       
-      {/* Header compacto con padding reducido */}
-      <section className="bg-[#1e3a5f] pt-20 pb-4 md:pt-24 md:pb-5">
+      {/* Header con respiro suficiente respecto al Navbar fijo */}
+      <section className="bg-[#1e3a5f] pt-28 pb-6 sm:pt-32 sm:pb-7 md:pt-36 md:pb-8">
         <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 xl:px-10">
           <h1 className="text-2xl font-extrabold font-serif sm:text-3xl md:text-4xl uppercase tracking-tight drop-shadow-lg text-white">
             Tipos de Becas

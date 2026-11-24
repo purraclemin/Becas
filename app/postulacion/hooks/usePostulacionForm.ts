@@ -9,6 +9,14 @@ import type { PostulacionUser } from "../types"
 export const TABS_ENCUESTA = ["personal", "uni", "familia", "laboral", "ingresos", "hogar", "salud"];
 export const TOTAL_PASOS = 5;
 
+const MODALIDADES_REQUIEREN_18: ReadonlyArray<string> = [
+  "BECA SOCIAL",
+  "BECA A LA EXCELENCIA",
+  "BECA A LA EXCELENCIA ACADÉMICA"
+];
+
+const PROMEDIO_MINIMO_EXCELENCIA = 18;
+
 export interface UsePostulacionFormProps {
   user: PostulacionUser;
   trimestreActual?: string | number;
@@ -152,11 +160,22 @@ export function usePostulacionForm({ user, trimestreActual }: UsePostulacionForm
   }, [router]);
 
   const handleMateriasChange = useCallback((notas: string[]) => {
-    const notasNumericas = notas.map(n => parseInt(n, 10)).filter(n => !isNaN(n) && n >= 1 && n <= 20);
-    setPromedio(notasNumericas.length > 0
+    const notasNumericas = notas
+      .map(n => parseFloat(n.replace(",", ".")))
+      .filter(n => Number.isFinite(n) && n >= 1 && n <= 20);
+
+    const promedioFormateado = notasNumericas.length > 0
       ? (notasNumericas.reduce((a, b) => a + b, 0) / notasNumericas.length).toFixed(2)
-      : "0.00"
-    );
+      : "0.00";
+
+    setPromedio(promedioFormateado);
+
+    // Sincronización preventiva: si el promedio baja de 18.00, limpia Beca Social o Excelencia
+    if (parseFloat(promedioFormateado) < PROMEDIO_MINIMO_EXCELENCIA) {
+      setTipoBecaSeleccionada((prev) =>
+        MODALIDADES_REQUIEREN_18.includes(prev) ? "" : prev
+      );
+    }
   }, []);
 
   // Envío de la Postulación

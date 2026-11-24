@@ -5,6 +5,7 @@ import { ShieldCheck, CheckCircle, Clock, XCircle, AlertCircle, LucideIcon } fro
 
 interface TabItem {
   label: string;
+  value: string;
   icon: LucideIcon;
 }
 
@@ -19,12 +20,13 @@ interface ValidarBecaHeaderProps {
 
 export function ValidarBecaHeader({ currentStatus, onStatusChange }: ValidarBecaHeaderProps) {
   const tabs: TabItem[] = [
-    { label: "Todas", icon: ShieldCheck },
-    { label: "Pendiente", icon: Clock },
-    { label: "En Revisión", icon: AlertCircle },
-    { label: "Aprobada", icon: CheckCircle },
-    { label: "Rechazada", icon: XCircle },
-    { label: "Renovacion", icon: XCircle }
+    { label: "Todas", value: "Todas", icon: ShieldCheck },
+    { label: "Pendiente", value: "Pendiente", icon: Clock },
+    { label: "Convocado", value: "Convocado a Entrevista", icon: Clock },
+    { label: "En Revisión", value: "En Revisión", icon: AlertCircle },
+    { label: "Aprobada", value: "Aprobada", icon: CheckCircle },
+    { label: "Rechazada", value: "Rechazada", icon: XCircle },
+    { label: "Renovacion", value: "Renovacion", icon: XCircle }
   ]
 
   return (
@@ -40,11 +42,13 @@ export function ValidarBecaHeader({ currentStatus, onStatusChange }: ValidarBeca
       {/* 🟢 BOTONERA: Oculta en móvil (`hidden md:flex`), sin scroll en PC, alineada fluidamente a la izquierda */}
       <div className="hidden md:flex flex-wrap items-center gap-1.5 bg-[#172e4d] p-1 rounded-lg border border-white/10">
         {tabs.map((tab) => {
-          const isActive = currentStatus === tab.label || (tab.label === "Todas" && !currentStatus);
+          const isActive =
+            currentStatus?.toLowerCase() === tab.value.toLowerCase() ||
+            (tab.value === "Todas" && !currentStatus);
           return (
             <button
-              key={tab.label}
-              onClick={() => onStatusChange({ status: tab.label })}
+              key={tab.value}
+              onClick={() => onStatusChange({ status: tab.value })}
               className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider transition-all ${
                 isActive 
                   ? "bg-[#d4a843] text-[#1e3a5f] shadow-sm" 

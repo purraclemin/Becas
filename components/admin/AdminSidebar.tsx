@@ -28,7 +28,7 @@ export function AdminSidebar({ onLogout, isCollapsed, onToggleCollapse }: Sideba
     { href: "/admin/actividad", label: "Actividad", icon: Clock },
     { href: "/admin/validarBeca", label: "Validar", icon: ClipboardCheck },
     { href: "/admin/analiticas", label: "Analíticas", icon: BarChart3 },
-    { href: "/admin/estudiantes", label: "Estudiantes", icon: Users },
+    //{ href: "/admin/estudiantes", label: "Estudiantes", icon: Users },
     { href: "/admin/estudio-socioeconomico", label: "Socioecon.", icon: ClipboardList },
     { href: "/admin/reportes", label: "Reportes", icon: ClipboardList },
   ]

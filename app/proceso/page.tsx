@@ -1,4 +1,4 @@
-import { Navbar } from "@/components/navbar/navbar"
+ 
 import { Footer } from "@/components/footer"
 import { 
   UserPlus, 
@@ -12,7 +12,9 @@ import {
   FileSearch,
   Users,
   Gavel,
-  ClipboardList
+  ClipboardList,
+  FileText,
+  Download
 } from "lucide-react"
 import Link from "next/link"
 import {
@@ -121,7 +123,7 @@ const timelineArticulos = [
 export default function ProcesoPage() {
   return (
     <main className="min-h-screen w-full flex flex-col bg-slate-50">
-      <Navbar />
+      
       
       {/* Contenedor del encabezado corregido (Lo Amarillo visible y lo Verde eliminado) */}
       <div className="mt-[73px] sm:mt-[81px] w-full bg-[#1e3a5f] text-white py-8 sm:py-10">
@@ -240,6 +242,24 @@ export default function ProcesoPage() {
                   <p className="mt-1 text-xs leading-relaxed text-[#6b7280]">
                     Según el Artículo 2, el otorgamiento es potestad exclusiva del Consejo Superior.
                   </p>
+                </div>
+
+                <div className="rounded-lg border border-[#e2e8f0] bg-[#ffffff] p-5 shadow-sm">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-[#1e3a5f]" />
+                    <h3 className="text-sm font-bold text-[#1e3a5f] uppercase tracking-tight">Normativa Oficial</h3>
+                  </div>
+                  <p className="mt-2 text-xs leading-relaxed text-[#6b7280]">
+                    Consulta el reglamento completo de becas y ayudas económicas de la Universidad de Margarita.
+                  </p>
+                  <a
+                    href="/formatos/NORMAS-BECAS-Y-AYUDAS.pdf"
+                    download="NORMAS-BECAS-Y-AYUDAS.pdf"
+                    className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-md bg-[#1e3a5f] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white transition-colors hover:bg-[#162b47]"
+                  >
+                    <Download className="h-4 w-4 text-[#d4a843]" />
+                    Descargar Normativa (PDF)
+                  </a>
                 </div>
               </div>
             </div>

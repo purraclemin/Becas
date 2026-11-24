@@ -2,13 +2,21 @@
 
 import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
 import { User, LayoutDashboard, LogOut } from "lucide-react"
 import { logout } from "@/lib/ActionsAuth"
 
+export interface UserActionData {
+  isLoggedIn?: boolean
+  role?: string | null
+  nombre?: string | null
+  carrera?: string | null
+  trimestre?: string | number | null
+  estatus?: string | null
+  status?: string | null
+}
+
 interface UserActionsProps {
-  user: any
+  user: UserActionData | null
   loading: boolean
 }
 
@@ -32,73 +40,88 @@ export function UserActions({ user, loading }: UserActionsProps) {
     try {
       await logout()
       setIsProfileOpen(false)
-      window.location.href = "/" 
+      window.location.href = "/"
     } catch (error) {
       console.error("Error al cerrar sesión:", error)
-      window.location.href = "/" 
+      window.location.href = "/"
     }
   }
 
-  // 🟢 LÓGICA DE ESTILOS DINÁMICOS ACTUALIZADA
-  const getStatusStyles = (status: string) => {
+  // LÓGICA DE ESTILOS DINÁMICOS ACTUALIZADA
+  const getStatusStyles = (status: string | null) => {
     if (!status) return "bg-gray-50 text-gray-400 border-gray-100 font-black"
     const s = status.toLowerCase().trim()
-    
+
     // 1. ESTADOS FIJOS
-    if (s === 'aprobada' || s === 'aprobado') return "bg-emerald-50 text-emerald-700 border-emerald-200 font-black"
-    if (s === 'rechazada' || s === 'rechazado') return "bg-red-50 text-red-700 border-red-200 font-black"
-    
+    if (s === "aprobada" || s === "aprobado")
+      return "bg-emerald-50 text-emerald-700 border-emerald-200 font-black"
+    if (s === "rechazada" || s === "rechazado")
+      return "bg-red-50 text-red-700 border-red-200 font-black"
+
     // 2. NUEVO ESTADO: RENOVACIÓN (VIOLETA)
-    if (s.includes('renovación') || s.includes('renovacion')) {
+    if (s.includes("renovación") || s.includes("renovacion")) {
       return "bg-violet-50 text-violet-700 border-violet-200 font-black animate-pulse shadow-[0_0_8px_rgba(139,92,246,0.3)]"
     }
-    
+
     // 3. ESTADOS TITILANTES
-    if (s.includes('especial')) {
+    if (s.includes("especial")) {
       return "bg-orange-50 text-orange-700 border-orange-200 font-black animate-pulse shadow-[0_0_8px_rgba(249,115,22,0.2)]"
     }
-    if (s.includes('revisión') || s.includes('revision')) {
+    if (s.includes("revisión") || s.includes("revision")) {
       return "bg-blue-50 text-blue-700 border-blue-200 font-black animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.2)]"
     }
-    if (s === 'pendiente') {
+    if (s === "pendiente") {
       return "bg-amber-50 text-amber-700 border-amber-200 font-black animate-pulse shadow-[0_0_8px_rgba(212,168,67,0.2)]"
     }
-    
+
     return "bg-gray-50 text-gray-600 border-gray-100 font-black"
   }
 
-  const userStatus = user?.estatus || user?.status || null;
-  const s = userStatus?.toLowerCase().trim() || '';
-  
-  // Determinamos si debe mostrar el punto titilante (Añadimos renovación)
-  const shouldPulse = s === 'pendiente' || s.includes('revisión') || s.includes('revision') || s.includes('renovacion');
-  
-  // Colores dinámicos para el punto
-  const dotColor = s.includes('renovacion') ? 'bg-violet-600' :
-                   s.includes('especial') ? 'bg-orange-600' : 
-                   (s.includes('revisión') || s.includes('revision')) ? 'bg-blue-600' :
-                   s === 'pendiente' ? 'bg-amber-600' : 'bg-gray-400';
+  const userStatus = user?.estatus || user?.status || null
+  const s = userStatus?.toLowerCase().trim() || ""
 
-  const dotPingColor = s.includes('renovacion') ? 'bg-violet-400' :
-                       s.includes('especial') ? 'bg-orange-400' : 
-                       (s.includes('revisión') || s.includes('revision')) ? 'bg-blue-400' :
-                       s === 'pendiente' ? 'bg-amber-400' : 'bg-gray-300';
+  // Determinamos si debe mostrar el punto titilante (Añadimos renovación)
+  const shouldPulse =
+    s === "pendiente" ||
+    s.includes("revisión") ||
+    s.includes("revision") ||
+    s.includes("renovacion")
+
+  // Colores dinámicos para el punto
+  const dotColor = s.includes("renovacion")
+    ? "bg-violet-600"
+    : s.includes("especial")
+      ? "bg-orange-600"
+      : s.includes("revisión") || s.includes("revision")
+        ? "bg-blue-600"
+        : s === "pendiente"
+          ? "bg-amber-600"
+          : "bg-gray-400"
+
+  const dotPingColor = s.includes("renovacion")
+    ? "bg-violet-400"
+    : s.includes("especial")
+      ? "bg-orange-400"
+      : s.includes("revisión") || s.includes("revision")
+        ? "bg-blue-400"
+        : s === "pendiente"
+          ? "bg-amber-400"
+          : "bg-gray-300"
 
   if (loading || !user || !user.isLoggedIn) return null
 
   return (
     <div ref={menuRef} className="relative">
-      <div className="flex items-center gap-2 md:gap-3 animate-in fade-in duration-300">
-        
+      <div className="flex items-center gap-2 md:gap-3">
         {/* Información visible de fondo */}
         <div className="flex flex-col items-end text-right select-none border-y border-black py-0.5 px-1 md:px-1.5 min-w-[95px] md:min-w-[125px]">
           <p className="text-[6px] md:text-[8px] font-bold text-[#d4a843] uppercase tracking-[0.05em] leading-tight">
-             {user.role === 'admin' ? 'Administrador' : 'Estudiante'}
+            {user.role === "admin" ? "Administrador" : "Estudiante"}
           </p>
           <p className="text-[10px] md:text-[11px] font-black text-[#1e3a5f] uppercase leading-none my-0.5 truncate max-w-[85px] md:max-w-none">
             {user.nombre}
           </p>
-          {user.role === 'estudiante' && (
+          {user.role === "estudiante" && (
             <>
               <p className="text-[6px] md:text-[8px] text-gray-500 font-bold uppercase leading-tight truncate max-w-[85px] md:max-w-none">
                 {user.carrera}
@@ -107,15 +130,21 @@ export function UserActions({ user, loading }: UserActionsProps) {
                 <span className="text-[6px] md:text-[7px] text-[#1e3a5f] font-black uppercase bg-gray-100 px-1 py-0.5 rounded leading-none">
                   {user.trimestre || "0"}° Trim.
                 </span>
-                
+
                 <div className="flex items-center gap-1">
                   {shouldPulse && (
                     <span className="relative flex h-1.5 w-1.5">
-                      <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${dotPingColor} opacity-75`}></span>
-                      <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${dotColor}`}></span>
+                      <span
+                        className={`animate-ping absolute inline-flex h-full w-full rounded-full ${dotPingColor} opacity-75`}
+                      ></span>
+                      <span
+                        className={`relative inline-flex rounded-full h-1.5 w-1.5 ${dotColor}`}
+                      ></span>
                     </span>
                   )}
-                  <span className={`text-[6px] md:text-[7px] uppercase px-1 py-0.5 rounded border ${getStatusStyles(userStatus)}`}>
+                  <span
+                    className={`text-[6px] md:text-[7px] uppercase px-1 py-0.5 rounded border ${getStatusStyles(userStatus)}`}
+                  >
                     {userStatus || "Pendiente"}
                   </span>
                 </div>
@@ -125,9 +154,10 @@ export function UserActions({ user, loading }: UserActionsProps) {
         </div>
 
         {/* Botón circular de perfil */}
-        <button 
+        <button
+          type="button"
           onClick={() => setIsProfileOpen(!isProfileOpen)}
-          className="flex items-center justify-center h-8 w-8 md:h-9 md:w-9 rounded-full bg-[#1e3a5f] text-[#d4a843] border border-[#d4a843]/30 hover:border-[#d4a843] transition-all shadow-md active:scale-95 shrink-0"
+          className="flex items-center justify-center h-8 w-8 md:h-9 md:w-9 rounded-full bg-[#1e3a5f] text-[#d4a843] border border-[#d4a843]/30 hover:border-[#d4a843] transition-colors shadow-md active:scale-95 shrink-0"
         >
           <User className="h-4.5 w-4.5 md:h-5 md:w-5" />
         </button>
@@ -137,12 +167,12 @@ export function UserActions({ user, loading }: UserActionsProps) {
           <div className="absolute right-10 md:right-12 -top-1 w-56 md:w-64 bg-white/95 backdrop-blur-md rounded-xl shadow-[0_15px_50px_-10px_rgba(0,0,0,0.25)] border border-[#e2e8f0] overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200">
             <div className="px-4 py-3 bg-[#f8fafb]/80 border-b border-[#e2e8f0] text-center">
               <p className="text-[9px] font-black text-[#d4a843] uppercase tracking-[0.1em] mb-0.5">
-                 {user.role === 'admin' ? 'Administrador' : 'Estudiante'}
+                {user.role === "admin" ? "Administrador" : "Estudiante"}
               </p>
               <p className="text-xs font-black text-[#1e3a5f] uppercase leading-tight truncate">
                 {user.nombre}
               </p>
-              {user.role === 'estudiante' && (
+              {user.role === "estudiante" && (
                 <div className="mt-1.5 space-y-1">
                   <p className="text-[10px] text-gray-500 font-bold uppercase truncate px-1">
                     {user.carrera}
@@ -151,7 +181,9 @@ export function UserActions({ user, loading }: UserActionsProps) {
                     <span className="text-[9px] text-[#1e3a5f] font-bold uppercase bg-white border border-[#e2e8f0] px-2 py-0.5 rounded shadow-xs">
                       {user.trimestre || "0"}° Trim.
                     </span>
-                    <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded border ${getStatusStyles(userStatus)}`}>
+                    <span
+                      className={`text-[9px] font-black uppercase px-2 py-0.5 rounded border ${getStatusStyles(userStatus)}`}
+                    >
                       {userStatus || "Pendiente"}
                     </span>
                   </div>
@@ -160,25 +192,27 @@ export function UserActions({ user, loading }: UserActionsProps) {
             </div>
 
             <div className="p-2 space-y-1">
-              <Link 
-                href={user.role === 'admin' ? '/admin/dashboard' : '/postulacion'} 
+              <Link
+                href={user.role === "admin" ? "/admin/dashboard" : "/postulacion"}
                 className="flex items-center gap-3 px-3.5 py-2 text-xs text-[#1e3a5f] hover:bg-[#f1f5f9] rounded-lg font-bold transition-colors group"
                 onClick={() => setIsProfileOpen(false)}
               >
-                <LayoutDashboard className="h-4 w-4 text-[#d4a843] group-hover:scale-110 transition-transform" /> 
-                {user.role === 'estudiante' ? 'Solicitud' : 'Dashboard'}
+                <LayoutDashboard className="h-4 w-4 text-[#d4a843] group-hover:scale-110 transition-transform" />
+                {user.role === "estudiante" ? "Solicitud" : "Dashboard"}
               </Link>
-              <Link 
-                href="/perfil" 
+              <Link
+                href="/perfil"
                 className="flex items-center gap-3 px-3.5 py-2 text-xs text-[#1e3a5f] hover:bg-[#f1f5f9] rounded-lg font-bold transition-colors group"
                 onClick={() => setIsProfileOpen(false)}
               >
-                <User className="h-4 w-4 text-[#d4a843] group-hover:scale-110 transition-transform" /> Mi Perfil
+                <User className="h-4 w-4 text-[#d4a843] group-hover:scale-110 transition-transform" />{" "}
+                Mi Perfil
               </Link>
             </div>
 
             <div className="p-2 pt-1">
-              <button 
+              <button
+                type="button"
                 onClick={handleLogout}
                 className="flex w-full items-center gap-3 px-3.5 py-2 text-xs text-red-600 hover:bg-red-50 rounded-lg font-black uppercase transition-colors border-t border-gray-100"
               >

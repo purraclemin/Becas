@@ -3,11 +3,25 @@
 import { BarChart3, ArrowRight } from "lucide-react"
 import { useRouter } from "next/navigation"
 
-export function HealthStatus({ porEstatus, total }: { porEstatus: any[], total: number }) {
+export interface EstatusOperativoItem {
+  estatus: string;
+  total: number;
+}
+
+interface HealthStatusProps {
+  porEstatus: EstatusOperativoItem[];
+  total: number;
+}
+
+export function HealthStatus({ porEstatus, total }: HealthStatusProps) {
   const router = useRouter()
 
   const filtrarPorEstatus = (estatus: string) => {
-    router.push(`/admin/validarBeca?filter=${encodeURIComponent(estatus)}`)
+    if (estatus === 'Todas') {
+      router.push('/admin/validarBeca')
+    } else {
+      router.push(`/admin/validarBeca?status=${encodeURIComponent(estatus)}`)
+    }
   }
 
   return (

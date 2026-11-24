@@ -7,6 +7,9 @@ import { BookOpen, AlertCircle, Info } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { MateriaGuardada, MateriaPensum, PostulacionUser } from "../types"
 
+const REGEX_NOTA_EN_EDICION = /^\d{1,2}(\.\d{0,2})?$/;
+const REGEX_NOTA_COMPLETA = /^\d{1,2}(\.\d{1,2})?$/;
+
 export function StepMaterias({
   disabled,
   materiasDelPensum = [],
@@ -50,8 +53,10 @@ export function StepMaterias({
           (codigoMateria !== undefined && mg.codigo === codigoMateria)
         );
         if (guardada && guardada.nota !== undefined && guardada.nota !== "") {
-          const entero = Math.trunc(Number(guardada.nota));
-          return !isNaN(entero) && entero >= 1 && entero <= 20 ? String(entero) : "";
+          const num = parseFloat(String(guardada.nota).replace(",", "."));
+          if (Number.isFinite(num) && num >= 1 && num <= 20) {
+            return String(Number(num.toFixed(2)));
+          }
         }
         return "";
       });
@@ -69,8 +74,8 @@ export function StepMaterias({
 
     notas.forEach((nota, index) => {
       if (nota !== "") {
-        const num = parseInt(nota, 10);
-        if (isNaN(num) || num < 1 || num > 20) {
+        const num = parseFloat(nota);
+        if (!REGEX_NOTA_COMPLETA.test(nota) || !Number.isFinite(num) || num < 1 || num > 20) {
           newErrores.push(index);
         }
       }
@@ -89,17 +94,31 @@ export function StepMaterias({
     }
   }, [notas, materiasDelPensum.length]);
 
-  // Sanitización estricta: solo números enteros positivos entre 1 y 20
+  // Sanitización estricta: números positivos de 1 a 20 con hasta 2 decimales (sin negativos ni letras)
   const handleNotaChange = (index: number, rawValor: string) => {
-    const soloDigitos = rawValor.replace(/\D/g, "").slice(0, 2);
+    const normalizado = rawValor.replace(",", ".").replace(/[^0-9.]/g, "");
 
-    if (soloDigitos !== "") {
-      const num = parseInt(soloDigitos, 10);
-      if (num > 20) return;
+    if (normalizado !== "") {
+      if (!REGEX_NOTA_EN_EDICION.test(normalizado)) return;
+      const num = parseFloat(normalizado);
+      if (!Number.isFinite(num) || num > 20) return;
     }
 
     const nuevasNotas = [...notas];
-    nuevasNotas[index] = soloDigitos;
+    nuevasNotas[index] = normalizado;
+
+    setNotas(nuevasNotas);
+    if (onChangeNotasRef.current) onChangeNotasRef.current(nuevasNotas);
+  };
+
+  // Limpia punto decimal colgante al perder foco (ej. "18." -> "18")
+  const handleNotaBlur = (index: number) => {
+    const actual = notas[index];
+    if (!actual || !actual.endsWith(".")) return;
+
+    const limpia = actual.slice(0, -1);
+    const nuevasNotas = [...notas];
+    nuevasNotas[index] = limpia;
 
     setNotas(nuevasNotas);
     if (onChangeNotasRef.current) onChangeNotasRef.current(nuevasNotas);
@@ -136,14 +155,14 @@ export function StepMaterias({
           </Label>
           <div className="flex items-center gap-1.5 text-[7px] font-bold text-[#1e3a5f] bg-[#d4a843]/10 px-2 py-0.5 rounded-full border border-[#d4a843]/20 leading-none">
             <Info className="h-2 w-2" />
-            Solo enteros entre 01 y 20
+            Valores de 01 a 20 (hasta 2 decimales)
           </div>
         </div>
 
         {errores.length > 0 && (
           <div className="bg-red-50 text-red-600 p-2 rounded-lg border border-red-200 flex items-center gap-2 text-[9px] font-bold mb-2 shrink-0 leading-none">
             <AlertCircle className="h-3 w-3 shrink-0" />
-            Existen materias con nota inválida ("0"). Ingrese enteros del 1 al 20.
+            Existen materias con nota inválida. Ingrese valores positivos entre 1 y 20 (máx. 2 decimales).
           </div>
         )}
 
@@ -180,15 +199,16 @@ export function StepMaterias({
                       id={`nota-${index}`}
                       name="materias_notas[]"
                       type="text"
-                      inputMode="numeric"
-                      maxLength={2}
-                      placeholder="00"
+                      inputMode="decimal"
+                      maxLength={5}
+                      placeholder="00.00"
                       required
                       disabled={disabled}
                       value={notas[index] || ""}
                       onChange={(e) => handleNotaChange(index, e.target.value)}
+                      onBlur={() => handleNotaBlur(index)}
                       className={cn(
-                        "w-14 h-12 lg:h-9 text-center font-black text-sm lg:text-xs rounded-lg transition-all",
+                        "w-16 h-12 lg:h-9 text-center font-black text-sm lg:text-xs rounded-lg transition-all",
                         tieneError
                           ? "border-red-500 text-red-600 focus:border-red-600 bg-red-100"
                           : "border-slate-200 bg-slate-50 focus:bg-white focus:border-[#1e3a5f] text-[#1e3a5f]"

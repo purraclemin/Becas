@@ -202,7 +202,7 @@ export function StudentIdentity({
               {mostrarResultado && (
                 <div className="flex items-center gap-2">
 
-                  {/* 1. Botón EXPORTAR2 */}
+                  {/* 1. Botón EXPORTAR */}
                   <button 
                     type="button"
                     onClick={ejecutarAccionExportar}
@@ -210,7 +210,7 @@ export function StudentIdentity({
                     title="Exportar documento o reporte"
                   >
                     <FileDown className="h-3.5 w-3.5 group-hover:scale-110 transition-transform" />
-                    <span className="text-[9px] font-black uppercase tracking-widest">Exportar2</span>
+                    <span className="text-[9px] font-black uppercase tracking-widest">Exportar</span>
                   </button>
 
                   {/* 2. Botón EDITAR */}

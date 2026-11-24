@@ -35,7 +35,7 @@ export function ProfileStatus({ estatus, materias, motivoRechazo }: { estatus: s
 
   // Mensaje inteligente para cuando está rechazada
   const mensajeRechazo = (tieneReprobadas || s.includes('materia'))
-    ? "Su Solicitud fue rechazada porque tiene Materias Reprobadas."
+    ? "Solicitud rechazada: se detectó al menos una unidad curricular reprobada (calificación inferior a 10 puntos), requisito indispensable para optar al beneficio."
     : "Tu solicitud ha sido declinada. Dirígete a Bienestar Estudiantil para conocer los detalles.";
 
   const config = {

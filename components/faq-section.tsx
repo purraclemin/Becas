@@ -43,7 +43,7 @@ export function FaqSection() {
   }, [])
 
   return (
-    <section className="bg-[#f0f4f8] py-12 w-full">
+    <section id="faq" className="scroll-mt-24 sm:scroll-mt-28 bg-[#f0f4f8] py-12 w-full">
       <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 xl:px-10">
         <div className="grid gap-10 lg:grid-cols-3">
           <div className="lg:col-span-2">

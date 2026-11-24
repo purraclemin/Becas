@@ -1,7 +1,6 @@
-import { Navbar } from "@/components/navbar/navbar"
 import { PageHeader } from "@/components/page-header"
 import { Footer } from "@/components/footer"
-import { CheckCircle2, AlertCircle, FileText, Upload, Download, ArrowRight } from "lucide-react"
+import { CheckCircle2, AlertCircle, FileText, Upload, ArrowRight } from "lucide-react"
 import Link from "next/link"
 
 const requisitosGenerales = [
@@ -15,57 +14,51 @@ const requisitosGenerales = [
 
 const documentos = [
   {
-    title: "Planilla de Solicitud",
-    description: "Descargada de la página web oficial para completar los datos requeridos.",
+    title: "Planilla de Solicitud Digital",
+    description: "Completada directamente en línea al realizar la solicitud digital dentro de la plataforma del Sistema de Gestión de Becas.",
     required: true,
   },
   {
     title: "Cédula de Identidad",
-    description: "Fotocopia ampliada del documento de identidad vigente.",
+    description: "Adjunto digital legible de la cédula de identidad en la solicitud digital.",
+    required: true,
+  },
+  {
+    title: "Foto Tamaño Carné / Carnet",
+    description: "Adjunto digital de una (1) fotografía tamaño carné o carnet según la modalidad solicitada.",
     required: true,
   },
   {
     title: "Constancia de Notas",
-    description: "Emitida por el Departamento de Control de Estudios para confirmar índices.",
-    required: true,
-  },
-  {
-    title: "Foto tipo Carnet",
-    required: true,
-  },
-  {
-    title: "Informe Médico Especializado",
-    description: "Requerido solo para Beca por Discapacidad, junto al carnet respectivo.",
+    description: "Adjunto digital emitida por el Departamento de Control de Estudios para aspirantes a Beca Aprendizaje.",
     required: false,
   },
   {
-    title: "Estudio Socioeconómico",
-    description: "Evaluación aplicada por el Departamento de Bienestar Estudiantil mediante entrevista.",
-    required: true,
-  },
-  {
-    title: "Notas Certificadas de Bachillerato",
-    description: "Requerido para aspirantes a Beca Social Aprendizaje (7mo a 5to año).",
+    title: "Notas Certificadas",
+    description: "Adjunto digital del séptimo, octavo y noveno grados y primer año de Educación Media General, requeridas para Beca Social Aprendizaje y Beca por Discapacidad.",
     required: false,
   },
   {
-    title: "Acta Compromiso",
-    description: "Documento firmado por el becario y el Rectorado tras la aprobación del beneficio.",
+    title: "Informe Médico y Carnet de Discapacidad",
+    description: "Adjunto digital del informe médico por discapacidad emitido por un especialista junto con el carnet de discapacidad, para Beca por Discapacidad.",
+    required: false,
+  },
+  {
+    title: "Visita Social y Entrevista Socioeconómica",
+    description: "Aplicada por el Departamento de Bienestar Estudiantil (visita domiciliaria y entrevista) para comprobar la situación económica.",
     required: true,
   },
-]
-
-const formatos = [
-  { name: "Planilla de Solicitud de Beca", format: "PDF" },
-  { name: "Formato de Estudio Socioeconómico", format: "PDF" },
-  { name: "Acta Compromiso de Renovación", format: "PDF" },
-  { name: "Instrumento de Evaluación de Rendimiento", format: "PDF" },
+  {
+    title: "Acta Compromiso Renovación",
+    description: "Adjunto digital del acta suscrita por el estudiante beneficiario y el Rector o Rectora de la Universidad de Margarita para seguimiento y renovación.",
+    required: false,
+  },
 ]
 
 export default function RequisitosPage() {
   return (
     <main className="min-h-screen w-full flex flex-col bg-slate-50">
-      <Navbar />
+      
       
       {/* Contenedor del PageHeader con franja azul institucional y margen superior para evitar solapamiento */}
       <div className="mt-[73px] sm:mt-[81px] w-full bg-[#1e3a5f] text-white py-8 sm:py-10">
@@ -74,7 +67,7 @@ export default function RequisitosPage() {
             Requisitos Normativos
           </h1>
           <p className="mt-2 text-xs sm:text-sm md:text-base font-medium text-[#d1d9e6] max-w-2xl leading-relaxed">
-            Consulte los criterios de elegibilidad, documentación obligatoria y formatos oficiales establecidos por la Universidad de Margarita.
+            Consulte los criterios de elegibilidad, el llenado de la planilla en línea y los recaudos digitales obligatorios establecidos por la Universidad de Margarita.
           </p>
         </div>
       </div>
@@ -89,7 +82,7 @@ export default function RequisitosPage() {
               </div>
               <p className="mb-6 text-sm leading-relaxed text-[#6b7280]">
                 De acuerdo con el Reglamento de Becas vigente, todo estudiante debe cumplir con los requisitos 
-                de ingreso y permanencia. El otorgamiento es potestad exclusiva del Consejo Superior.
+                de ingreso y permanencia, completando la planilla en línea y adjuntando sus recaudos digitales en la solicitud. El otorgamiento es potestad exclusiva del Consejo Superior.
               </p>
               <ul className="flex flex-col gap-3">
                 {requisitosGenerales.map((req) => (
@@ -134,7 +127,7 @@ export default function RequisitosPage() {
       <section className="bg-[#f0f4f8] py-12 w-full">
         <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 xl:px-10">
           <div className="mb-8 border-b-2 border-[#1e3a5f] pb-2">
-            <h2 className="text-xl font-bold text-[#1e3a5f] font-serif">Documentación Obligatoria</h2>
+            <h2 className="text-xl font-bold text-[#1e3a5f] font-serif">Planilla en Línea y Recaudos Digitales</h2>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             {documentos.map((doc) => (
@@ -160,42 +153,16 @@ export default function RequisitosPage() {
         </div>
       </section>
 
-      {/* Descargar formatos */}
-      <section className="bg-[#ffffff] py-12 w-full">
-        <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 xl:px-10">
-          <div className="mb-8 border-b-2 border-[#d4a843] pb-2">
-            <h2 className="text-xl font-bold text-[#1e3a5f] font-serif">Formatos Oficiales</h2>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {formatos.map((formato) => (
-              <button
-                key={formato.name}
-                type="button"
-                className="group flex items-center gap-3 rounded-lg border border-[#e2e8f0] bg-[#f8fafb] p-4 text-left transition-all hover:border-[#1e3a5f]/30 hover:shadow-md"
-              >
-                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-[#1e3a5f] text-[#d4a843] transition-transform group-hover:scale-110">
-                  <Download className="h-5 w-5" />
-                </div>
-                <div>
-                  <h3 className="text-xs font-bold text-[#1e3a5f]">{formato.name}</h3>
-                  <span className="text-[10px] text-[#6b7280]">{formato.format}</span>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* CTA */}
       <section className="bg-[#1e3a5f] py-10 w-full">
         <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 xl:px-10 text-center">
           <div className="mx-auto max-w-3xl">
             <Upload className="mx-auto h-10 w-10 text-[#d4a843]" />
             <h2 className="mt-4 text-xl font-bold text-[#ffffff] font-serif md:text-2xl">
-              ¿Listo para consignar tus recaudos?
+              ¿Listo para llenar tu planilla en línea y adjuntar tus recaudos digitales?
             </h2>
             <p className="mt-3 text-sm text-[#8a9bbd]">
-              La recepción de documentos se realiza en el Departamento de Bienestar Estudiantil según el cronograma publicado.
+              Completa tu planilla de manera online y adjunta todos tus recaudos digitales directamente en la solicitud digital dentro del sistema.
             </p>
             <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link

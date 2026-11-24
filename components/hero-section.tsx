@@ -1,41 +1,82 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import Image from "next/image"
 import { ChevronLeft, ChevronRight, FileText, User, LogIn } from "lucide-react"
 import Link from "next/link"
-import { getSession } from "@/lib/ActionsSession" // Ajusta la ruta según tu estructura
+import { getSession } from "@/lib/ActionsSession"
 
-const slides = [
+interface HeroSlide {
+  image: string
+  title: string
+  subtitle: string
+}
+
+interface HeroSectionProps {
+  initialIsLoggedIn?: boolean
+}
+
+type AuthState = "loading" | "authenticated" | "unauthenticated"
+
+const slides: HeroSlide[] = [
   {
     image: "/images/ourinstitution.jpg",
     title: "Gestión de Becas y Ayudas",
-    subtitle: "Procesamiento y seguimiento de subvenciones estudiantiles de la Universidad de Margarita conforme a la normativa vigente.",
+    subtitle:
+      "Procesamiento y seguimiento de subvenciones estudiantiles de la Universidad de Margarita conforme a la normativa vigente.",
   },
   {
-    image: "/images/ourinstitution.jpg",
+    image: "/images/Camino2.jpg",
     title: "Modalidades de Beneficio",
-    subtitle: "Programas de Aprendizaje, Social Aprendizaje, Discapacidad y Excelencia Académica para estudiantes regulares.",
+    subtitle:
+      "Programas de Aprendizaje, Social Aprendizaje, Discapacidad y Excelencia Académica para estudiantes regulares.",
   },
   {
-    image: "/images/ourinstitution.jpg",
+    image: "/images/Camino3.jpg",
     title: "Compromiso con la Excelencia",
-    subtitle: "Apoyamos el desarrollo de destrezas y habilidades que complementen el aprendizaje académico de nuestros becarios.",
+    subtitle:
+      "Apoyamos el desarrollo de destrezas y habilidades que complementen el aprendizaje académico de nuestros becarios.",
   },
 ]
 
-export function HeroSection() {
+let cachedIsLoggedIn: boolean | null = null
+
+export function HeroSection({ initialIsLoggedIn }: HeroSectionProps = {}) {
   const [current, setCurrent] = useState(0)
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [mounted, setMounted] = useState(false)
+  const [authState, setAuthState] = useState<AuthState>(() => {
+    if (typeof initialIsLoggedIn === "boolean") {
+      return initialIsLoggedIn ? "authenticated" : "unauthenticated"
+    }
+    if (cachedIsLoggedIn !== null) {
+      return cachedIsLoggedIn ? "authenticated" : "unauthenticated"
+    }
+    return "loading"
+  })
 
   useEffect(() => {
-    setMounted(true)
-    // Verificación con la Server Action
-    getSession().then((session) => {
-      if (session?.isLoggedIn) {
-        setIsLoggedIn(true)
+    let isMounted = true
+
+    async function verifySession() {
+      try {
+        const session = await getSession()
+        if (!isMounted) return
+
+        const loggedIn = Boolean(session?.isLoggedIn)
+        cachedIsLoggedIn = loggedIn
+        setAuthState(loggedIn ? "authenticated" : "unauthenticated")
+      } catch {
+        if (!isMounted) return
+        if (cachedIsLoggedIn === null) {
+          setAuthState("unauthenticated")
+        }
       }
-    })
+    }
+
+    verifySession()
+
+    return () => {
+      isMounted = false
+    }
   }, [])
 
   const next = useCallback(() => {
@@ -56,12 +97,17 @@ export function HeroSection() {
       {slides.map((slide, index) => (
         <div
           key={slide.title}
-          className={`absolute inset-0 transition-opacity duration-700 ${index === current ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+          className={`absolute inset-0 transition-opacity duration-700 ${
+            index === current ? "opacity-100" : "opacity-0 pointer-events-none"
+          }`}
         >
-          <img
+          <Image
             src={slide.image || "/placeholder.svg"}
             alt={slide.title}
-            className="h-full w-full object-cover"
+            fill
+            sizes="100vw"
+            priority={index === 0}
+            className="object-cover"
           />
           <div className="absolute inset-0 bg-[#0a1628]/70" />
           <div className="absolute inset-0 flex items-center justify-center w-full px-4 sm:px-6">
@@ -72,7 +118,7 @@ export function HeroSection() {
               <p className="mx-auto mt-2 max-w-2xl text-xs text-[#d1d9e6] sm:text-sm md:text-base leading-relaxed text-pretty font-medium mb-4">
                 {slide.subtitle}
               </p>
-              
+
               {/* Action-Driven CTAs */}
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pointer-events-auto">
                 <Link
@@ -83,24 +129,27 @@ export function HeroSection() {
                   Iniciar Postulación
                 </Link>
 
-                {mounted && (
-                  isLoggedIn ? (
-                    <Link
-                      href="/perfil"
-                      className="group flex items-center justify-center gap-2 rounded-full border-2 border-[#ffffff]/30 bg-[#1e3a5f]/40 px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-[#ffffff] backdrop-blur-sm transition-all hover:border-[#ffffff]/60 hover:bg-[#1e3a5f]/60 hover:scale-105 active:scale-95 w-full sm:w-auto"
-                    >
-                      <User className="h-4 w-4" />
-                      Consultar Perfil
-                    </Link>
-                  ) : (
-                    <Link
-                      href="/login"
-                      className="group flex items-center justify-center gap-2 rounded-full border-2 border-[#ffffff]/30 bg-[#1e3a5f]/40 px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-[#ffffff] backdrop-blur-sm transition-all hover:border-[#ffffff]/60 hover:bg-[#1e3a5f]/60 hover:scale-105 active:scale-95 w-full sm:w-auto"
-                    >
-                      <LogIn className="h-4 w-4" />
-                      Iniciar Sesión
-                    </Link>
-                  )
+                {authState === "loading" ? (
+                  <div
+                    aria-hidden="true"
+                    className="h-10 w-full sm:w-[190px] rounded-full border-2 border-transparent"
+                  />
+                ) : authState === "authenticated" ? (
+                  <Link
+                    href="/perfil"
+                    className="group flex items-center justify-center gap-2 rounded-full border-2 border-[#ffffff]/30 bg-[#1e3a5f]/40 px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-[#ffffff] backdrop-blur-sm transition-all hover:border-[#ffffff]/60 hover:bg-[#1e3a5f]/60 hover:scale-105 active:scale-95 w-full sm:w-auto"
+                  >
+                    <User className="h-4 w-4" />
+                    Consultar Perfil
+                  </Link>
+                ) : (
+                  <Link
+                    href="/login"
+                    className="group flex items-center justify-center gap-2 rounded-full border-2 border-[#ffffff]/30 bg-[#1e3a5f]/40 px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-[#ffffff] backdrop-blur-sm transition-all hover:border-[#ffffff]/60 hover:bg-[#1e3a5f]/60 hover:scale-105 active:scale-95 w-full sm:w-auto"
+                  >
+                    <LogIn className="h-4 w-4" />
+                    Iniciar Sesión
+                  </Link>
                 )}
               </div>
             </div>
@@ -134,7 +183,11 @@ export function HeroSection() {
             type="button"
             onClick={() => setCurrent(index)}
             aria-label={`Ir al slide ${index + 1}`}
-            className={`h-2 rounded-full transition-all ${index === current ? "w-6 bg-[#d4a843]" : "w-2 bg-[#ffffff]/50 hover:bg-[#ffffff]/80"}`}
+            className={`h-2 rounded-full transition-all ${
+              index === current
+                ? "w-6 bg-[#d4a843]"
+                : "w-2 bg-[#ffffff]/50 hover:bg-[#ffffff]/80"
+            }`}
           />
         ))}
       </div>

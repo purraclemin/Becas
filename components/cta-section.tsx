@@ -47,7 +47,7 @@ export function CtaSection() {
                 download="NORMAS-BECAS-Y-AYUDAS.pdf"
                 className="inline-flex items-center justify-center gap-2 rounded-lg border border-[#1e3a5f] bg-transparent px-4 py-2 text-xs font-bold text-[#1e3a5f] transition-all hover:bg-[#1e3a5f] hover:text-white"
               >
-                Ver Reglamentos
+                Ver Reglamento
               </a>
             </div>
           </div>

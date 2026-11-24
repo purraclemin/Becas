@@ -63,7 +63,7 @@ export default function ReporteSolicitudesFechaPage() {
 
   return (
     <div className="space-y-4 print:space-y-0 print:overflow-visible print:h-auto print:min-h-0">
-      {/* CABECERA CON UN SOLO BOTÓN EXPORTAR2 (Se oculta al imprimir) */}
+      {/* CABECERA CON UN SOLO BOTÓN EXPORTAR (Se oculta al imprimir) */}
       <div className="print:hidden">
         <PageHeader
           titulo="Solicitudes por Fecha"

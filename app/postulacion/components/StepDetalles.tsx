@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useMemo, useState } from "react"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -21,6 +21,12 @@ const MODALIDADES_BECA = [
   "Ayuda Económica por Actividades Extracurriculares"
 ] as const;
 
+const MODALIDADES_REQUIEREN_18: ReadonlyArray<string> = [
+  "BECA SOCIAL",
+  "BECA A LA EXCELENCIA"
+];
+
+const PROMEDIO_MINIMO_EXCELENCIA = 18;
 const MIN_CARACTERES_MOTIVO = 20;
 const MIN_LETRAS_MOTIVO = 10;
 const MAX_CARACTERES_MOTIVO = 1000;
@@ -51,14 +57,31 @@ export function StepDetalles({
 
   const parsedAvg = parseFloat(promedio);
   const avg = Number.isFinite(parsedAvg) ? parsedAvg : 0;
+  const cumplePromedio18 = avg >= PROMEDIO_MINIMO_EXCELENCIA;
 
   const trimestreEstudiante = user?.semestre !== undefined ? String(user.semestre) : "";
-  const tipoBecaActual = tipoBecaSeleccionada || user?.tipo_beca || "";
+  const tipoBecaActual =
+    tipoBecaSeleccionada !== undefined ? tipoBecaSeleccionada : (user?.tipo_beca || "");
+
+  // Filtra dinámicamente Beca Social y Beca a la Excelencia según el umbral >= 18.00
+  const modalidadesDisponibles = useMemo(() => {
+    if (cumplePromedio18) return [...MODALIDADES_BECA];
+    return MODALIDADES_BECA.filter(
+      (modalidad) => !MODALIDADES_REQUIEREN_18.includes(modalidad)
+    );
+  }, [cumplePromedio18]);
+
+  // Limpia automáticamente la selección si el promedio baja de 18.00 tras elegir una beca restringida
+  useEffect(() => {
+    if (!cumplePromedio18 && MODALIDADES_REQUIEREN_18.includes(tipoBecaActual)) {
+      onTipoBecaChange?.("");
+    }
+  }, [cumplePromedio18, tipoBecaActual, onTipoBecaChange]);
 
   const motivoLimpio = motivo.trim();
   const cantidadLetrasMotivo = motivoLimpio.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ]/g, "").length;
 
-  const isTipoValid = (MODALIDADES_BECA as readonly string[]).includes(tipoBecaActual);
+  const isTipoValid = (modalidadesDisponibles as readonly string[]).includes(tipoBecaActual);
   const isMotivoValid =
     motivoLimpio.length >= MIN_CARACTERES_MOTIVO &&
     cantidadLetrasMotivo >= MIN_LETRAS_MOTIVO;
@@ -97,7 +120,7 @@ export function StepDetalles({
       <input type="hidden" name="email_institucional" value={user?.email || user?.email_institucional || ""} />
       <input type="hidden" name="promedio" value={promedio} />
       <input type="hidden" name="trimestre_seleccionado" value={trimestreEstudiante} />
-      <input type="hidden" name="tipo_beca" value={tipoBecaActual} />
+      <input type="hidden" name="tipo_beca" value={isTipoValid ? tipoBecaActual : ""} />
 
       {/* Encabezado e Indicador de Promedio */}
       <div className="bg-[#f8fafc] p-2.5 lg:p-2 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shrink-0">
@@ -146,13 +169,15 @@ export function StepDetalles({
               <SelectValue placeholder="Seleccione el tipo de beneficio..." />
             </SelectTrigger>
             <SelectContent className="rounded-xl border-slate-200 shadow-xl max-h-[40vh]">
-              {MODALIDADES_BECA.map((option) => (
+              {modalidadesDisponibles.map((option) => (
                 <SelectItem key={option} value={option} className="text-sm lg:text-xs font-bold uppercase py-2.5 lg:py-1.5">
                   {option}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+
+        
         </div>
 
         {/* Exposición de Motivos */}

@@ -1,20 +1,42 @@
-import { Navbar } from "@/components/navbar/navbar"
 import { HeroSection } from "@/components/hero-section"
 import { ScholarshipsSection } from "@/components/scholarships-section"
 import { FaqSection } from "@/components/faq-section"
 import { Footer } from "@/components/footer"
 import { CtaSection } from "@/components/cta-section"
-import { GraduationCap, FileText, ClipboardCheck, Headphones, ArrowRight } from "lucide-react"
+import {
+  GraduationCap,
+  FileText,
+  ClipboardCheck,
+  Headphones,
+  ArrowRight,
+  type LucideIcon,
+} from "lucide-react"
 import Link from "next/link"
 import { getSession } from "@/lib/ActionsSession"
 import { getStudentAcademicStatus } from "@/lib/ActionsStudent"
 import { AlertaConvocatoria } from "@/app/perfil/components/AlertaConvocatoria" // 🟢 Importación de la alerta flotante
 
 // 🟢 CRÍTICO: Fuerza a Next.js a no cachear esta página para ver cambios de estatus al instante
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+export const dynamic = "force-dynamic"
+export const revalidate = 0
 
-const quickNav = [
+type StudentIdParam = Parameters<typeof getStudentAcademicStatus>[0]
+
+interface HomeSession {
+  isLoggedIn?: boolean
+  role?: string
+  id?: StudentIdParam
+}
+
+interface QuickNavItem {
+  icon: LucideIcon
+  title: string
+  description: string
+  href: string
+  color: string
+}
+
+const quickNav: QuickNavItem[] = [
   {
     icon: GraduationCap,
     title: "Becas",
@@ -47,26 +69,34 @@ const quickNav = [
 
 export default async function Page() {
   // 🟢 Obtenemos la sesión y el estatus actual del estudiante si ha iniciado sesión
-  const sessionUser = await getSession() as any;
-  let estatusEstudiante = "";
+  const rawSession: unknown = await getSession()
+  const sessionUser: HomeSession | null =
+    rawSession && typeof rawSession === "object"
+      ? (rawSession as HomeSession)
+      : null
 
-  if (sessionUser?.isLoggedIn && sessionUser?.role === 'estudiante') {
+  const isLoggedIn = Boolean(sessionUser?.isLoggedIn)
+  let estatusEstudiante = ""
+
+  if (
+    isLoggedIn &&
+    sessionUser?.role === "estudiante" &&
+    sessionUser.id !== undefined
+  ) {
     try {
-      const statusData = await getStudentAcademicStatus(sessionUser.id);
-      estatusEstudiante = statusData?.estatus || "";
+      const statusData = await getStudentAcademicStatus(sessionUser.id)
+      estatusEstudiante = statusData?.estatus || ""
     } catch (error) {
-      console.error("Error al obtener estatus para la alerta en Home:", error);
+      console.error("Error al obtener estatus para la alerta en Home:", error)
     }
   }
 
   return (
     <main className="min-h-screen w-full flex flex-col bg-slate-50 relative">
-      
       {/* 🟢 ALERTA LLAMATIVA EN TODA LA PANTALLA (Modal Ocultable con Botón Entendido) */}
       <AlertaConvocatoria estatus={estatusEstudiante} />
 
-      <Navbar />
-      <HeroSection />
+      <HeroSection initialIsLoggedIn={isLoggedIn} />
 
       {/* Quick nav grid - portal style with fluid full-bleed container */}
       <section className="bg-white py-10 md:py-14 border-b border-[#e2e8f0]">
@@ -78,7 +108,9 @@ export default async function Page() {
                 href={item.href}
                 className="group flex flex-col items-center gap-4 rounded-xl border border-[#e2e8f0] bg-white p-6 text-center shadow-sm transition-all hover:-translate-y-1 hover:shadow-md hover:border-[#1e3a5f]/30 active:scale-95"
               >
-                <div className={`flex h-16 w-16 items-center justify-center rounded-full ${item.color} text-white shadow-md transition-transform group-hover:rotate-6`}>
+                <div
+                  className={`flex h-16 w-16 items-center justify-center rounded-full ${item.color} text-white shadow-md transition-transform group-hover:rotate-6`}
+                >
                   <item.icon className="h-7 w-7" />
                 </div>
                 <div className="flex flex-col gap-1.5">

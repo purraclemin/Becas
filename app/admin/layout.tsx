@@ -177,11 +177,11 @@ export default function AdminLayout({
                     <span className="text-[9px] font-black text-emerald-700 uppercase tracking-widest">En Línea</span>
                   </div>
 
-                  {/* Icono de Notificaciones */}
+                  {/* Icono de Notificaciones 
                   <button className="relative p-2 text-slate-400 hover:bg-slate-50 hover:text-[#1a2744] rounded-full transition-colors">
                     <Bell className="w-4 h-4 md:w-5 md:h-5" />
                     <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full border border-white"></span>
-                  </button>
+                  </button>*/}
 
                   <div className="h-6 w-px bg-slate-200 mx-1 hidden sm:block"></div>
 

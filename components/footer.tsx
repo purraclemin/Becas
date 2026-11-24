@@ -10,19 +10,18 @@ const footerLinks = {
     { label: "Servicios", href: "/servicios" },
   ],
   "Atención al Estudiante": [
-    { label: "Preguntas Frecuentes", href: "#faq" },
+    { label: "Preguntas Frecuentes", href: "/#faq" },
     { label: "Consulta de Estado", href: "/perfil" },
-    { label: "Soporte Institucional", href: "#" },
   ],
   "Contacto Directo": [
     { label: "Coordinación de Becas", href: "mailto:becas@unimar.edu.ve" },
     { label: "Atención Telefónica", href: "tel:+582952600000" },
-    { label: "Ubicación General", href: "#" },
+    { label: "Ubicación General", href: "/servicios#contacto" },
   ],
   "Horario de Atención": [
-    { label: "Lunes a Viernes", href: "#" },
-    { label: "8:00 AM - 4:00 PM", href: "#" },
-    { label: "Edificio Administrativo", href: "#" },
+    { label: "Lunes a Viernes" },
+    { label: "8:00 AM - 4:00 PM" },
+    { label: "Edificio Administrativo" },
   ],
 }
 
@@ -56,21 +55,21 @@ export function Footer() {
 
             {/* Social icons */}
             <div className="mt-5 flex items-center gap-3">
-              <Link href="#" aria-label="Facebook" className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1e3a5f] text-[#8a9bbd] transition-colors hover:bg-[#d4a843] hover:text-[#1e3a5f]">
+              <span aria-label="Facebook" className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1e3a5f] text-[#8a9bbd]">
                 <Facebook className="h-3.5 w-3.5" />
-              </Link>
-              <Link href="#" aria-label="Instagram" className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1e3a5f] text-[#8a9bbd] transition-colors hover:bg-[#d4a843] hover:text-[#1e3a5f]">
+              </span>
+              <span aria-label="Instagram" className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1e3a5f] text-[#8a9bbd]">
                 <Instagram className="h-3.5 w-3.5" />
-              </Link>
-              <Link href="#" aria-label="Twitter" className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1e3a5f] text-[#8a9bbd] transition-colors hover:bg-[#d4a843] hover:text-[#1e3a5f]">
+              </span>
+              <span aria-label="Twitter" className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1e3a5f] text-[#8a9bbd]">
                 <Twitter className="h-3.5 w-3.5" />
-              </Link>
-              <Link href="#" aria-label="YouTube" className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1e3a5f] text-[#8a9bbd] transition-colors hover:bg-[#d4a843] hover:text-[#1e3a5f]">
+              </span>
+              <span aria-label="YouTube" className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1e3a5f] text-[#8a9bbd]">
                 <Youtube className="h-3.5 w-3.5" />
-              </Link>
-              <Link href="#" aria-label="Correo" className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1e3a5f] text-[#8a9bbd] transition-colors hover:bg-[#d4a843] hover:text-[#1e3a5f]">
+              </span>
+              <span aria-label="Correo" className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1e3a5f] text-[#8a9bbd]">
                 <Mail className="h-3.5 w-3.5" />
-              </Link>
+              </span>
             </div>
           </div>
 
@@ -83,12 +82,18 @@ export function Footer() {
               <ul className="flex flex-col gap-2">
                 {links.map((link) => (
                   <li key={link.label}>
-                    <Link
-                      href={link.href}
-                      className="text-xs text-[#6b829e] transition-colors hover:text-[#ffffff]"
-                    >
-                      {link.label}
-                    </Link>
+                    {"href" in link && link.href ? (
+                      <Link
+                        href={link.href}
+                        className="text-xs text-[#6b829e] transition-colors hover:text-[#ffffff]"
+                      >
+                        {link.label}
+                      </Link>
+                    ) : (
+                      <span className="text-xs text-[#6b829e]">
+                        {link.label}
+                      </span>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -101,16 +106,16 @@ export function Footer() {
       <div className="border-t border-[#1e2d44] w-full">
         <div className="mx-auto flex w-full max-w-[1600px] flex-col items-center justify-between gap-3 px-4 sm:px-6 lg:px-8 xl:px-10 py-4 sm:flex-row">
           <p className="text-[10px] text-[#4a5d7a]">
-            {'Copyright 2001-2026 Universidad de Margarita, Rif: J-30660040-0. Isla de Margarita - Venezuela.'}
+            {'Copyright 2026-2026 Universidad de Margarita, Rif: J-30660040-0. Isla de Margarita - Venezuela.'}
           </p>
-          <div className="flex items-center gap-4">
+          {/*<div className="flex items-center gap-4">
             <Link href="#" className="text-[10px] text-[#4a5d7a] hover:text-[#8a9bbd]">
               Términos de Uso
             </Link>
             <Link href="#" className="text-[10px] text-[#4a5d7a] hover:text-[#8a9bbd]">
               Política de Privacidad
             </Link>
-          </div>
+          </div>*/}
         </div>
       </div>
     </footer>

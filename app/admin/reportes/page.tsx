@@ -111,7 +111,7 @@ export default function ReportesPage() {
 
       <div className="text-center py-4 border-t border-slate-100">
         <p className="text-[7px] text-slate-400 font-bold uppercase tracking-[0.4em]">
-          Unimar &bull; Inteligencia de Negocios &bull; 2026
+          Unimar &bull; © Copyright 2026-2026 Universidad de Margarita, Rif: J-30660040-0. Isla de Margarita - Venezuela. &bull;
         </p>
       </div>
     </div>

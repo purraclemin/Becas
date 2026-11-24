@@ -35,7 +35,7 @@ export const BECAS_DATA: Scholarship[] = [
     title: "Beca Social Aprendizaje",
     coverage: "100%",
     badge: "100% Cobertura",
-    description: "Programa destinado a bachilleres de planteles públicos del estado Nueva Esparta con alto rendimiento y escasos recursos económicos..",
+    description: "Programa destinado a bachilleres de planteles públicos del estado Nueva Esparta con alto rendimiento y escasos recursos económicos.",
     requisitos: [
       "Promedio de notas igual o superior a 18 puntos.",
       "Provenir de una Unidad Educativa Pública del estado Nueva Esparta.",
@@ -51,7 +51,7 @@ export const BECAS_DATA: Scholarship[] = [
     title: "Beca Aprendizaje",
     coverage: "70%",
     badge: "70% Cobertura",
-    description: "Subvención del 70% de la matrícula para estudiantes regulares que colaboran en actividades administrativas para desarrollar destrezas..",
+    description: "Subvención del 70% de la matrícula para estudiantes regulares que colaboran en actividades administrativas para desarrollar destrezas.",
     requisitos: [
       "Índice académico igual o superior a 16 puntos en el período anterior.",
       "Inscribir la máxima carga académica del pensum de estudios.",
@@ -67,7 +67,7 @@ export const BECAS_DATA: Scholarship[] = [
     title: "Beca por Discapacidad",
     coverage: "100%",
     badge: "100% Cobertura",
-    description: "Exoneración total de la matrícula para estudiantes regulares con alguna discapacidad y de escasos recursos económicos..",
+    description: "Exoneración total de la matrícula para estudiantes regulares con alguna discapacidad y de escasos recursos económicos.",
     requisitos: [
       "Informe médico por especialista y carnet oficial de discapacidad.",
       "Índice académico igual o superior a 16 puntos en el período anterior.",
@@ -82,7 +82,7 @@ export const BECAS_DATA: Scholarship[] = [
     title: "Beca a la Excelencia Académica",
     coverage: "100%",
     badge: "100% Cobertura",
-    description: "Reconocimiento al mayor índice acumulado de cada carrera (mínimo 18 pts), exonerando el costo total de la matrícula..",
+    description: "Reconocimiento al mayor índice acumulado de cada carrera (mínimo 18 pts), exonerando el costo total de la matrícula.",
     requisitos: [
       "Poseer el mayor índice acumulado de la carrera (≥ 18 puntos).",
       "Estar cursando a partir del cuarto (4to) trimestre académico.",
@@ -99,7 +99,7 @@ export const BECAS_DATA: Scholarship[] = [
     title: "Ayuda Económica General",
     coverage: "30%",
     badge: "Hasta 30%",
-    description: "Descuento parcial de la matrícula otorgado previa evaluación de vulnerabilidad por el Consejo Superior..",
+    description: "Descuento parcial de la matrícula otorgado previa evaluación de vulnerabilidad por el Consejo Superior.",
     requisitos: [
       "Índice académico igual o superior a 16 puntos en el período anterior.",
       "Consignar solicitud directa ante las oficinas del Consejo Superior.",
@@ -114,7 +114,7 @@ export const BECAS_DATA: Scholarship[] = [
     title: "Ayuda Económica Familiar",
     coverage: "10%",
     badge: "10% Descuento",
-    description: "Descuento del 10% en la matrícula para estudiantes que tengan familiares directos inscritos en la universidad..",
+    description: "Descuento del 10% en la matrícula para estudiantes que tengan familiares directos inscritos en la universidad.",
     requisitos: [
       "Comprobar filiación directa (hermanos, padres, hijos, cónyuge o concubino).",
       "Promedio o índice académico igual o superior a 16 puntos.",
@@ -128,7 +128,7 @@ export const BECAS_DATA: Scholarship[] = [
     title: "Ayuda para Trabajadores",
     coverage: "Especial",
     badge: "Especial",
-    description: "Beneficio para el personal administrativo y docente de la Universidad de Margarita para cursar una carrera..",
+    description: "Beneficio para el personal administrativo y docente de la Universidad de Margarita para cursar una carrera.",
     requisitos: [
       "Ser trabajador activo de la institución.",
       "Aplica exclusivamente para una (1) carrera universitaria.",
@@ -143,7 +143,7 @@ export const BECAS_DATA: Scholarship[] = [
     title: "Hijos de Trabajadores",
     coverage: "10%",
     badge: "10% Descuento",
-    description: "Descuento del 10% en la matrícula para hijos del personal docente y administrativo de la institución..",
+    description: "Descuento del 10% en la matrícula para hijos del personal docente y administrativo de la institución.",
     requisitos: [
       "Documentos probatorios de filiación con el trabajador.",
       "Índice académico igual o superior a 16 puntos en el período anterior.",
@@ -157,7 +157,7 @@ export const BECAS_DATA: Scholarship[] = [
     title: "Estudiantes Preparadores",
     coverage: "Asignación",
     badge: "Asignación Reg.",
-    description: "Incentivo asignado a estudiantes seleccionados para ejercer funciones de apoyo académico en asignaturas..",
+    description: "Incentivo asignado a estudiantes seleccionados para ejercer funciones de apoyo académico en asignaturas.",
     requisitos: [
       "Cumplir con la Normativa de Estudiantes Preparadores.",
       "Postulación y aval de los Decanatos ante el Vicerrectorado Académico.",
@@ -172,7 +172,7 @@ export const BECAS_DATA: Scholarship[] = [
     title: "Actividades Extracurriculares",
     coverage: "20%",
     badge: "20% Descuento",
-    description: "Descuento del 20% para estudiantes activos en clubes deportivos, agrupaciones culturales o el orfeón de UNIMAR..",
+    description: "Descuento del 20% para estudiantes activos en clubes deportivos, agrupaciones culturales o el orfeón de UNIMAR.",
     requisitos: [
       "Formar parte activa del grupo cultural, deportivo u orfeón de la universidad.",
       "Índice académico igual o superior a 16 puntos en el trimestre anterior.",
