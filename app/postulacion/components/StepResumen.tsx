@@ -11,7 +11,8 @@ import {
   Briefcase,
   AlertCircle,
   Users2,
-  FileText
+  FileText,
+  MessageSquare
 } from "lucide-react"
 import { cn, calcularEdad } from "@/lib/utils"
 import type { PostulacionUser } from "../types"
@@ -60,6 +61,16 @@ const formatearTextoOpcional = (val: string | undefined, fallback: string): stri
   return limpio;
 };
 
+const contarIntegrantesNucleo = (jsonStr: string | undefined): number => {
+  if (!jsonStr) return 0;
+  try {
+    const parsed: unknown = JSON.parse(jsonStr);
+    return Array.isArray(parsed) ? parsed.length : 0;
+  } catch {
+    return 0;
+  }
+};
+
 export function StepResumen({
   user,
   promedio,
@@ -86,13 +97,18 @@ export function StepResumen({
       getMontoEnteroNoNegativo(user?.monto_ingreso_familiar) +
       getMontoEnteroNoNegativo(user?.monto_ingreso_extra) +
       getMontoEnteroNoNegativo(user?.monto_ingreso_pension) +
-      getMontoEnteroNoNegativo(user?.monto_ingreso_ayuda);
+      getMontoEnteroNoNegativo(user?.monto_ingreso_ayuda) +
+      getMontoEnteroNoNegativo(user?.monto_ingreso_rentas) +
+      getMontoEnteroNoNegativo(user?.monto_ingreso_otros);
 
     const egresos =
       getMontoEnteroNoNegativo(user?.monto_egreso_mercado) +
       getMontoEnteroNoNegativo(user?.monto_egreso_vivienda) +
       getMontoEnteroNoNegativo(user?.monto_egreso_salud) +
-      getMontoEnteroNoNegativo(user?.monto_egreso_servicios);
+      getMontoEnteroNoNegativo(user?.monto_egreso_servicios) +
+      getMontoEnteroNoNegativo(user?.monto_egreso_suntuarios) +
+      getMontoEnteroNoNegativo(user?.monto_egreso_estudios) +
+      getMontoEnteroNoNegativo(user?.monto_egreso_recreacion);
 
     return {
       ingresoTotalFam: ingresos,
@@ -105,10 +121,15 @@ export function StepResumen({
     user?.monto_ingreso_extra,
     user?.monto_ingreso_pension,
     user?.monto_ingreso_ayuda,
+    user?.monto_ingreso_rentas,
+    user?.monto_ingreso_otros,
     user?.monto_egreso_mercado,
     user?.monto_egreso_vivienda,
     user?.monto_egreso_salud,
-    user?.monto_egreso_servicios
+    user?.monto_egreso_servicios,
+    user?.monto_egreso_suntuarios,
+    user?.monto_egreso_estudios,
+    user?.monto_egreso_recreacion
   ]);
 
   const tieneCondicionSalud =
@@ -119,6 +140,16 @@ export function StepResumen({
     ? `N° ${user.semestre}`
     : (trimestre ? `N° ${trimestre}` : "—");
 
+  const totalIntegrantes = useMemo(
+    () => contarIntegrantesNucleo(user?.familia_nucleo_json),
+    [user?.familia_nucleo_json]
+  );
+
+  const observacionesSolicitante = formatearTextoOpcional(
+    user?.observaciones_solicitante || user?.observaciones_estudio,
+    ""
+  );
+
   const secciones: ResumenSeccion[] = [
     {
       titulo: "Académico e Institucional",
@@ -128,7 +159,7 @@ export function StepResumen({
       items: [
         { label: "Trimestre", value: trimestreVisual },
         { label: "Tipo de Beca", value: tipoBeca || user?.tipo_beca || "No especificada", highlight: true },
-        { label: "Promedio", value: promedio || "0.00", highlight: true },
+        { label: "Índice Global", value: promedio || "0.00", highlight: true },
         { label: "Carrera", value: user?.carrera || "No especificada" },
         { label: "Modalidad", value: formatearModalidad(user?.socio_modalidad) },
       ]
@@ -152,11 +183,11 @@ export function StepResumen({
       color: "text-indigo-700",
       bg: "bg-indigo-50/40",
       items: [
+        { label: "Sit. Parental", value: user?.familia_estatus_conyugal || "—" },
         { label: "Ocupación Padre", value: formatearTextoOpcional(user?.padre_ocupacion, "—") },
         { label: "Ocupación Madre", value: formatearTextoOpcional(user?.madre_ocupacion, "—") },
-        { label: "Total Hermanos", value: user?.familia_num_hermanos ?? "0" },
-        { label: "Hnos. Uni", value: user?.familia_hermanos_uni ?? "0" },
-        { label: "Clima Familiar", value: user?.familia_relacion || "Buena" },
+        { label: "Hnos / Hnos Uni", value: `${user?.familia_num_hermanos ?? "0"} / ${user?.familia_hermanos_uni ?? "0"}` },
+        { label: "Núcleo / Clima", value: `${totalIntegrantes} reg. • ${user?.familia_relacion || "Buena"}` },
       ]
     },
     {
@@ -167,6 +198,7 @@ export function StepResumen({
       items: [
         { label: "Posee empleo", value: user?.posee_empleo_aspirante === "Si" ? "Sí" : "No" },
         { label: "Empresa", value: formatearTextoOpcional(user?.socio_trabajo_empresa, "N/A") },
+        { label: "Condición", value: formatearTextoOpcional(user?.socio_condicion_laboral_tipo, "N/A") },
         { label: "Rango Familiar", value: formatearRangoIngreso(user?.rango_ingreso_familiar) },
       ]
     },
@@ -194,6 +226,7 @@ export function StepResumen({
       items: [
         { label: "Condición Salud", value: tieneCondicionSalud ? "Sí" : "Buena" },
         { label: "Diagnóstico", value: formatearTextoOpcional(user?.salud_enfermedad_desc, "Ninguno") },
+        { label: "Organización", value: user?.organizacion_activa || "Ninguna" },
         { label: "Tipo Vivienda", value: user?.vivienda_tipo || "—" },
         { label: "Tenencia", value: user?.vivienda_estatus || "—" },
       ]
@@ -252,17 +285,33 @@ export function StepResumen({
           </div>
         ))}
 
-        {/* Justificación Compacta */}
-        <div className="col-span-full bg-white p-3 lg:p-2.5 rounded-xl border border-slate-200 shadow-sm space-y-1.5">
-          <div className="flex items-center gap-1.5">
-            <FileText className="h-3.5 w-3.5 text-[#d4a843]" />
-            <h4 className="font-black text-[10px] lg:text-[8.5px] uppercase tracking-widest text-[#1e3a5f]">
-              Justificación de la Solicitud
-            </h4>
+        {/* Justificación y Observaciones */}
+        <div className="col-span-full grid grid-cols-1 md:grid-cols-2 gap-2">
+          <div className="bg-white p-3 lg:p-2.5 rounded-xl border border-slate-200 shadow-sm space-y-1.5">
+            <div className="flex items-center gap-1.5">
+              <FileText className="h-3.5 w-3.5 text-[#d4a843]" />
+              <h4 className="font-black text-[10px] lg:text-[8.5px] uppercase tracking-widest text-[#1e3a5f]">
+                Justificación de la Solicitud
+              </h4>
+            </div>
+            <p className="text-xs lg:text-[10px] text-slate-600 font-medium leading-relaxed italic bg-[#f8fafc] p-2.5 lg:p-2 rounded-lg border border-slate-100">
+              &ldquo;{user?.motivo_solicitud || "No se registró exposición de motivos."}&rdquo;
+            </p>
           </div>
-          <p className="text-xs lg:text-[10px] text-slate-600 font-medium leading-relaxed italic bg-[#f8fafc] p-2.5 lg:p-2 rounded-lg border border-slate-100">
-            &ldquo;{user?.motivo_solicitud || "No se registró exposición de motivos."}&rdquo;
-          </p>
+
+          <div className="bg-white p-3 lg:p-2.5 rounded-xl border border-slate-200 shadow-sm space-y-1.5">
+            <div className="flex items-center gap-1.5">
+              <MessageSquare className="h-3.5 w-3.5 text-[#d4a843]" />
+              <h4 className="font-black text-[10px] lg:text-[8.5px] uppercase tracking-widest text-[#1e3a5f]">
+                Observaciones del Solicitante
+              </h4>
+            </div>
+            <p className="text-xs lg:text-[10px] text-slate-600 font-medium leading-relaxed italic bg-[#f8fafc] p-2.5 lg:p-2 rounded-lg border border-slate-100">
+              {observacionesSolicitante
+                ? `"${observacionesSolicitante}"`
+                : "Sin observaciones adicionales declaradas."}
+            </p>
+          </div>
         </div>
       </div>
 

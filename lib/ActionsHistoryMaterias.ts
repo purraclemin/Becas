@@ -1,119 +1,214 @@
 'use server'
 
-import { db } from './db'
+import type { RowDataPacket } from 'mysql2/promise'
+import { unstable_noStore as noStore } from 'next/cache'
+import { queryFresh } from './db'
+import { sincronizarYObtenerRecordAcademico } from './ActionsRecordAcademico'
+
+interface SolicitudHistorialRow extends RowDataPacket {
+  solicitud_id: number
+  promedio_notas: number | string | null
+  materias_json: string | null
+  fecha_registro: Date | string
+  estatus: string | null
+  codigo_periodo: string | null
+  nombre_periodo: string | null
+}
+
+interface MateriaJSONItem {
+  codigo?: string
+  nombre?: string
+  creditos?: number | string
+  nota?: number | string
+}
+
+interface HistorialPeriodoItem {
+  id: number | string
+  periodoCodigo: string
+  periodoNombre: string
+  trimestre: number | null
+  fechaRegistro: string
+  promedio: string
+  materias: Array<{
+    codigo: string
+    nombre: string
+    creditos: number
+    nota: number
+  }>
+  totalMaterias: number
+  estado: string
+}
 
 /**
- * 🟢 MÓDULO DE HISTORIAL ACADÉMICO (KARDEX)
- * Se encarga de consultar y procesar los registros históricos.
- * @param userId ID del usuario a consultar.
- * @param onlyApproved Si es true, filtra solo becas aprobadas (para el alumno). 
- * Si es false, trae todas las solicitudes con materias (para el admin).
+ * MÓDULO DE HISTORIAL ACADÉMICO (KARDEX)
+ * Prioriza el récord académico oficial por trimestre (record_academico)
+ * tanto para la vista del estudiante como para auditoría administrativa,
+ * y conserva respaldo en solicitudes.materias_json.
  */
-
 export async function getStudentHistory(userId: string | number, onlyApproved: boolean = true) {
+  noStore()
+
   try {
-    // 1. VALIDACIÓN DE SEGURIDAD
-    if (userId === undefined || userId === null || userId === "") {
+    if (userId === undefined || userId === null || userId === '') {
       return {
         success: false,
         data: [],
-        stats: { totalPeriodos: 0, totalMaterias: 0, promedioHistorico: "0.00" }
-      };
+        stats: { totalPeriodos: 0, totalMaterias: 0, promedioHistorico: '0.00' },
+      }
     }
 
-    const idNum = typeof userId === 'string' ? parseInt(userId) : userId;
+    const idNum = typeof userId === 'string' ? parseInt(userId, 10) : Number(userId)
 
-    if (isNaN(idNum)) {
-      console.warn("getStudentHistory: El ID proporcionado no es un número válido.");
+    if (!Number.isInteger(idNum) || idNum <= 0) {
       return {
         success: false,
         data: [],
-        stats: { totalPeriodos: 0, totalMaterias: 0, promedioHistorico: "0.00" }
-      };
+        stats: { totalPeriodos: 0, totalMaterias: 0, promedioHistorico: '0.00' },
+      }
     }
 
-    // 2. CONSTRUCCIÓN DINÁMICA DE LA CONSULTA
-    // Filtro estricto para alumnos, abierto para administradores.
-    const statusFilter = onlyApproved ? "AND s.estatus = 'Aprobada'" : "";
+    // 1. Leer siempre desde el récord académico oficial sincronizado (record_academico)
+    const syncRes = await sincronizarYObtenerRecordAcademico(idNum)
+    const expediente = syncRes.success ? syncRes.data : null
 
-    const [rows]: any = await db.execute(`
-      SELECT 
-        s.id as solicitud_id,
-        s.promedio_notas,
-        s.materias_json,
-        s.fecha_registro,
-        s.estatus,
-        p.codigo as codigo_periodo,
-        p.nombre as nombre_periodo,
-        p.fecha_inicio as fecha_inicio_periodo
-      FROM solicitudes s
-      INNER JOIN periodos_academicos p ON s.periodo_id = p.id
-      WHERE s.user_id = ? 
-        AND s.materias_json IS NOT NULL 
-        AND s.materias_json != ''
-        ${statusFilter}
-      ORDER BY p.fecha_inicio DESC
-    `, [idNum]);
+    if (expediente && expediente.historialPorTrimestre.length > 0) {
+      const historialOficial: HistorialPeriodoItem[] = expediente.historialPorTrimestre.map(
+        (grupo) => {
+          const materiasFormateadas = grupo.materias.map((m) => ({
+            codigo: m.codigo_materia,
+            nombre: m.nombre_materia,
+            creditos: Number(m.unidades_credito ?? 3),
+            nota: Number(m.nota ?? 0),
+          }))
 
-    // 3. PROCESAMIENTO DE DATOS (Parsing Robusto)
-    const historial = rows.map((row: any) => {
-      let materias = [];
-      let trimestreHistorico = null;
+          return {
+            id: `trim-${expediente.studentId}-${grupo.trimestre}`,
+            periodoCodigo: `T-${grupo.trimestre}`,
+            periodoNombre: `Trimestre ${grupo.trimestre}`,
+            trimestre: grupo.trimestre,
+            fechaRegistro: 'Récord Oficial UNIMAR',
+            promedio: Number(grupo.promedioTrimestre).toFixed(2),
+            materias: materiasFormateadas,
+            totalMaterias: materiasFormateadas.length,
+            estado: 'Cursado',
+          }
+        }
+      )
+
+      const totalPeriodos = historialOficial.length
+      const totalMaterias = historialOficial.reduce(
+        (acc, item) => acc + item.totalMaterias,
+        0
+      )
+
+      return {
+        success: true,
+        data: historialOficial,
+        stats: {
+          totalPeriodos,
+          totalMaterias,
+          promedioHistorico: Number(expediente.indiceGlobal).toFixed(2),
+        },
+      }
+    }
+
+    // 2. Respaldo desde solicitudes (para semestre 1 sin récord precargado o historial previo)
+    const statusFilter = onlyApproved ? "AND s.estatus = 'Aprobada'" : ''
+
+    const rows = await queryFresh<SolicitudHistorialRow[]>(
+      `
+        SELECT
+          s.id AS solicitud_id,
+          s.promedio_notas,
+          s.materias_json,
+          s.fecha_registro,
+          s.estatus,
+          p.codigo AS codigo_periodo,
+          p.nombre AS nombre_periodo
+        FROM solicitudes s
+        INNER JOIN periodos_academicos p ON s.periodo_id = p.id
+        WHERE s.user_id = ?
+          AND s.materias_json IS NOT NULL
+          AND s.materias_json != ''
+          ${statusFilter}
+        ORDER BY p.fecha_inicio DESC
+      `,
+      [idNum]
+    )
+
+    const historial: HistorialPeriodoItem[] = rows.map((row) => {
+      let materiasRaw: MateriaJSONItem[] = []
+      let trimestreHistorico: number | null = null
 
       try {
-        // Validación extra: Si es un objeto ya parseado (algunos drivers lo hacen) o un string
-        const parsed = typeof row.materias_json === 'string' 
-          ? JSON.parse(row.materias_json) 
-          : row.materias_json;
-        
+        const parsed: unknown =
+          typeof row.materias_json === 'string'
+            ? JSON.parse(row.materias_json)
+            : row.materias_json
+
         if (Array.isArray(parsed)) {
-          materias = parsed;
+          materiasRaw = parsed as MateriaJSONItem[]
         } else if (parsed && typeof parsed === 'object') {
-          // Soporte para estructura { materias: [], trimestre: X }
-          materias = parsed.materias || [];
-          trimestreHistorico = parsed.trimestre || null;
+          const obj = parsed as { materias?: MateriaJSONItem[]; trimestre?: number | string | null }
+          materiasRaw = Array.isArray(obj.materias) ? obj.materias : []
+          trimestreHistorico =
+            obj.trimestre !== undefined && obj.trimestre !== null
+              ? Number(obj.trimestre)
+              : null
         }
       } catch (e) {
-        console.error(`Error parseando JSON de solicitud ${row.solicitud_id}`, e);
-        materias = [];
+        console.error(`Error parseando JSON de solicitud ${row.solicitud_id}`, e)
+        materiasRaw = []
       }
 
-      // Normalización de notas para asegurar que sean números
-      const materiasFormateadas = materias.map((m: any) => ({
-        ...m,
-        nota: parseFloat(m.nota || 0)
-      }));
+      const materiasFormateadas = materiasRaw.map((m) => ({
+        codigo: String(m.codigo ?? 'N/A'),
+        nombre: String(m.nombre ?? 'Asignatura'),
+        creditos: Number(m.creditos ?? 3),
+        nota: parseFloat(String(m.nota ?? 0)) || 0,
+      }))
 
-      const promedioCalculado = materiasFormateadas.length > 0
-        ? (materiasFormateadas.reduce((acc: number, m: any) => acc + m.nota, 0) / materiasFormateadas.length)
-        : 0;
+      const promedioCalculado =
+        materiasFormateadas.length > 0
+          ? materiasFormateadas.reduce((acc, m) => acc + m.nota, 0) /
+            materiasFormateadas.length
+          : 0
+
+      const promedioFinal =
+        row.promedio_notas !== null &&
+        row.promedio_notas !== undefined &&
+        String(row.promedio_notas).trim() !== ''
+          ? parseFloat(String(row.promedio_notas))
+          : promedioCalculado
 
       return {
         id: row.solicitud_id,
-        periodoCodigo: row.codigo_periodo,
-        periodoNombre: row.nombre_periodo,
+        periodoCodigo: String(row.codigo_periodo ?? 'N/A'),
+        periodoNombre: String(row.nombre_periodo ?? 'Periodo Académico'),
         trimestre: trimestreHistorico,
-        fechaRegistro: new Date(row.fecha_registro).toLocaleDateString('es-VE', { 
-          year: 'numeric', 
-          month: 'long', 
-          day: 'numeric' 
+        fechaRegistro: new Date(row.fecha_registro).toLocaleDateString('es-VE', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
         }),
-        promedio: parseFloat(row.promedio_notas || promedioCalculado).toFixed(2),
+        promedio: Number.isFinite(promedioFinal) ? promedioFinal.toFixed(2) : '0.00',
         materias: materiasFormateadas,
         totalMaterias: materiasFormateadas.length,
-        estado: row.estatus
-      };
-    });
+        estado: String(row.estatus ?? 'Pendiente'),
+      }
+    })
 
-    // 4. GENERACIÓN DE ESTADÍSTICAS GLOBALES
-    const totalPeriodos = historial.length;
-    // Solo contamos materias si tienen nota válida
-    const totalMateriasContabilizadas = historial.reduce((acc: number, curr: any) => acc + curr.totalMaterias, 0);
-    
-    const sumaPromedios = historial.reduce((acc: number, curr: any) => acc + parseFloat(curr.promedio), 0);
-    const promedioHistorico = totalPeriodos > 0 
-      ? (sumaPromedios / totalPeriodos).toFixed(2) 
-      : "0.00";
+    const totalPeriodos = historial.length
+    const totalMateriasContabilizadas = historial.reduce(
+      (acc, curr) => acc + curr.totalMaterias,
+      0
+    )
+    const sumaPromedios = historial.reduce(
+      (acc, curr) => acc + parseFloat(curr.promedio),
+      0
+    )
+    const promedioHistorico =
+      totalPeriodos > 0 ? (sumaPromedios / totalPeriodos).toFixed(2) : '0.00'
 
     return {
       success: true,
@@ -121,16 +216,15 @@ export async function getStudentHistory(userId: string | number, onlyApproved: b
       stats: {
         totalPeriodos,
         totalMaterias: totalMateriasContabilizadas,
-        promedioHistorico
-      }
-    };
-
+        promedioHistorico,
+      },
+    }
   } catch (error) {
-    console.error("❌ Error crítico en getStudentHistory:", error);
+    console.error('❌ Error crítico en getStudentHistory:', error)
     return {
       success: false,
       data: [],
-      stats: { totalPeriodos: 0, totalMaterias: 0, promedioHistorico: "0.00" }
-    };
+      stats: { totalPeriodos: 0, totalMaterias: 0, promedioHistorico: '0.00' },
+    }
   }
 }

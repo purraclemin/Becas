@@ -1,12 +1,13 @@
 "use client"
 
 import React, { useState } from "react"
-import { 
-  MoreHorizontal, ArrowUpDown, ArrowUp, ArrowDown, 
-  Loader2, Check, Undo2, Activity, MapPin, Calendar 
+import {
+  MoreHorizontal, ArrowUpDown, ArrowUp, ArrowDown,
+  Loader2, Check, Undo2, Activity, MapPin, Calendar
 } from "lucide-react"
 import { getBadgeColor, getRiskDetails, getAvgStyle } from "@/app/admin/validarBeca/lib/ValidarBecaUtils"
 import { SolicitudItem, SortConfig, ordenarSolicitudes, formatearFechaEnvio } from "@/app/admin/validarBeca/lib/ProcesadorDatosValidarBeca"
+import type { ResultadoActualizacionEstatus } from "@/lib/ActionsEstatusBeca"
 import { ValidarBecaCardItem } from "./ValidarBecaTableMobil"
 
 interface ValidarBecaTableProps {
@@ -15,28 +16,40 @@ interface ValidarBecaTableProps {
   loading: boolean;
   onViewAuditoria: (solicitud: SolicitudItem) => void;
   onViewAcademic: (solicitud: SolicitudItem) => void;
-  onStatusChange: (id: number, status: string, observaciones?: string, confirmacionEspecial?: boolean) => void;
+  onStatusChange: (
+    id: number,
+    status: string,
+    observaciones?: string,
+    confirmacionEspecial?: boolean
+  ) => Promise<ResultadoActualizacionEstatus | void> | void;
   periodoActualId: number | null;
+  esSecretariaGeneral?: boolean;
 }
 
 interface ValidarBecaFilaProps {
   s: SolicitudItem;
   onView: (solicitud: SolicitudItem) => void;
   onViewHistorial: (solicitud: SolicitudItem) => void;
-  onStatusChange: (id: number, status: string, observaciones?: string, confirmacionEspecial?: boolean) => void;
+  onStatusChange: (
+    id: number,
+    status: string,
+    observaciones?: string,
+    confirmacionEspecial?: boolean
+  ) => Promise<ResultadoActualizacionEstatus | void> | void;
   periodoActualId: number | null;
+  esSecretariaGeneral: boolean;
 }
 
-export function ValidarBecaTable({ 
-  solicitudes, 
-  data, 
-  loading, 
-  onViewAuditoria, 
-  onViewAcademic, 
-  onStatusChange, 
-  periodoActualId 
+export function ValidarBecaTable({
+  solicitudes,
+  data,
+  loading,
+  onViewAuditoria,
+  onViewAcademic,
+  onStatusChange,
+  periodoActualId,
+  esSecretariaGeneral = false
 }: ValidarBecaTableProps) {
-  
   const listaDatos = solicitudes || data || [];
 
   const [sortConfig, setSortConfig] = useState<SortConfig>({
@@ -72,7 +85,11 @@ export function ValidarBecaTable({
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden p-8 text-center flex flex-col items-center">
       <MoreHorizontal className="h-5 w-5 text-slate-300 mb-2" />
       <h3 className="text-slate-800 font-bold uppercase text-[10px] tracking-widest">Sin resultados</h3>
-      <p className="text-slate-500 text-[9px] uppercase">No hay solicitudes que coincidan con la validación</p>
+      <p className="text-slate-500 text-[9px] uppercase">
+        {esSecretariaGeneral
+          ? "No existen expedientes en revisión pendientes de dictamen"
+          : "No hay solicitudes que coincidan con la validación"}
+      </p>
     </div>
   )
 
@@ -80,7 +97,7 @@ export function ValidarBecaTable({
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-      {/* VISTA ESCRITORIO (PC / LAPTOP): Alta densidad espacial corporativa (h-9, text-xs) */}
+      {/* VISTA ESCRITORIO (PC / LAPTOP): Alta densidad espacial corporativa */}
       <div className="hidden md:block overflow-x-auto">
         <table className="w-full border-collapse">
           <thead className="bg-[#1e3a5f] text-white">
@@ -116,29 +133,31 @@ export function ValidarBecaTable({
           </thead>
           <tbody className="divide-y divide-slate-100">
             {sortedData.map((s: SolicitudItem, index: number) => (
-              <ValidarBecaFila 
-                key={`${s.id}-${index}`} 
-                s={s} 
-                onView={onViewAuditoria} 
-                onViewHistorial={onViewAcademic} 
-                onStatusChange={onStatusChange} 
+              <ValidarBecaFila
+                key={`${s.id}-${index}`}
+                s={s}
+                onView={onViewAuditoria}
+                onViewHistorial={onViewAcademic}
+                onStatusChange={onStatusChange}
                 periodoActualId={periodoActualId}
+                esSecretariaGeneral={esSecretariaGeneral}
               />
             ))}
           </tbody>
         </table>
       </div>
 
-      {/* VISTA MÓVIL Y TABLET: Renderizado delegado al archivo móvil */}
+      {/* VISTA MÓVIL Y TABLET */}
       <div className="block md:hidden divide-y divide-slate-100 p-3 space-y-3">
         {sortedData.map((s: SolicitudItem, index: number) => (
-          <ValidarBecaCardItem 
-            key={`mobile-${s.id}-${index}`} 
-            s={s} 
-            onView={onViewAuditoria} 
-            onViewHistorial={onViewAcademic} 
-            onStatusChange={onStatusChange} 
+          <ValidarBecaCardItem
+            key={`mobile-${s.id}-${index}`}
+            s={s}
+            onView={onViewAuditoria}
+            onViewHistorial={onViewAcademic}
+            onStatusChange={onStatusChange}
             periodoActualId={periodoActualId}
+            esSecretariaGeneral={esSecretariaGeneral}
           />
         ))}
       </div>
@@ -146,7 +165,14 @@ export function ValidarBecaTable({
   )
 }
 
-function ValidarBecaFila({ s, onView, onViewHistorial, onStatusChange, periodoActualId }: ValidarBecaFilaProps) {
+function ValidarBecaFila({
+  s,
+  onView,
+  onViewHistorial,
+  onStatusChange,
+  periodoActualId,
+  esSecretariaGeneral
+}: ValidarBecaFilaProps) {
   const [isConfirming, setIsConfirming] = useState(false)
   const [pendingAction, setPendingAction] = useState<string | null>(null)
   const risk = getRiskDetails(s.puntaje ?? 0)
@@ -171,11 +197,14 @@ function ValidarBecaFila({ s, onView, onViewHistorial, onStatusChange, periodoAc
     e.target.value = ""
   }
 
-  const confirmAction = () => {
+  const confirmAction = async () => {
     if (pendingAction) {
-        onStatusChange(Number(s.id), pendingAction)
-        setIsConfirming(false)
-        setPendingAction(null)
+      const res = await onStatusChange(Number(s.id), pendingAction);
+      setIsConfirming(false);
+      setPendingAction(null);
+      if (res && typeof res === 'object' && res.error === 'REGLAMENTO_INCUMPLIDO') {
+        onView(s);
+      }
     }
   }
 
@@ -242,10 +271,10 @@ function ValidarBecaFila({ s, onView, onViewHistorial, onStatusChange, periodoAc
       <td className="px-2 py-4 text-right">
         {isConfirming ? (
           <div className="flex items-center justify-end gap-1">
-            <button onClick={confirmAction} className="h-7 w-7 rounded-full bg-[#1e3a5f] text-[#d4a843] flex items-center justify-center shadow-md">
+            <button type="button" onClick={confirmAction} className="h-7 w-7 rounded-full bg-[#1e3a5f] text-[#d4a843] flex items-center justify-center shadow-md cursor-pointer">
               <Check className="h-3 w-3" />
             </button>
-            <button onClick={() => { setIsConfirming(false); setPendingAction(null); }} className="h-7 w-7 rounded-full bg-white border border-slate-200 text-slate-400 flex items-center justify-center">
+            <button type="button" onClick={() => { setIsConfirming(false); setPendingAction(null); }} className="h-7 w-7 rounded-full bg-white border border-slate-200 text-slate-400 flex items-center justify-center cursor-pointer">
               <Undo2 className="h-3 w-3" />
             </button>
           </div>
@@ -254,17 +283,26 @@ function ValidarBecaFila({ s, onView, onViewHistorial, onStatusChange, periodoAc
             <select
               defaultValue=""
               onChange={handleSelectChange}
-              className="bg-slate-50 border border-slate-200 text-slate-600 text-[10px] font-bold rounded-xl px-2 py-1 outline-none focus:ring-1 focus:ring-[#1e3a5f] cursor-pointer hover:bg-slate-100 transition-colors"
+              className="bg-slate-50 border border-slate-200 text-slate-600 text-[10px] font-bold rounded-xl px-2 h-9 outline-none focus:ring-1 focus:ring-[#1e3a5f] cursor-pointer hover:bg-slate-100 transition-colors"
             >
-              <option value="" disabled>Validar...</option>
-              <option value="ver_detalles">👁️ Ver Expediente3</option>
-              <option value="ver_historial">📋  Materia Historia</option>
+              <option value="" disabled>{esSecretariaGeneral ? "Dictaminar..." : "Gestionar..."}</option>
+              <option value="ver_detalles">👁️ Ver Expediente</option>
+              <option value="ver_historial">📋 Historial Académico</option>
               {esPeriodoActual ? (
-                <>
-                  {s.estatus !== 'En Revisión' && <option value="En Revisión">⏳ En Revisión</option>}
-                  {s.estatus !== 'Rechazada' && <option value="Rechazada">❌ Rechazar</option>}
-                  {s.estatus !== 'Aprobada' && <option value="Aprobada">✅ Aprobar</option>}
-                </>
+                esSecretariaGeneral ? (
+                  s.estatus === 'En Revisión' && (
+                    <>
+                      <option value="Aprobada">✅ Aprobar</option>
+                      <option value="Rechazada">❌ Rechazar</option>
+                    </>
+                  )
+                ) : (
+                  s.estatus !== 'En Revisión' &&
+                  s.estatus !== 'Aprobada' &&
+                  s.estatus !== 'Rechazada' && (
+                    <option value="En Revisión">⏳ Enviar a Revisión</option>
+                  )
+                )
               ) : (
                 <option value="" disabled>🔒 Registro Histórico</option>
               )}

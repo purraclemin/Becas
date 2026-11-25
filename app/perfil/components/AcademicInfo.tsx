@@ -1,4 +1,4 @@
-"import client"
+"use client"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { GraduationCap, Mail, IdCard, CalendarDays, BookOpen, Clock, User2, Trophy, LucideIcon } from "lucide-react"

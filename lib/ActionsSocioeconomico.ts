@@ -1,16 +1,25 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getContrasteEstudianteSQL, deleteEstudioSQL } from './ActionsSocioeconomicoSQL'
-import { procesarGuardadoEstudio } from './ActionsSocioeconomicoActions'
+import {
+  getContrasteEstudianteSQL,
+  deleteEstudioSQL,
+  type ContrasteEstudianteRow
+} from './ActionsSocioeconomicoSQL'
+import {
+  procesarGuardadoEstudio,
+  type EstudioSocioeconomicoInput
+} from './ActionsSocioeconomicoActions'
 
 /**
  * 1. BUSCAR ESTUDIANTE (Interfaz Pública)
  */
-export async function buscarEstudianteConEstudio(termino: string) {
+export async function buscarEstudianteConEstudio(
+  termino: string
+): Promise<ContrasteEstudianteRow[]> {
   try {
     if (!termino || termino.trim().length < 3) return [];
-    return await getContrasteEstudianteSQL(`%${termino}%`);
+    return await getContrasteEstudianteSQL(`%${termino.trim()}%`);
   } catch (error) {
     console.error("❌ Error en búsqueda:", error);
     return [];
@@ -20,15 +29,18 @@ export async function buscarEstudianteConEstudio(termino: string) {
 /**
  * 2. GUARDAR / ACTUALIZAR (Interfaz Pública)
  */
-export async function guardarOActualizarEstudio(data: any) {
+export async function guardarOActualizarEstudio(data: EstudioSocioeconomicoInput) {
   try {
     const result = await procesarGuardadoEstudio(data);
     revalidatePath('/admin/dashboard');
     revalidatePath('/admin/socioeconomico');
+    revalidatePath('/admin/estudio-socioeconomico');
+    revalidatePath('/admin/validarBeca');
     return result;
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Error al procesar el estudio.";
     console.error("❌ Error en guardado:", error);
-    return { success: false, error: error.message || "Error al procesar el estudio." };
+    return { success: false, error: message };
   }
 }
 
@@ -40,6 +52,8 @@ export async function borrarEstudio(studentId: number) {
     await deleteEstudioSQL(studentId);
     revalidatePath('/admin/dashboard');
     revalidatePath('/admin/socioeconomico');
+    revalidatePath('/admin/estudio-socioeconomico');
+    revalidatePath('/admin/validarBeca');
     return { success: true };
   } catch (error) {
     console.error("❌ Error borrando estudio:", error);

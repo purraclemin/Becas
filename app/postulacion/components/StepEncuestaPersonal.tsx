@@ -1,15 +1,8 @@
 "use client"
 
-import React, { useMemo, useState, useEffect, useRef } from "react"
+import React, { useMemo, useEffect } from "react"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from "@/components/ui/select"
 import {
   User,
   Fingerprint,
@@ -20,33 +13,16 @@ import {
   Mail,
   ShieldCheck,
   Globe,
-  Map,
   Heart,
   Home,
   Phone,
-  Smartphone
+  Smartphone,
+  Lock
 } from "lucide-react"
 import { cn, calcularEdad } from "@/lib/utils"
-import {
-  OPCIONES_ESTADO_CIVIL,
-  OPCIONES_NACIONALIDAD
-} from "@/lib/constants"
 import type { PostulacionUser } from "../types"
 
-const sanitizarSoloLetras = (val: string | undefined): string => {
-  if (!val) return "";
-  return val.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, "");
-};
-
-const sanitizarTelefonoInicial = (val: string | undefined): string => {
-  if (!val) return "";
-  const limpio = val.replace(/\D/g, "").slice(0, 11);
-  if (limpio === "" || /^0+$/.test(limpio)) return "";
-  return limpio;
-};
-
 export function StepEncuestaPersonal({
-  disabled,
   user,
   onValidationChange
 }: {
@@ -54,70 +30,14 @@ export function StepEncuestaPersonal({
   user: PostulacionUser;
   onValidationChange?: (isValid: boolean) => void;
 }) {
-  const [estadoCivil, setEstadoCivil] = useState<string>(
-    user?.socio_estado_civil || user?.estado_civil || "Soltero/a"
-  );
-  const [nacionalidad, setNacionalidad] = useState<string>(
-    user?.socio_nacionalidad || "Venezolano/a"
-  );
-  const [lugarNac, setLugarNac] = useState<string>(
-    sanitizarSoloLetras(user?.socio_lugar_nac)
-  );
-  const [direccion, setDireccion] = useState<string>(
-    user?.direccion_completa || ""
-  );
-
-  const [telfHab, setTelfHab] = useState<string>(
-    sanitizarTelefonoInicial(user?.socio_telf_hab)
-  );
-  const [telfCel, setTelfCel] = useState<string>(
-    sanitizarTelefonoInicial(user?.socio_celular || user?.telefono)
-  );
-  const [hasAttemptedNext, setHasAttemptedNext] = useState<boolean>(false);
-
-  const lugarRef = useRef<HTMLInputElement>(null);
-  const direccionRef = useRef<HTMLInputElement>(null);
-  const habRef = useRef<HTMLInputElement>(null);
-  const celRef = useRef<HTMLInputElement>(null);
-
-  const isLugarValid = lugarNac.trim() !== "";
-  const isDireccionValid = direccion.trim() !== "";
-  const isTelfHabValid = telfHab === "" || (telfHab.length >= 7 && !/^0+$/.test(telfHab));
-  const isTelfCelValid = telfCel.length >= 7 && !/^0+$/.test(telfCel);
-
-  const isValid = isLugarValid && isDireccionValid && isTelfHabValid && isTelfCelValid;
-
   useEffect(() => {
-    onValidationChange?.(isValid);
-  }, [isValid, onValidationChange]);
+    onValidationChange?.(true);
+  }, [onValidationChange]);
 
-  useEffect(() => {
-    const handleValidationAttempt = () => {
-      setHasAttemptedNext(true);
-      if (!isLugarValid && lugarRef.current) lugarRef.current.focus();
-      else if (!isDireccionValid && direccionRef.current) direccionRef.current.focus();
-      else if (!isTelfHabValid && habRef.current) habRef.current.focus();
-      else if (!isTelfCelValid && celRef.current) celRef.current.focus();
-    };
-
-    window.addEventListener("intentar-avanzar-personal", handleValidationAttempt);
-    return () => window.removeEventListener("intentar-avanzar-personal", handleValidationAttempt);
-  }, [isLugarValid, isDireccionValid, isTelfHabValid, isTelfCelValid]);
-
-  // Filtros de entrada estrictos (Cero any)
-  const handleSoloLetras =
-    (setter: React.Dispatch<React.SetStateAction<string>>) =>
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setter(e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, ""));
-    };
-
-  const handleTelefono =
-    (setter: React.Dispatch<React.SetStateAction<string>>) =>
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setter(e.target.value.replace(/\D/g, "").slice(0, 11));
-    };
-
-  const edadCalculada = useMemo(() => calcularEdad(user?.fecha_nacimiento), [user?.fecha_nacimiento]);
+  const edadCalculada = useMemo(
+    () => calcularEdad(user?.fecha_nacimiento),
+    [user?.fecha_nacimiento]
+  );
 
   const generoVisual = useMemo(() => {
     if (user?.sexo === "M") return "Masculino";
@@ -125,17 +45,25 @@ export function StepEncuestaPersonal({
     return user?.sexo || "No especificado";
   }, [user?.sexo]);
 
-  const blockedClass = "h-12 lg:h-9 bg-slate-100 border-slate-200 font-bold text-[#1e3a5f]/60 cursor-not-allowed text-sm lg:text-xs shadow-none px-3 rounded-xl";
-  const editableClass = "h-12 lg:h-9 bg-slate-50 border-slate-200 font-bold text-[#1e3a5f] text-sm lg:text-xs focus:bg-white focus:ring-2 focus:ring-[#1e3a5f]/5 transition-all px-3 rounded-xl";
+  const nacionalidadValor = user?.socio_nacionalidad || "Venezolano/a";
+  const lugarNacValor = user?.socio_lugar_nac || "Porlamar, Nueva Esparta";
+  const estadoCivilValor = user?.socio_estado_civil || user?.estado_civil || "Soltero/a";
+  const direccionValor = user?.direccion_completa || "Av. Bolívar, Nueva Esparta";
+  const telfHabValor = user?.socio_telf_hab || "02952600000";
+  const telfCelValor = user?.socio_celular || user?.telefono || "04120000000";
+
+  const readOnlyClass =
+    "h-12 lg:h-9 bg-slate-100 border-slate-200 font-bold text-[#1e3a5f]/80 cursor-not-allowed text-sm lg:text-xs shadow-none px-3 rounded-xl select-none";
 
   return (
     <div className="flex flex-col gap-3 animate-in fade-in duration-500 pb-16 lg:pb-0">
-
-      {/* BLOQUE 1: DATOS MAESTROS (BLOQUEADOS) */}
+      {/* BLOQUE 1: DATOS MAESTROS (SOLO LECTURA) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-3 lg:p-2.5 bg-slate-50/70 rounded-2xl border border-slate-200/60 relative overflow-hidden shadow-sm">
         <div className="col-span-full flex items-center gap-2 mb-0.5">
           <ShieldCheck className="h-3.5 w-3.5 text-[#1e3a5f]" />
-          <span className="text-[9px] font-black uppercase tracking-[0.15em] text-[#1e3a5f]">Información Académica Validada</span>
+          <span className="text-[9px] font-black uppercase tracking-[0.15em] text-[#1e3a5f]">
+            Información Académica Validada (Solo Lectura)
+          </span>
         </div>
 
         {[
@@ -154,19 +82,31 @@ export function StepEncuestaPersonal({
             </Label>
             <Input
               readOnly
-              disabled
+              aria-readonly="true"
               value={item.val}
-              className={cn(blockedClass, item.center && "text-center", item.lower && "lowercase", item.truncate && "truncate")}
+              className={cn(
+                readOnlyClass,
+                item.center && "text-center",
+                item.lower && "lowercase",
+                item.truncate && "truncate"
+              )}
             />
           </div>
         ))}
       </div>
 
-      {/* BLOQUE 2: DATOS SOCIOECONÓMICOS (EDITABLES) */}
+      {/* BLOQUE 2: DATOS DE CONTACTO PRECARGADOS (SOLO LECTURA) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-3 lg:p-2.5 bg-white rounded-2xl border border-slate-200 shadow-sm relative">
-        <div className="col-span-full flex items-center gap-2 mb-0.5">
-          <div className="h-1.5 w-1.5 rounded-full bg-[#d4a843]" />
-          <span className="text-[9px] font-black uppercase tracking-[0.15em] text-[#1e3a5f]">Actualización de Datos de Contacto</span>
+        <div className="col-span-full flex items-center justify-between gap-2 mb-0.5">
+          <div className="flex items-center gap-2">
+            <div className="h-1.5 w-1.5 rounded-full bg-[#d4a843]" />
+            <span className="text-[9px] font-black uppercase tracking-[0.15em] text-[#1e3a5f]">
+              Datos de Contacto Precargados
+            </span>
+          </div>
+          <span className="inline-flex items-center gap-1 text-[8px] font-black uppercase text-slate-400">
+            <Lock className="h-2.5 w-2.5 text-[#d4a843]" /> Solo Lectura
+          </span>
         </div>
 
         {/* Nacionalidad */}
@@ -174,38 +114,28 @@ export function StepEncuestaPersonal({
           <Label className="text-[8px] font-black uppercase text-slate-500 flex items-center gap-1.5">
             <Globe className="h-3 w-3 text-[#d4a843]" /> Nacionalidad
           </Label>
-          <Select disabled={disabled} value={nacionalidad} onValueChange={setNacionalidad}>
-            <SelectTrigger className={editableClass}><SelectValue placeholder="Nacionalidad" /></SelectTrigger>
-            <SelectContent className="rounded-xl border-slate-200 shadow-xl max-h-[40vh]">
-              {OPCIONES_NACIONALIDAD.map(opt => (
-                <SelectItem key={opt.value} value={opt.value} className="text-sm lg:text-xs font-bold uppercase py-2">{opt.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <input type="hidden" name="socio_nacionalidad" value={nacionalidad} />
+          <Input
+            type="text"
+            readOnly
+            aria-readonly="true"
+            value={nacionalidadValor}
+            className={readOnlyClass}
+          />
+          <input type="hidden" name="socio_nacionalidad" value={nacionalidadValor} />
         </div>
 
-        {/* Lugar de Nacimiento   */}
+        {/* Lugar de Nacimiento */}
         <div className="space-y-1">
-          <Label className={cn(
-            "text-[8px] font-black uppercase flex items-center gap-1.5 transition-colors",
-            hasAttemptedNext && !isLugarValid ? "text-red-500 font-extrabold" : "text-slate-500"
-          )}>
-             Lugar de Nacimiento {hasAttemptedNext && !isLugarValid && "*"}
+          <Label className="text-[8px] font-black uppercase text-slate-500 flex items-center gap-1.5">
+            <MapPin className="h-3 w-3 text-[#d4a843]" /> Lugar de Nacimiento
           </Label>
           <Input
-            ref={lugarRef}
             name="socio_lugar_nac"
             type="text"
-            disabled={disabled}
-            value={lugarNac}
-            onChange={handleSoloLetras(setLugarNac)}
-            required
-            placeholder="Ciudad / Estado "
-            className={cn(
-              editableClass,
-              hasAttemptedNext && !isLugarValid && "border-red-500 bg-red-50/50 text-red-900 focus:ring-red-500 animate-pulse"
-            )}
+            readOnly
+            aria-readonly="true"
+            value={lugarNacValor}
+            className={readOnlyClass}
           />
         </div>
 
@@ -214,89 +144,58 @@ export function StepEncuestaPersonal({
           <Label className="text-[8px] font-black uppercase text-slate-500 flex items-center gap-1.5">
             <Heart className="h-3 w-3 text-[#d4a843]" /> Estado Civil
           </Label>
-          <Select disabled={disabled} value={estadoCivil} onValueChange={setEstadoCivil}>
-            <SelectTrigger className={editableClass}><SelectValue placeholder="Estado Civil" /></SelectTrigger>
-            <SelectContent className="rounded-xl border-slate-200 shadow-xl max-h-[40vh]">
-              {OPCIONES_ESTADO_CIVIL.map(opt => (
-                <SelectItem key={opt.value} value={opt.value} className="text-sm lg:text-xs font-bold uppercase py-2">{opt.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <input type="hidden" name="socio_estado_civil" value={estadoCivil} />
+          <Input
+            type="text"
+            readOnly
+            aria-readonly="true"
+            value={estadoCivilValor}
+            className={readOnlyClass}
+          />
+          <input type="hidden" name="socio_estado_civil" value={estadoCivilValor} />
         </div>
 
         {/* Dirección Completa */}
         <div className="space-y-1 sm:col-span-2 lg:col-span-1">
-          <Label className={cn(
-            "text-[8px] font-black uppercase flex items-center gap-1.5 transition-colors",
-            hasAttemptedNext && !isDireccionValid ? "text-red-500 font-extrabold" : "text-slate-500"
-          )}>
-            <Home className="h-3 w-3 text-[#d4a843]" /> Dirección Completa {hasAttemptedNext && !isDireccionValid && "*"}
+          <Label className="text-[8px] font-black uppercase text-slate-500 flex items-center gap-1.5">
+            <Home className="h-3 w-3 text-[#d4a843]" /> Dirección Completa
           </Label>
           <Input
-            ref={direccionRef}
             name="direccion_completa"
             type="text"
-            disabled={disabled}
-            value={direccion}
-            onChange={(e) => setDireccion(e.target.value)}
-            required
-            placeholder="Sector, Calle, Casa/Apto..."
-            className={cn(
-              editableClass,
-              hasAttemptedNext && !isDireccionValid && "border-red-500 bg-red-50/50 text-red-900 focus:ring-red-500 animate-pulse"
-            )}
+            readOnly
+            aria-readonly="true"
+            value={direccionValor}
+            className={readOnlyClass}
           />
         </div>
 
-        {/* Teléfono Habitación (Opcional, solo dígitos) */}
+        {/* Teléfono Habitación */}
         <div className="space-y-1">
-          <Label className={cn(
-            "text-[8px] font-black uppercase flex items-center gap-1.5 transition-colors",
-            hasAttemptedNext && !isTelfHabValid ? "text-red-500 font-extrabold" : "text-slate-500"
-          )}>
-            <Phone className="h-3 w-3 text-[#d4a843]" /> Teléfono Hab. (Opcional) {hasAttemptedNext && !isTelfHabValid && "*"}
+          <Label className="text-[8px] font-black uppercase text-slate-500 flex items-center gap-1.5">
+            <Phone className="h-3 w-3 text-[#d4a843]" /> Teléfono Hab.
           </Label>
           <Input
-            ref={habRef}
-            type="tel"
-            inputMode="numeric"
-            maxLength={11}
-            disabled={disabled}
-            value={telfHab}
-            onChange={handleTelefono(setTelfHab)}
-            placeholder="0295..."
-            className={cn(
-              editableClass,
-              hasAttemptedNext && !isTelfHabValid && "border-red-500 bg-red-50/50 text-red-900 focus:ring-red-500 animate-pulse"
-            )}
+            type="text"
+            readOnly
+            aria-readonly="true"
+            value={telfHabValor}
+            className={readOnlyClass}
           />
-          <input type="hidden" name="socio_telf_hab" value={!telfHab || telfHab.trim() === "" ? "0" : telfHab} />
+          <input type="hidden" name="socio_telf_hab" value={telfHabValor} />
         </div>
 
-        {/* Teléfono Celular (Obligatorio, solo dígitos) */}
+        {/* Teléfono Celular */}
         <div className="space-y-1">
-          <Label className={cn(
-            "text-[8px] font-black uppercase flex items-center gap-1.5 transition-colors",
-            hasAttemptedNext && !isTelfCelValid ? "text-red-500 font-extrabold" : "text-slate-500"
-          )}>
-            <Smartphone className="h-3 w-3 text-[#d4a843]" /> Teléfono Celular {hasAttemptedNext && !isTelfCelValid && "*"}
+          <Label className="text-[8px] font-black uppercase text-slate-500 flex items-center gap-1.5">
+            <Smartphone className="h-3 w-3 text-[#d4a843]" /> Teléfono Celular
           </Label>
           <Input
-            ref={celRef}
             name="socio_celular"
-            type="tel"
-            inputMode="numeric"
-            maxLength={11}
-            disabled={disabled}
-            value={telfCel}
-            onChange={handleTelefono(setTelfCel)}
-            placeholder="04XX..."
-            required
-            className={cn(
-              editableClass,
-              hasAttemptedNext && !isTelfCelValid && "border-red-500 bg-red-50/50 text-red-900 focus:ring-red-500 animate-pulse"
-            )}
+            type="text"
+            readOnly
+            aria-readonly="true"
+            value={telfCelValor}
+            className={readOnlyClass}
           />
         </div>
       </div>

@@ -5,9 +5,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   ClipboardList,
-  User,
   Briefcase,
-  GraduationCap,
   Users,
   BadgeDollarSign,
   Home,
@@ -18,16 +16,14 @@ import {
 import { cn } from "@/lib/utils"
 import type { PostulacionUser } from "../types"
 
-// Importación de los sub-componentes especializados
-import { StepEncuestaPersonal } from "./StepEncuestaPersonal"
-import { StepEncuestaSituacionLaboral } from "./StepEncuestaSituacionLaboral"
-import { StepEncuestaInfoUni } from "./StepEncuestaInfoUni"
+// Importación de los sub-componentes socioeconómicos (iniciando en Familia)
 import { StepEncuestaGrupoFamiliar } from "./StepEncuestaGrupoFamiliar"
+import { StepEncuestaSituacionLaboral } from "./StepEncuestaSituacionLaboral"
 import { StepEncuestaRangoIngreso } from "./StepEncuestaRangoIngreso"
 import { StepEncuestaHogar } from "./StepEncuestaHogar"
 import { StepEncuestaSalud } from "./StepEncuestaSalud"
 
-type SeccionId = "personal" | "uni" | "familia" | "laboral" | "ingresos" | "hogar" | "salud";
+type SeccionId = "familia" | "laboral" | "ingresos" | "hogar" | "salud";
 
 interface SeccionEncuesta {
   id: SeccionId;
@@ -36,8 +32,6 @@ interface SeccionEncuesta {
 }
 
 const SECCIONES: ReadonlyArray<SeccionEncuesta> = [
-  { id: "personal", label: "Personal", icon: User },
-  { id: "uni", label: "Info Uni", icon: GraduationCap },
   { id: "familia", label: "Familiar", icon: Users },
   { id: "laboral", label: "Laboral", icon: Briefcase },
   { id: "ingresos", label: "Ingresos", icon: BadgeDollarSign },
@@ -54,8 +48,6 @@ export function StepEncuesta({
   activeTab,
   onTabChange,
   onValidationChange,
-  onPersonalValidationChange,
-  onUniValidationChange,
   onFamiliaValidationChange,
   onLaboralValidationChange,
   onIngresosValidationChange,
@@ -80,40 +72,70 @@ export function StepEncuesta({
   }, [onValidationChange]);
 
   const currentIndex = SECCIONES.findIndex(s => s.id === activeTab);
+  const tabActivoSeguro: SeccionId = currentIndex >= 0 ? SECCIONES[currentIndex].id : "familia";
+  const indiceActivoSeguro = currentIndex >= 0 ? currentIndex : 0;
 
   const handleTabSelection = (newTabId: string) => {
     const targetIndex = SECCIONES.findIndex(s => s.id === newTabId);
-    if (targetIndex === -1 || targetIndex > currentIndex) return;
+    if (targetIndex === -1 || targetIndex > indiceActivoSeguro) return;
     onTabChange(newTabId);
   };
 
-  return (
-    <div className="h-full flex flex-col animate-in fade-in duration-500 overflow-hidden pb-16 lg:pb-0">
+  // Valores precargados del sistema interno (Personal + Info Uni) conservados de forma oculta
+  const nacionalidadInterna = user?.socio_nacionalidad || "Venezolano/a";
+  const lugarNacInterno = user?.socio_lugar_nac || "Porlamar, Nueva Esparta";
+  const estadoCivilInterno = user?.socio_estado_civil || user?.estado_civil || "Soltero/a";
+  const direccionInterna = user?.direccion_completa || "Av. Bolívar, Nueva Esparta";
+  const telfHabInterno = user?.socio_telf_hab || "02952600000";
+  const celularInterno = user?.socio_celular || user?.telefono || "04120000000";
+  const carreraInterna = user?.socio_carrera || user?.carrera || "No especificada";
+  const trimestreInterno = String(user?.socio_trimestre ?? user?.semestre ?? "1");
+  const ueProcedenciaInterna = user?.socio_ue_procedencia || "U.E. Colegio Virgen del Valle";
+  const otrosEstudiosInternos = user?.socio_otros_estudios || "Ninguno";
+  const fechaUnimarInterna = user?.socio_fecha_unimar || "2024-01-15";
+  const modalidadInterna = user?.socio_modalidad || "P";
 
-      {/* Encabezado */}
-      <div className="flex items-center justify-between mb-3 shrink-0">
+  return (
+    <div className="flex-1 min-h-0 flex flex-col animate-in fade-in duration-500 overflow-hidden pb-16 lg:pb-0">
+
+      {/* CAMPOS INTERNOS OCULTOS (YA REGISTRADOS EN EL SISTEMA) */}
+      <input type="hidden" name="socio_nacionalidad" value={nacionalidadInterna} />
+      <input type="hidden" name="socio_lugar_nac" value={lugarNacInterno} />
+      <input type="hidden" name="socio_estado_civil" value={estadoCivilInterno} />
+      <input type="hidden" name="direccion_completa" value={direccionInterna} />
+      <input type="hidden" name="socio_telf_hab" value={telfHabInterno} />
+      <input type="hidden" name="socio_celular" value={celularInterno} />
+      <input type="hidden" name="socio_carrera" value={carreraInterna} />
+      <input type="hidden" name="socio_trimestre" value={trimestreInterno} />
+      <input type="hidden" name="socio_ue_procedencia" value={ueProcedenciaInterna} />
+      <input type="hidden" name="socio_otros_estudios" value={otrosEstudiosInternos} />
+      <input type="hidden" name="socio_fecha_unimar" value={fechaUnimarInterna} />
+      <input type="hidden" name="socio_modalidad" value={modalidadInterna} />
+
+      {/* Encabezado compacto */}
+      <div className="flex items-center justify-between mb-2 shrink-0">
         <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-[#1e3a5f]/10 flex items-center justify-center border border-[#1e3a5f]/20">
-            <ClipboardList className="h-4 w-4 text-[#1e3a5f]" />
+          <div className="h-7 w-7 rounded-lg bg-[#1e3a5f]/10 flex items-center justify-center border border-[#1e3a5f]/20">
+            <ClipboardList className="h-3.5 w-3.5 text-[#1e3a5f]" />
           </div>
           <div>
             <h3 className="text-[#1e3a5f] font-black text-xs uppercase tracking-tight leading-none">
               Investigación Socioeconómica
             </h3>
-            <p className="text-slate-400 text-[8px] font-bold mt-1 uppercase tracking-widest leading-none">
+            <p className="text-slate-400 text-[8px] font-bold mt-0.5 uppercase tracking-widest leading-none">
               Estudio de vulnerabilidad y entorno
             </p>
           </div>
         </div>
 
         <div className="lg:hidden flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 rounded-lg border border-slate-200">
-          <span className="text-[9px] font-black text-[#1e3a5f]">0{Math.max(1, currentIndex + 1)}</span>
+          <span className="text-[9px] font-black text-[#1e3a5f]">0{indiceActivoSeguro + 1}</span>
           <span className="text-[9px] text-slate-400">/</span>
           <span className="text-[9px] font-bold text-slate-500">0{SECCIONES.length}</span>
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={handleTabSelection} className="flex-1 flex flex-col min-h-0">
+      <Tabs value={tabActivoSeguro} onValueChange={handleTabSelection} className="flex-1 flex flex-col min-h-0">
 
         {/* SELECTOR MÓVIL (< 1024px) */}
         <div className="block lg:hidden w-full mb-3 shrink-0">
@@ -124,14 +146,14 @@ export function StepEncuesta({
             </span>
           </div>
 
-          <Select value={activeTab} onValueChange={handleTabSelection} disabled={disabled}>
+          <Select value={tabActivoSeguro} onValueChange={handleTabSelection} disabled={disabled}>
             <SelectTrigger className="h-12 border-slate-200 text-sm font-bold uppercase rounded-xl bg-slate-50 text-[#1e3a5f] focus:ring-[#1e3a5f]">
               <SelectValue placeholder="Seleccione una sección..." />
             </SelectTrigger>
             <SelectContent className="rounded-xl border-slate-200 shadow-xl max-h-[40vh]">
               {SECCIONES.map((s, idx) => {
                 const Icono = s.icon;
-                const isLocked = idx > currentIndex;
+                const isLocked = idx > indiceActivoSeguro;
                 return (
                   <SelectItem
                     key={s.id}
@@ -151,11 +173,11 @@ export function StepEncuesta({
         </div>
 
         {/* SELECTOR DE ESCRITORIO (>= 1024px) */}
-        <div className={cn("hidden lg:block w-full overflow-x-auto pb-1.5 shrink-0", SCROLLBAR_TAILWIND_CLASS)}>
+        <div className={cn("hidden lg:block w-full overflow-x-auto pb-1 shrink-0", SCROLLBAR_TAILWIND_CLASS)}>
           <TabsList className="bg-slate-100 p-1 rounded-xl w-full border border-slate-200 flex h-auto justify-between gap-1">
             {SECCIONES.map((s, idx) => {
               const Icono = s.icon;
-              const isLocked = idx > currentIndex;
+              const isLocked = idx > indiceActivoSeguro;
 
               return (
                 <TabsTrigger
@@ -163,7 +185,7 @@ export function StepEncuesta({
                   value={s.id}
                   disabled={isLocked}
                   className={cn(
-                    "flex-1 h-9 rounded-lg px-2.5 text-xs font-black uppercase tracking-tight gap-1.5 transition-all",
+                    "flex-1 h-8 rounded-lg px-2.5 text-xs font-black uppercase tracking-tight gap-1.5 transition-all",
                     "data-[state=active]:bg-[#1e3a5f] data-[state=active]:text-white data-[state=active]:shadow-sm",
                     isLocked ? "opacity-40 cursor-not-allowed" : "hover:bg-slate-200/60 text-slate-600"
                   )}
@@ -176,34 +198,26 @@ export function StepEncuesta({
           </TabsList>
         </div>
 
-        {/* Contenedor de Contenido Persistente */}
-        <div className={cn("flex-1 overflow-y-auto pr-1 pb-2 mt-1 lg:mt-2 bg-white/50 rounded-xl border border-slate-50 relative", SCROLLBAR_TAILWIND_CLASS)}>
+        {/* Contenedor de Contenido Persistente (Scroll interno aislado si hace falta, sin empujar el footer) */}
+        <div className={cn("flex-1 min-h-0 overflow-y-auto pr-1 pb-1 mt-1 bg-white/50 rounded-xl border border-slate-50 relative", SCROLLBAR_TAILWIND_CLASS)}>
 
-          <div className={cn("mt-0 outline-none p-1 h-full", activeTab === "personal" ? "block animate-in fade-in" : "hidden")}>
-            <StepEncuestaPersonal disabled={disabled} user={user} onValidationChange={onPersonalValidationChange} />
-          </div>
-
-          <div className={cn("mt-0 outline-none p-1 h-full", activeTab === "uni" ? "block animate-in fade-in" : "hidden")}>
-            <StepEncuestaInfoUni disabled={disabled} user={user} onValidationChange={onUniValidationChange} />
-          </div>
-
-          <div className={cn("mt-0 outline-none p-1 h-full", activeTab === "familia" ? "block animate-in fade-in" : "hidden")}>
+          <div className={cn("mt-0 outline-none p-1", tabActivoSeguro === "familia" ? "block animate-in fade-in" : "hidden")}>
             <StepEncuestaGrupoFamiliar disabled={disabled} user={user} onValidationChange={onFamiliaValidationChange} />
           </div>
 
-          <div className={cn("mt-0 outline-none p-1 h-full", activeTab === "laboral" ? "block animate-in fade-in" : "hidden")}>
+          <div className={cn("mt-0 outline-none p-1", tabActivoSeguro === "laboral" ? "block animate-in fade-in" : "hidden")}>
             <StepEncuestaSituacionLaboral disabled={disabled} user={user} onValidationChange={onLaboralValidationChange} />
           </div>
 
-          <div className={cn("mt-0 outline-none p-1 h-full", activeTab === "ingresos" ? "block animate-in fade-in" : "hidden")}>
+          <div className={cn("mt-0 outline-none p-1", tabActivoSeguro === "ingresos" ? "block animate-in fade-in" : "hidden")}>
             <StepEncuestaRangoIngreso disabled={disabled} user={user} onValidationChange={onIngresosValidationChange} />
           </div>
 
-          <div className={cn("mt-0 outline-none p-1 h-full", activeTab === "hogar" ? "block animate-in fade-in" : "hidden")}>
+          <div className={cn("mt-0 outline-none p-1", tabActivoSeguro === "hogar" ? "block animate-in fade-in" : "hidden")}>
             <StepEncuestaHogar disabled={disabled} user={user} onValidationChange={onHogareValidationChange} />
           </div>
 
-          <div className={cn("mt-0 outline-none p-1 h-full", activeTab === "salud" ? "block animate-in fade-in" : "hidden")}>
+          <div className={cn("mt-0 outline-none p-1", tabActivoSeguro === "salud" ? "block animate-in fade-in" : "hidden")}>
             <StepEncuestaSalud disabled={disabled} user={user} onValidationChange={onSaludValidationChange} />
           </div>
 
@@ -211,11 +225,7 @@ export function StepEncuesta({
       </Tabs>
 
       {/* Pie de Declaración */}
-      <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-1.5 text-[7px] font-black text-slate-400 uppercase tracking-widest italic">
-          <CheckCircle2 className="h-2.5 w-2.5" /> Información bajo fe de juramento
-        </div>
-      </div>
+     
     </div>
   )
 }

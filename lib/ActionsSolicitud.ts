@@ -1,12 +1,18 @@
 'use server'
 
-import type { PoolConnection, RowDataPacket } from 'mysql2/promise'
+import type { PoolConnection, ResultSetHeader, RowDataPacket } from 'mysql2/promise'
+import { randomUUID } from 'crypto'
 import { db } from './db'
 import { revalidatePath } from 'next/cache'
 import path from 'path'
 import { mkdir } from 'fs/promises'
 import { guardarArchivo } from './SolicitudUtils'
 import { actualizarIndiceGlobal, obtenerOCrearPeriodoObjetivo } from './SolicitudAcademic'
+import {
+  asegurarDatosSocioeconomicosSimulados,
+  obtenerRecordParaPostulacion,
+} from './ActionsRecordAcademico'
+import { SISTEMA_ADMIN_ID } from './RecordAcademicoUtils'
 // MOTOR UNIFICADO CON LÓGICA DE INGRESO RESIDUAL
 import { calcularPuntajeUnificado } from './MotorBaremoUnificado'
 
@@ -61,6 +67,15 @@ interface MateriaEnviada {
   codigo: string;
   nombre: string;
   nota: number;
+}
+
+interface MiembroNucleoSanitizado {
+  nombre: string;
+  edad: string;
+  sexo: string;
+  parentesco: string;
+  instruccion: string;
+  ocupacion: string;
 }
 
 const ETIQUETAS_DOCUMENTOS: Record<DocumentoColumna, string> = {
@@ -135,8 +150,61 @@ const sanitizarSoloLetras = (val: FormDataEntryValue | null, permitirNo = false)
   const trimmed = val.trim();
   if (trimmed === "") return null;
   if (permitirNo && trimmed.toUpperCase() === "NO") return "NO";
-  const limpio = trimmed.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, "").trim();
+  const limpio = trimmed.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s/]/g, "").trim();
+  return limpio !== "" ? limpio : trimmed;
+};
+
+const sanitizarTextoSeguro = (
+  val: FormDataEntryValue | null,
+  maxLength = 250,
+  permitirNo = false
+): string | null => {
+  if (typeof val !== "string") return null;
+  const trimmed = val.trim();
+  if (trimmed === "") return null;
+  if (permitirNo && trimmed.toUpperCase() === "NO") return "NO";
+  const limpio = trimmed
+    .replace(/[<>]/g, "")
+    .replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s.,;:¡!¿?()\-/#&"]/g, "")
+    .trim()
+    .slice(0, maxLength);
   return limpio !== "" ? limpio : null;
+};
+
+const sanitizarTelefono = (val: FormDataEntryValue | null, maxLength = 20): string | null => {
+  if (typeof val !== "string") return null;
+  const trimmed = val.trim();
+  if (trimmed === "") return null;
+  if (trimmed.toUpperCase() === "NO") return "NO";
+  const limpio = trimmed.replace(/[^0-9+\-\s]/g, "").trim().slice(0, maxLength);
+  return limpio !== "" ? limpio : null;
+};
+
+const sanitizarNucleoFamiliarJson = (val: FormDataEntryValue | null): string => {
+  if (typeof val !== "string" || val.trim() === "") return "[]";
+  try {
+    const parsed: unknown = JSON.parse(val);
+    if (!Array.isArray(parsed)) return "[]";
+    const limpio: MiembroNucleoSanitizado[] = parsed
+      .slice(0, 20)
+      .filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
+      .map((item) => ({
+        nombre: sanitizarTextoSeguro(String(item.nombre ?? ""), 100) || "",
+        edad: String(item.edad ?? "").replace(/\D/g, "").slice(0, 3),
+        sexo: String(item.sexo ?? "").trim().toUpperCase() === "M"
+          ? "M"
+          : String(item.sexo ?? "").trim().toUpperCase() === "F"
+            ? "F"
+            : "",
+        parentesco: sanitizarTextoSeguro(String(item.parentesco ?? ""), 50) || "",
+        instruccion: sanitizarTextoSeguro(String(item.instruccion ?? ""), 80) || "",
+        ocupacion: sanitizarTextoSeguro(String(item.ocupacion ?? ""), 80) || "",
+      }))
+      .filter((m) => m.nombre !== "" || m.parentesco !== "" || m.ocupacion !== "");
+    return JSON.stringify(limpio);
+  } catch {
+    return "[]";
+  }
 };
 
 const getStringOrNull = (val: FormDataEntryValue | null): string | null => {
@@ -145,17 +213,23 @@ const getStringOrNull = (val: FormDataEntryValue | null): string | null => {
   return trimmed !== "" ? trimmed : null;
 };
 
+const getSwitchOnOff = (formData: FormData, key: string): 'on' | 'off' => {
+  return formData.get(key) === 'on' ? 'on' : 'off';
+};
+
 const construirObservacionRechazo = (
   materiasReprobadas: MateriaEnviada[],
-  numPromedio: number
+  numPromedio: number,
+  tipoBeca: string,
+  incumpleExcelencia18: boolean
 ): string | null => {
   const tieneReprobadas = materiasReprobadas.length > 0;
   const esPromedioBajo = numPromedio < 16;
 
-  if (!tieneReprobadas && !esPromedioBajo) return null;
+  if (!tieneReprobadas && !esPromedioBajo && !incumpleExcelencia18) return null;
 
   const listadoReprobadas = materiasReprobadas
-    .map((m) => `${m.nombre} (${m.nota} pts)`)
+    .map((m) => `${m.nombre} (${m.nota.toFixed(2)} pts)`)
     .join(", ");
 
   if (tieneReprobadas && esPromedioBajo) {
@@ -166,12 +240,16 @@ const construirObservacionRechazo = (
     return `Solicitud no procedente: según la normativa académica vigente, es requisito indispensable haber aprobado la totalidad de las unidades curriculares inscritas (calificación mínima de 10 puntos). Se registró calificación reprobatoria en: ${listadoReprobadas}.`;
   }
 
-  return `Solicitud no procedente: su promedio académico del período (${numPromedio.toFixed(2)} pts) se encuentra por debajo del índice mínimo requerido (16.00 puntos) para optar al programa de becas.`;
+  if (esPromedioBajo) {
+    return `Solicitud no procedente: su promedio académico del período (${numPromedio.toFixed(2)} pts) se encuentra por debajo del índice mínimo requerido (16.00 puntos) para optar al programa de becas.`;
+  }
+
+  return `Solicitud no procedente: la modalidad "${tipoBeca}" exige un promedio académico igual o superior a 18.00 puntos según la normativa institucional vigente (promedio registrado: ${numPromedio.toFixed(2)} pts).`;
 };
 
 /**
  * Procesa el envío de la solicitud de beca, valida integridad de datos y documentos,
- * calcula el baremo institucional y sincroniza las tablas de solicitudes y estudios socioeconómicos.
+ * calcula el baremo institucional y sincroniza las tablas de solicitudes, historial y estudios socioeconómicos.
  */
 export async function enviarSolicitud(formData: FormData) {
   let connection: PoolConnection | undefined;
@@ -213,60 +291,108 @@ export async function enviarSolicitud(formData: FormData) {
 
     const semestreEstudiante = Number(statusRows[0].semestre || trimestreNum || 1);
 
-    // 3. PROCESAMIENTO Y VALIDACIÓN ESTRICTA DE MATERIAS (POSITIVOS 1.00 - 20.00, HASTA 2 DECIMALES)
-    const materiasCodigos = formData.getAll('materias_codigos[]');
-    const materiasNombres = formData.getAll('materias_nombres[]');
-    const materiasNotas = formData.getAll('materias_notas[]');
+    // Garantizar datos simulados persistidos y sincronizar récord académico oficial
+    await asegurarDatosSocioeconomicosSimulados(userIdNum);
+    const recordRes = await obtenerRecordParaPostulacion(userIdNum);
+    const expediente = recordRes.success ? recordRes.data : null;
 
-    const materiasArray: MateriaEnviada[] = [];
+    // 3. PROCESAMIENTO DE MATERIAS Y PROMEDIO (AUTORIDAD DEL RÉCORD OFICIAL SI APLICA)
+    let materiasArray: MateriaEnviada[] = [];
+    let numPromedio = 0;
+    let materiasReprobadas: MateriaEnviada[] = [];
+    let trimestreSnapshot = isNaN(trimestreNum) ? semestreEstudiante : trimestreNum;
 
-    for (let index = 0; index < materiasCodigos.length; index++) {
-      const nombre = String(materiasNombres[index] ?? "").trim();
-      if (nombre === "") continue;
+    if (semestreEstudiante > 1 && expediente && expediente.recordCompleto.length > 0) {
+      const trimestreObjetivo =
+        expediente.ultimoTrimestreSnapshot?.trimestre ?? Math.max(1, semestreEstudiante - 1);
+      trimestreSnapshot = trimestreObjetivo;
 
-      const notaStr = String(materiasNotas[index] ?? "").trim().replace(",", ".");
-      if (!REGEX_NOTA_DECIMAL.test(notaStr)) {
-        return { error: "Todas las calificaciones deben ser números positivos entre 1 y 20 (máximo 2 decimales)." };
+      const materiasUltimoTrimestre = expediente.recordCompleto.filter(
+        (m) => m.trimestre_cursado === trimestreObjetivo
+      );
+      const fuenteUltimo =
+        materiasUltimoTrimestre.length > 0
+          ? materiasUltimoTrimestre
+          : expediente.recordCompleto;
+
+      materiasArray = fuenteUltimo.map((m) => ({
+        codigo: m.codigo_materia,
+        nombre: m.nombre_materia,
+        nota: Number(Number(m.nota).toFixed(2)),
+      }));
+
+      numPromedio = Number(Number(expediente.indiceGlobal).toFixed(2));
+      materiasReprobadas = expediente.evaluacion.materiasReprobadas.map((m) => ({
+        codigo: m.codigo_materia,
+        nombre: m.nombre_materia,
+        nota: Number(Number(m.nota).toFixed(2)),
+      }));
+    } else if (semestreEstudiante <= 1) {
+      materiasArray = [];
+      numPromedio = 0;
+      materiasReprobadas = [];
+      trimestreSnapshot = 1;
+    } else {
+      const materiasCodigos = formData.getAll('materias_codigos[]');
+      const materiasNombres = formData.getAll('materias_nombres[]');
+      const materiasNotas = formData.getAll('materias_notas[]');
+
+      for (let index = 0; index < materiasCodigos.length; index++) {
+        const nombre = String(materiasNombres[index] ?? "").trim();
+        if (nombre === "") continue;
+
+        const notaStr = String(materiasNotas[index] ?? "").trim().replace(",", ".");
+        if (!REGEX_NOTA_DECIMAL.test(notaStr)) {
+          return { error: "Todas las calificaciones deben ser números positivos entre 1 y 20 (máximo 2 decimales)." };
+        }
+
+        const notaDecimal = Number(parseFloat(notaStr).toFixed(2));
+        if (!Number.isFinite(notaDecimal) || notaDecimal < 0 || notaDecimal > 20) {
+          return { error: "Las calificaciones deben estar estrictamente entre 0 y 20 puntos." };
+        }
+
+        materiasArray.push({
+          codigo: String(materiasCodigos[index] ?? "").trim(),
+          nombre,
+          nota: notaDecimal
+        });
       }
 
-      const notaDecimal = Number(parseFloat(notaStr).toFixed(2));
-      if (!Number.isFinite(notaDecimal) || notaDecimal < 1 || notaDecimal > 20) {
-        return { error: "Las calificaciones deben estar estrictamente entre 1 y 20 puntos." };
+      if (materiasArray.length === 0) {
+        return { error: "Debe registrar al menos una unidad curricular con su calificación." };
       }
 
-      materiasArray.push({
-        codigo: String(materiasCodigos[index] ?? "").trim(),
-        nombre,
-        nota: notaDecimal
-      });
-    }
-
-    if (materiasArray.length === 0) {
-      return { error: "Debe registrar al menos una unidad curricular con su calificación." };
-    }
-
-    // Recálculo seguro del promedio en el servidor
-    const sumaNotas = materiasArray.reduce((acc, m) => acc + m.nota, 0);
-    const numPromedio = Number((sumaNotas / materiasArray.length).toFixed(2));
-
-    // Regla de negocio: Beca Social y Beca a la Excelencia exigen promedio >= 18.00
-    if (MODALIDADES_REQUIEREN_18.has(tipo_beca) && numPromedio < PROMEDIO_MINIMO_EXCELENCIA) {
-      return {
-        error: `La modalidad "${tipo_beca}" requiere un promedio igual o superior a 18.00 puntos (su promedio actual es ${numPromedio.toFixed(2)}).`
-      };
+      const sumaNotas = materiasArray.reduce((acc, m) => acc + m.nota, 0);
+      numPromedio = Number((sumaNotas / materiasArray.length).toFixed(2));
+      materiasReprobadas = materiasArray.filter(m => m.nota < 10);
     }
 
     const materiasJsonString = JSON.stringify({
-      trimestre: isNaN(trimestreNum) ? semestreEstudiante : trimestreNum,
+      trimestre: trimestreSnapshot,
       materias: materiasArray,
       fecha_proceso: new Date().toISOString()
     });
 
-    // Evaluación de rechazo automático (permite guardar todo el expediente en BD con observación formal)
-    const materiasReprobadas = materiasArray.filter(m => m.nota < 10);
     const tieneReprobadas = materiasReprobadas.length > 0;
-    const estatusFinal = (numPromedio < 16 || tieneReprobadas) ? 'Rechazada' : 'Pendiente';
-    const observacionAutomatica = construirObservacionRechazo(materiasReprobadas, numPromedio);
+    const incumpleCriterioRegular = semestreEstudiante > 1 && (numPromedio < 16 || tieneReprobadas);
+    const incumpleExcelencia18 =
+      semestreEstudiante > 1 &&
+      MODALIDADES_REQUIEREN_18.has(tipo_beca) &&
+      numPromedio < PROMEDIO_MINIMO_EXCELENCIA;
+
+    const debeRechazarAutomatico = incumpleCriterioRegular || incumpleExcelencia18;
+    const estatusFinal = debeRechazarAutomatico ? 'Rechazada' : 'Pendiente';
+
+    const observacionAutomatica = debeRechazarAutomatico
+      ? (incumpleCriterioRegular && expediente?.evaluacion.motivoRechazo
+          ? expediente.evaluacion.motivoRechazo
+          : construirObservacionRechazo(
+              materiasReprobadas,
+              numPromedio,
+              tipo_beca,
+              incumpleExcelencia18
+            ))
+      : null;
 
     // 4. VALIDACIÓN ESTRICTA DE ENTEROS NO NEGATIVOS (INGRESOS, EGRESOS, EDADES Y HERMANOS)
     const sueldoReal = parseEnteroNoNegativoEstricto(formData.get('monto_ingreso_sueldo'));
@@ -274,11 +400,16 @@ export async function enviarSolicitud(formData: FormData) {
     const montoExtra = parseEnteroNoNegativoEstricto(formData.get('monto_ingreso_extra'));
     const montoPension = parseEnteroNoNegativoEstricto(formData.get('monto_ingreso_pension'));
     const montoAyuda = parseEnteroNoNegativoEstricto(formData.get('monto_ingreso_ayuda'));
+    const montoRentas = parseEnteroNoNegativoEstricto(formData.get('monto_ingreso_rentas'));
+    const montoOtrosIngresos = parseEnteroNoNegativoEstricto(formData.get('monto_ingreso_otros'));
 
     const egresoMercado = parseEnteroNoNegativoEstricto(formData.get('monto_egreso_mercado'));
     const egresoVivienda = parseEnteroNoNegativoEstricto(formData.get('monto_egreso_vivienda'));
     const egresoSalud = parseEnteroNoNegativoEstricto(formData.get('monto_egreso_salud'));
     const egresoServicios = parseEnteroNoNegativoEstricto(formData.get('monto_egreso_servicios'));
+    const egresoSuntuarios = parseEnteroNoNegativoEstricto(formData.get('monto_egreso_suntuarios'));
+    const egresoEstudios = parseEnteroNoNegativoEstricto(formData.get('monto_egreso_estudios'));
+    const egresoRecreacion = parseEnteroNoNegativoEstricto(formData.get('monto_egreso_recreacion'));
 
     const padreEdad = parseEnteroNoNegativoEstricto(formData.get('padre_edad'));
     const madreEdad = parseEnteroNoNegativoEstricto(formData.get('madre_edad'));
@@ -291,10 +422,15 @@ export async function enviarSolicitud(formData: FormData) {
       montoExtra === null ||
       montoPension === null ||
       montoAyuda === null ||
+      montoRentas === null ||
+      montoOtrosIngresos === null ||
       egresoMercado === null ||
       egresoVivienda === null ||
       egresoSalud === null ||
       egresoServicios === null ||
+      egresoSuntuarios === null ||
+      egresoEstudios === null ||
+      egresoRecreacion === null ||
       padreEdad === null ||
       madreEdad === null ||
       numHermanos === null ||
@@ -336,7 +472,6 @@ export async function enviarSolicitud(formData: FormData) {
     // 6. SINCRONIZACIÓN DE PERIODO
     const periodoId = await obtenerOCrearPeriodoObjetivo();
 
-    // Verificación previa de solicitud existente para validar documentos obligatorios antes de escribir archivos
     const [prevSolicitudRows] = await db.execute<SolicitudExistenteRow[]>(
       'SELECT id, estatus, foto_carnet, copia_cedula, constancia_residencia, declaracion_manutencion, informe_medico, partida_nacimiento, constancia_club, constancia_notas, notas_certificadas, carnet_discapacidad, documentos_filiacion FROM solicitudes WHERE user_id = ? AND periodo_id = ?',
       [userIdNum, periodoId]
@@ -381,39 +516,116 @@ export async function enviarSolicitud(formData: FormData) {
       archivosEntrantes.documentos_filiacion ? guardarArchivo(archivosEntrantes.documentos_filiacion) : Promise.resolve(null),
     ]);
 
-    // --- CÁLCULO DE INGRESOS (Sincronizado con nombres reales de columnas) ---
+    const viviendaTipoFinal = sanitizarTextoSeguro(formData.get('vivienda_tipo'), 50) || "Casa";
+    const viviendaEstatusFinal = sanitizarTextoSeguro(formData.get('vivienda_estatus'), 50) || "Propia";
+    const poseeEmpleoFinal = getStringOrNull(formData.get('posee_empleo_aspirante')) || "No";
+    const condicionLaboralTipoFinal = sanitizarTextoSeguro(formData.get('socio_condicion_laboral_tipo'), 60) || "No aplica";
+    const rangoIngresoFinal = getStringOrNull(formData.get('rango_ingreso_familiar')) || "1";
+    const familiaEstatusConyugalFinal = sanitizarTextoSeguro(formData.get('familia_estatus_conyugal'), 60) || "Matrimonio Civil";
+    const familiaNucleoJsonFinal = sanitizarNucleoFamiliarJson(formData.get('familia_nucleo_json'));
+    const saludCondicionFinal = getStringOrNull(formData.get('salud_condicion_especial')) || "No";
+    const familiaRelacionFinal = getStringOrNull(formData.get('familia_relacion')) || "Buena";
+    const familiaProblemaSnFinal = getStringOrNull(formData.get('familia_problema_sn')) === "Si" ? "Si" : "No";
+    const familiaProblemaDescFinal =
+      familiaProblemaSnFinal === "Si"
+        ? (sanitizarTextoSeguro(formData.get('familia_problema_desc'), 300) || "No especificado")
+        : null;
+    const organizacionActivaFinal = sanitizarTextoSeguro(formData.get('organizacion_activa'), 100) || "Ninguna";
+    const observacionesSolicitanteFinal = sanitizarTextoSeguro(
+      formData.get('observaciones_solicitante') ?? formData.get('observaciones_estudio'),
+      500
+    );
+
+    const hermanosUniSnFinal =
+      getStringOrNull(formData.get('familia_hermanos_uni_sn')) === "Si" || hermanosUni > 0
+        ? "Si"
+        : "No";
+
+    // Switches de 7 Servicios Básicos y 11 Equipamientos del Hogar
+    const servAgua = getSwitchOnOff(formData, 'serv_agua');
+    const servLuz = getSwitchOnOff(formData, 'serv_luz');
+    const servGas = getSwitchOnOff(formData, 'serv_gas');
+    const servAseo = getSwitchOnOff(formData, 'serv_aseo');
+    const servTelefono = getSwitchOnOff(formData, 'serv_telefono');
+    const servCloacas = getSwitchOnOff(formData, 'serv_cloacas');
+    const servInternet = getSwitchOnOff(formData, 'serv_internet');
+
+    const equipNevera = getSwitchOnOff(formData, 'equip_nevera');
+    const equipAire = getSwitchOnOff(formData, 'equip_aire');
+    const equipVentilador = getSwitchOnOff(formData, 'equip_ventilador');
+    const equipTv = getSwitchOnOff(formData, 'equip_tv');
+    const equipCocina = getSwitchOnOff(formData, 'equip_cocina');
+    const equipMicroondas = getSwitchOnOff(formData, 'equip_microondas');
+    const equipLavadora = getSwitchOnOff(formData, 'equip_lavadora');
+    const equipSonido = getSwitchOnOff(formData, 'equip_sonido');
+    const equipComputadora = getSwitchOnOff(formData, 'equip_computadora');
+    const equipCelular = getSwitchOnOff(formData, 'equip_celular');
+    const equipCable = getSwitchOnOff(formData, 'equip_cable');
+
     const ingresoTotal =
       sueldoReal +
       montoExtra +
       montoPension +
       montoAyuda +
-      montoFamiliarExtra;
+      montoFamiliarExtra +
+      montoRentas +
+      montoOtrosIngresos;
 
-    // 8. MOTOR DE BAREMO UNIFICADO
+    // 8. MOTOR DE BAREMO UNIFICADO (sincronizado al 100% con todas las áreas, servicios y equipamiento)
     const { puntaje: puntajeCalculado, nivelRiesgo } = await calcularPuntajeUnificado({
       ingresoTotal,
+      rango_ingreso_familiar: rangoIngresoFinal,
       monto_ingreso_sueldo: sueldoReal,
       monto_ingreso_extra: montoExtra,
       monto_ingreso_pension: montoPension,
       monto_ingreso_ayuda: montoAyuda,
       monto_ingreso_familiar: montoFamiliarExtra,
+      monto_ingreso_rentas: montoRentas,
+      monto_ingreso_otros: montoOtrosIngresos,
       monto_egreso_mercado: egresoMercado,
       monto_egreso_vivienda: egresoVivienda,
       monto_egreso_salud: egresoSalud,
       monto_egreso_servicios: egresoServicios,
-      viviendaTipo: getStringOrNull(formData.get('vivienda_tipo')) || "",
-      viviendaEstatus: getStringOrNull(formData.get('vivienda_estatus')) || "",
+      monto_egreso_suntuarios: egresoSuntuarios,
+      monto_egreso_estudios: egresoEstudios,
+      monto_egreso_recreacion: egresoRecreacion,
+      viviendaTipo: viviendaTipoFinal,
+      viviendaEstatus: viviendaEstatusFinal,
+      serv_agua: servAgua,
+      serv_luz: servLuz,
+      serv_gas: servGas,
+      serv_aseo: servAseo,
+      serv_telefono: servTelefono,
+      serv_cloacas: servCloacas,
+      serv_internet: servInternet,
+      equip_nevera: equipNevera,
+      equip_aire: equipAire,
+      equip_ventilador: equipVentilador,
+      equip_tv: equipTv,
+      equip_cocina: equipCocina,
+      equip_microondas: equipMicroondas,
+      equip_lavadora: equipLavadora,
+      equip_sonido: equipSonido,
+      equip_computadora: equipComputadora,
+      equip_celular: equipCelular,
+      equip_cable: equipCable,
+      poseeEmpleo: poseeEmpleoFinal,
+      socio_condicion_laboral_tipo: condicionLaboralTipoFinal,
+      familia_estatus_conyugal: familiaEstatusConyugalFinal,
       numHermanos,
-      poseeEmpleo: getStringOrNull(formData.get('posee_empleo_aspirante')) || "No",
-      saludCondicion: getStringOrNull(formData.get('salud_condicion_especial')) || "No",
-      servInternet: formData.get('serv_internet') === 'on' ? 'on' : 'off',
-      equipNevera: formData.get('equip_nevera') === 'on' ? 'on' : 'off',
-      equipLavadora: formData.get('equip_lavadora') === 'on' ? 'on' : 'off'
+      familia_hermanos_uni: hermanosUni,
+      familia_nucleo_json: familiaNucleoJsonFinal,
+      saludCondicion: saludCondicionFinal,
+      familiaRelacion: familiaRelacionFinal,
+      familia_problema_sn: familiaProblemaSnFinal,
     });
 
     // 9. TRANSACCIÓN DE GUARDADO
     connection = await db.getConnection();
     await connection.beginTransaction();
+
+    let solicitudIdFinal = 0;
+    let estatusPrevioHistorial = 'Nueva';
 
     try {
       const [solicitudExistente] = await connection.execute<SolicitudExistenteRow[]>(
@@ -423,171 +635,227 @@ export async function enviarSolicitud(formData: FormData) {
 
       if (solicitudExistente.length > 0) {
         const existente = solicitudExistente[0];
-        await connection.execute(`
-          UPDATE solicitudes SET 
-            email_institucional = ?, tipo_beca = ?, promedio_notas = ?, 
-            motivo_solicitud = ?, materias_json = ?, estatus = ?, observaciones_admin = ?,
-            foto_carnet = ?, copia_cedula = ?, 
-            constancia_residencia = ?, declaracion_manutencion = ?, informe_medico = ?, 
-            partida_nacimiento = ?, constancia_club = ?, constancia_notas = ?, 
-            notas_certificadas = ?, carnet_discapacidad = ?, documentos_filiacion = ?, 
-            fecha_registro = NOW()
-          WHERE id = ?
-        `, [
-          emailInstitucional,
-          tipo_beca,
-          numPromedio,
-          motivo,
-          materiasJsonString,
-          estatusFinal,
-          observacionAutomatica,
-          rutaFoto || existente.foto_carnet,
-          rutaCedula || existente.copia_cedula,
-          rutaConstanciaResidencia || existente.constancia_residencia,
-          rutaDeclaracionManutencion || existente.declaracion_manutencion,
-          rutaInformeMedico || existente.informe_medico,
-          rutaPartidaNacimiento || existente.partida_nacimiento,
-          rutaConstanciaClub || existente.constancia_club,
-          rutaConstanciaNotas || existente.constancia_notas,
-          rutaNotasCertificadas || existente.notas_certificadas,
-          rutaCarnetDiscapacidad || existente.carnet_discapacidad,
-          rutaDocumentosFiliacion || existente.documentos_filiacion,
-          existente.id
-        ]);
+        solicitudIdFinal = Number(existente.id);
+        estatusPrevioHistorial = String(existente.estatus || 'Pendiente');
+
+        await connection.execute<ResultSetHeader>(
+          `
+            UPDATE solicitudes SET 
+              email_institucional = ?, tipo_beca = ?, promedio_notas = ?, 
+              motivo_solicitud = ?, materias_json = ?, estatus = ?, observaciones_admin = ?,
+              foto_carnet = ?, copia_cedula = ?, 
+              constancia_residencia = ?, declaracion_manutencion = ?, informe_medico = ?, 
+              partida_nacimiento = ?, constancia_club = ?, constancia_notas = ?, 
+              notas_certificadas = ?, carnet_discapacidad = ?, documentos_filiacion = ?, 
+              fecha_registro = NOW()
+            WHERE id = ?
+          `,
+          [
+            emailInstitucional,
+            tipo_beca,
+            numPromedio,
+            motivo,
+            materiasJsonString,
+            estatusFinal,
+            observacionAutomatica,
+            rutaFoto || existente.foto_carnet,
+            rutaCedula || existente.copia_cedula,
+            rutaConstanciaResidencia || existente.constancia_residencia,
+            rutaDeclaracionManutencion || existente.declaracion_manutencion,
+            rutaInformeMedico || existente.informe_medico,
+            rutaPartidaNacimiento || existente.partida_nacimiento,
+            rutaConstanciaClub || existente.constancia_club,
+            rutaConstanciaNotas || existente.constancia_notas,
+            rutaNotasCertificadas || existente.notas_certificadas,
+            rutaCarnetDiscapacidad || existente.carnet_discapacidad,
+            rutaDocumentosFiliacion || existente.documentos_filiacion,
+            existente.id
+          ]
+        );
       } else {
-        await connection.execute(`
-          INSERT INTO solicitudes (
-            user_id, periodo_id, email_institucional, tipo_beca, promedio_notas, 
-            motivo_solicitud, materias_json, estatus, observaciones_admin,
-            foto_carnet, copia_cedula, constancia_residencia, declaracion_manutencion, 
-            informe_medico, partida_nacimiento, constancia_club, constancia_notas, 
-            notas_certificadas, carnet_discapacidad, documentos_filiacion, fecha_registro
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-        `, [
-          userIdNum,
-          periodoId,
-          emailInstitucional,
-          tipo_beca,
-          numPromedio,
-          motivo,
-          materiasJsonString,
-          estatusFinal,
-          observacionAutomatica,
-          rutaFoto || null,
-          rutaCedula || null,
-          rutaConstanciaResidencia || null,
-          rutaDeclaracionManutencion || null,
-          rutaInformeMedico || null,
-          rutaPartidaNacimiento || null,
-          rutaConstanciaClub || null,
-          rutaConstanciaNotas || null,
-          rutaNotasCertificadas || null,
-          rutaCarnetDiscapacidad || null,
-          rutaDocumentosFiliacion || null
-        ]);
+        const [insertSolResult] = await connection.execute<ResultSetHeader>(
+          `
+            INSERT INTO solicitudes (
+              user_id, periodo_id, email_institucional, tipo_beca, promedio_notas, 
+              motivo_solicitud, materias_json, estatus, observaciones_admin,
+              foto_carnet, copia_cedula, constancia_residencia, declaracion_manutencion, 
+              informe_medico, partida_nacimiento, constancia_club, constancia_notas, 
+              notas_certificadas, carnet_discapacidad, documentos_filiacion, fecha_registro
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+          `,
+          [
+            userIdNum,
+            periodoId,
+            emailInstitucional,
+            tipo_beca,
+            numPromedio,
+            motivo,
+            materiasJsonString,
+            estatusFinal,
+            observacionAutomatica,
+            rutaFoto || null,
+            rutaCedula || null,
+            rutaConstanciaResidencia || null,
+            rutaDeclaracionManutencion || null,
+            rutaInformeMedico || null,
+            rutaPartidaNacimiento || null,
+            rutaConstanciaClub || null,
+            rutaConstanciaNotas || null,
+            rutaNotasCertificadas || null,
+            rutaCarnetDiscapacidad || null,
+            rutaDocumentosFiliacion || null
+          ]
+        );
+
+        solicitudIdFinal = Number(insertSolResult.insertId);
       }
 
-      // 10. GUARDADO EN TABLA SOCIOECONÓMICA
-      await connection.execute(`
-        INSERT INTO estudios_socioeconomicos (
-          student_id, periodo_id, tipo,
-          socio_lugar_nac, socio_nacionalidad, socio_estado_civil, socio_telf_hab, direccion_completa,
-          socio_trabajo_empresa, socio_trabajo_cargo, monto_ingreso_sueldo,
-          socio_ue_procedencia, socio_otros_estudios, socio_fecha_unimar, socio_modalidad,
-          padre_nombre, padre_edad, padre_ocupacion, padre_trabajo,
-          madre_nombre, madre_edad, madre_ocupacion, madre_trabajo,
-          familia_num_hermanos, familia_hermanos_uni,
-          rango_ingreso_familiar, monto_ingreso_extra, monto_ingreso_pension, monto_ingreso_ayuda, monto_ingreso_familiar,
-          monto_egreso_mercado, monto_egreso_vivienda, monto_egreso_salud, monto_egreso_servicios,
-          vivienda_tipo, vivienda_estatus, 
-          serv_internet, serv_luz, serv_agua, serv_gas, serv_aseo,
-          equip_nevera, equip_lavadora, equip_cable,
-          salud_condicion_especial, salud_enfermedad_desc, salud_tratamiento,
-          situacion_laboral_jefe, familia_relacion,
-          puntaje, nivel_riesgo, created_at
-        ) VALUES (
-          ?, ?, 'estudiante', 
-          ?, ?, ?, ?, ?,
-          ?, ?, ?, 
-          ?, ?, ?, ?, 
-          ?, ?, ?, ?, 
-          ?, ?, ?, ?, 
-          ?, ?, 
-          ?, ?, ?, ?, ?,
-          ?, ?, ?, ?, 
-          ?, ?, 
-          ?, ?, ?, ?, ?, 
-          ?, ?, ?, 
-          ?, ?, ?, 
-          ?, ?,
-          ?, ?, NOW()
-        )
-        ON DUPLICATE KEY UPDATE 
-          socio_telf_hab = VALUES(socio_telf_hab),
-          direccion_completa = VALUES(direccion_completa),
-          monto_ingreso_sueldo = VALUES(monto_ingreso_sueldo),
-          monto_ingreso_familiar = VALUES(monto_ingreso_familiar),
-          monto_ingreso_extra = VALUES(monto_ingreso_extra),
-          monto_egreso_mercado = VALUES(monto_egreso_mercado),
-          monto_egreso_vivienda = VALUES(monto_egreso_vivienda),
-          monto_egreso_salud = VALUES(monto_egreso_salud),
-          monto_egreso_servicios = VALUES(monto_egreso_servicios),
-          familia_relacion = VALUES(familia_relacion),
-          puntaje = VALUES(puntaje),
-          nivel_riesgo = VALUES(nivel_riesgo),
-          created_at = NOW()
-      `, [
-        userIdNum,
-        periodoId,
-        sanitizarSoloLetras(formData.get('socio_lugar_nac')),
-        getStringOrNull(formData.get('socio_nacionalidad')),
-        getStringOrNull(formData.get('socio_estado_civil')),
-        getStringOrNull(formData.get('socio_telf_hab')),
-        getStringOrNull(formData.get('direccion_completa')),
-        sanitizarSoloLetras(formData.get('socio_trabajo_empresa'), true),
-        sanitizarSoloLetras(formData.get('socio_trabajo_cargo'), true),
-        sueldoReal,
-        sanitizarSoloLetras(formData.get('socio_ue_procedencia')),
-        sanitizarSoloLetras(formData.get('socio_otros_estudios')),
-        getStringOrNull(formData.get('socio_fecha_unimar')),
-        getStringOrNull(formData.get('socio_modalidad')),
-        sanitizarSoloLetras(formData.get('padre_nombre')),
-        padreEdad,
-        sanitizarSoloLetras(formData.get('padre_ocupacion')),
-        sanitizarSoloLetras(formData.get('padre_trabajo')),
-        sanitizarSoloLetras(formData.get('madre_nombre')),
-        madreEdad,
-        sanitizarSoloLetras(formData.get('madre_ocupacion')),
-        sanitizarSoloLetras(formData.get('madre_trabajo')),
-        numHermanos,
-        hermanosUni,
-        getStringOrNull(formData.get('rango_ingreso_familiar')),
-        montoExtra,
-        montoPension,
-        montoAyuda,
-        montoFamiliarExtra,
-        egresoMercado,
-        egresoVivienda,
-        egresoSalud,
-        egresoServicios,
-        getStringOrNull(formData.get('vivienda_tipo')),
-        getStringOrNull(formData.get('vivienda_estatus')),
-        formData.get('serv_internet') === 'on' ? 'on' : 'off',
-        formData.get('serv_luz') === 'on' ? 'on' : 'off',
-        formData.get('serv_agua') === 'on' ? 'on' : 'off',
-        formData.get('serv_gas') === 'on' ? 'on' : 'off',
-        formData.get('serv_aseo') === 'on' ? 'on' : 'off',
-        formData.get('equip_nevera') === 'on' ? 'on' : 'off',
-        formData.get('equip_lavadora') === 'on' ? 'on' : 'off',
-        formData.get('equip_cable') === 'on' ? 'on' : 'off',
-        getStringOrNull(formData.get('salud_condicion_especial')) || 'No',
-        getStringOrNull(formData.get('salud_enfermedad_desc')),
-        getStringOrNull(formData.get('salud_tratamiento')),
-        getStringOrNull(formData.get('posee_empleo_aspirante')) || 'No',
-        getStringOrNull(formData.get('familia_relacion')) || 'Buena',
-        puntajeCalculado || 0,
-        nivelRiesgo || 'Bajo'
-      ]);
+      // 10. GUARDADO COMPLETO EN TABLA SOCIOECONÓMICA (COLUMNAS BASE + 30 COLUMNAS NUEVAS)
+      const camposSocio: ReadonlyArray<readonly [string, string | number | null]> = [
+        ['student_id', userIdNum],
+        ['periodo_id', periodoId],
+        ['tipo', 'estudiante'],
+        ['socio_lugar_nac', sanitizarTextoSeguro(formData.get('socio_lugar_nac'), 100) || "Porlamar, Nueva Esparta"],
+        ['socio_nacionalidad', getStringOrNull(formData.get('socio_nacionalidad')) || "Venezolano/a"],
+        ['socio_estado_civil', getStringOrNull(formData.get('socio_estado_civil')) || "Soltero/a"],
+        ['socio_telf_hab', sanitizarTelefono(formData.get('socio_telf_hab'), 20) || "02952600000"],
+        ['direccion_completa', sanitizarTextoSeguro(formData.get('direccion_completa'), 255) || "No registrada"],
+        ['socio_trabajo_empresa', sanitizarTextoSeguro(formData.get('socio_trabajo_empresa'), 150, true) || "NO"],
+        ['socio_trabajo_cargo', sanitizarSoloLetras(formData.get('socio_trabajo_cargo'), true) || "NO"],
+        ['socio_trabajo_direccion', sanitizarTextoSeguro(formData.get('socio_trabajo_direccion'), 255, true) || "NO"],
+        ['socio_trabajo_telefono', sanitizarTelefono(formData.get('socio_trabajo_telefono'), 30) || "NO"],
+        ['socio_condicion_laboral_tipo', condicionLaboralTipoFinal],
+        ['socio_condicion_laboral_desc', sanitizarTextoSeguro(formData.get('socio_condicion_laboral_desc'), 255, true) || "NO"],
+        ['monto_ingreso_sueldo', sueldoReal],
+        ['socio_ue_procedencia', sanitizarTextoSeguro(formData.get('socio_ue_procedencia'), 150) || "No registrada"],
+        ['socio_otros_estudios', sanitizarTextoSeguro(formData.get('socio_otros_estudios'), 150) || "Ninguno"],
+        ['socio_fecha_unimar', getStringOrNull(formData.get('socio_fecha_unimar'))],
+        ['socio_modalidad', getStringOrNull(formData.get('socio_modalidad')) || "P"],
+        ['padre_nombre', sanitizarSoloLetras(formData.get('padre_nombre')) || "No declarado"],
+        ['padre_edad', padreEdad],
+        ['padre_ocupacion', sanitizarSoloLetras(formData.get('padre_ocupacion')) || "No declarado"],
+        ['padre_trabajo', sanitizarTextoSeguro(formData.get('padre_trabajo'), 150) || "No declarado"],
+        ['padre_nacionalidad', sanitizarSoloLetras(formData.get('padre_nacionalidad')) || "Venezolano/a"],
+        ['padre_instruccion', sanitizarTextoSeguro(formData.get('padre_instruccion'), 100) || "No declarado"],
+        ['madre_nombre', sanitizarSoloLetras(formData.get('madre_nombre')) || "No declarado"],
+        ['madre_edad', madreEdad],
+        ['madre_ocupacion', sanitizarSoloLetras(formData.get('madre_ocupacion')) || "No declarado"],
+        ['madre_trabajo', sanitizarTextoSeguro(formData.get('madre_trabajo'), 150) || "No declarado"],
+        ['madre_nacionalidad', sanitizarSoloLetras(formData.get('madre_nacionalidad')) || "Venezolano/a"],
+        ['madre_instruccion', sanitizarTextoSeguro(formData.get('madre_instruccion'), 100) || "No declarado"],
+        ['familia_estatus_conyugal', familiaEstatusConyugalFinal],
+        ['familia_num_hermanos', numHermanos],
+        ['familia_hermanos_uni', hermanosUni],
+        ['familia_hermanos_uni_sn', hermanosUniSnFinal],
+        ['familia_nucleo_json', familiaNucleoJsonFinal],
+        ['rango_ingreso_familiar', rangoIngresoFinal],
+        ['monto_ingreso_extra', montoExtra],
+        ['monto_ingreso_pension', montoPension],
+        ['monto_ingreso_ayuda', montoAyuda],
+        ['monto_ingreso_familiar', montoFamiliarExtra],
+        ['monto_ingreso_rentas', montoRentas],
+        ['monto_ingreso_otros', montoOtrosIngresos],
+        ['monto_egreso_mercado', egresoMercado],
+        ['monto_egreso_vivienda', egresoVivienda],
+        ['monto_egreso_salud', egresoSalud],
+        ['monto_egreso_servicios', egresoServicios],
+        ['monto_egreso_suntuarios', egresoSuntuarios],
+        ['monto_egreso_estudios', egresoEstudios],
+        ['monto_egreso_recreacion', egresoRecreacion],
+        ['vivienda_tipo', viviendaTipoFinal],
+        ['vivienda_estatus', viviendaEstatusFinal],
+        ['serv_internet', servInternet],
+        ['serv_luz', servLuz],
+        ['serv_agua', servAgua],
+        ['serv_gas', servGas],
+        ['serv_aseo', servAseo],
+        ['serv_telefono', servTelefono],
+        ['serv_cloacas', servCloacas],
+        ['equip_nevera', equipNevera],
+        ['equip_lavadora', equipLavadora],
+        ['equip_cable', equipCable],
+        ['equip_aire', equipAire],
+        ['equip_ventilador', equipVentilador],
+        ['equip_tv', equipTv],
+        ['equip_cocina', equipCocina],
+        ['equip_microondas', equipMicroondas],
+        ['equip_sonido', equipSonido],
+        ['equip_computadora', equipComputadora],
+        ['equip_celular', equipCelular],
+        ['salud_condicion_especial', saludCondicionFinal],
+        ['salud_enfermedad_desc', sanitizarTextoSeguro(formData.get('salud_enfermedad_desc'), 180, true) || 'NO'],
+        ['salud_tratamiento', sanitizarTextoSeguro(formData.get('salud_tratamiento'), 180, true) || 'NO'],
+        ['situacion_laboral_jefe', poseeEmpleoFinal],
+        ['familia_relacion', familiaRelacionFinal],
+        ['familia_problema_sn', familiaProblemaSnFinal],
+        ['familia_problema_desc', familiaProblemaDescFinal],
+        ['organizacion_activa', organizacionActivaFinal],
+        ['observaciones_solicitante', observacionesSolicitanteFinal],
+        ['puntaje', puntajeCalculado || 0],
+        ['nivel_riesgo', nivelRiesgo || 'Bajo'],
+      ];
+
+      const columnasSql = camposSocio.map(([col]) => `\`${col}\``).join(', ');
+      const placeholdersSql = camposSocio.map(() => '?').join(', ');
+      const updateSql = camposSocio
+        .filter(([col]) => col !== 'student_id' && col !== 'tipo')
+        .map(([col]) => `\`${col}\` = VALUES(\`${col}\`)`)
+        .join(', ');
+      const valoresSocio = camposSocio.map(([, val]) => val);
+
+      await connection.execute<ResultSetHeader>(
+        `
+          INSERT INTO estudios_socioeconomicos (${columnasSql}, \`created_at\`)
+          VALUES (${placeholdersSql}, NOW())
+          ON DUPLICATE KEY UPDATE ${updateSql}, \`created_at\` = NOW()
+        `,
+        valoresSocio
+      );
+
+      // 11. TRAZABILIDAD EN HISTORIAL DE APROBACIONES SI EL SISTEMA RECHAZA AUTOMÁTICAMENTE
+      if (estatusFinal === 'Rechazada' && solicitudIdFinal > 0) {
+        await connection.execute<ResultSetHeader>(
+          `
+            INSERT INTO historial_aprobaciones (
+              solicitud_id,
+              user_id,
+              periodo_id,
+              admin_id,
+              promedio_ciclo,
+              trimestre,
+              puntaje_baremo_,
+              nivel_riesgo,
+              tipo_beca_snapshot,
+              estatus_previo,
+              estatus_nuevo,
+              observacion_admin,
+              materias_snapshot_json,
+              indice_global_snapshot,
+              fecha_aprobacion,
+              token_verificacion,
+              ip_accion
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)
+          `,
+          [
+            solicitudIdFinal,
+            userIdNum,
+            periodoId,
+            SISTEMA_ADMIN_ID,
+            numPromedio,
+            trimestreSnapshot,
+            puntajeCalculado || 0,
+            nivelRiesgo || 'Bajo',
+            tipo_beca,
+            estatusPrevioHistorial,
+            'Rechazada',
+            observacionAutomatica || 'Rechazo automático por reglamento académico.',
+            materiasJsonString,
+            numPromedio,
+            randomUUID(),
+            '127.0.0.1'
+          ]
+        );
+      }
 
       await connection.commit();
     } catch (sqlError) {
@@ -597,8 +865,14 @@ export async function enviarSolicitud(formData: FormData) {
       if (connection) connection.release();
     }
 
-    await actualizarIndiceGlobal(userIdNum, materiasArray);
+    if (materiasArray.length > 0) {
+      await actualizarIndiceGlobal(userIdNum, materiasArray);
+    }
+
     revalidatePath('/admin/solicitudes');
+    revalidatePath('/admin/validarBeca');
+    revalidatePath('/admin/estudio-socioeconomico');
+    revalidatePath('/admin/Historial-Aprobaciones');
     revalidatePath('/perfil');
 
     return { success: true };

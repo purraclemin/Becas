@@ -3,12 +3,13 @@
 import React, { useState, useEffect, useRef, useCallback, use } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { obtenerTodasLasSolicitudes } from "@/lib/ActionsTodasSolicitudes"
-import { actualizarEstatusBeca } from "@/lib/ActionsEstatusBeca" 
+import { actualizarEstatusBeca, type ResultadoActualizacionEstatus } from "@/lib/ActionsEstatusBeca"
 import { obtenerOCrearPeriodoObjetivo } from "@/lib/SolicitudAcademic"
-import { getStudentHistory } from "@/lib/ActionsHistoryMaterias" 
+import { getStudentHistory } from "@/lib/ActionsHistoryMaterias"
+import { getSession } from "@/lib/ActionsSession"
 import { generarRankingAptoIA } from "@/app/admin/validarBeca/lib/AptoIA"
 
-// 🟢 IMPORTACIONES LOCALES E INDEPENDIENTES Y SUS TIPOS OFICIALES
+// IMPORTACIONES LOCALES E INDEPENDIENTES Y SUS TIPOS OFICIALES
 import { ValidarBecaViewAcademic } from "@/app/admin/validarBeca/components/ValidarBecaViewAcademic"
 import { ValidarBecaViewAuditoria, SolicitudAuditoriaView } from "@/app/admin/validarBeca/components/ValidarBecaViewAuditoria"
 import { ValidarBecaHeader } from "@/app/admin/validarBeca/components/ValidarBecaHeader"
@@ -55,26 +56,29 @@ export default function ValidarBecaPage({ searchParams }: ValidarBecaPageProps) 
 
   const urlSearchParams = useSearchParams();
   const router = useRouter();
-  
+
   const [solicitudes, setSolicitudes] = useState<SolicitudItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [periodoActualId, setPeriodoActualId] = useState<number | null>(null);
+  const [esSecretariaGeneral, setEsSecretariaGeneral] = useState(false);
+  const [rolCargado, setRolCargado] = useState(false);
+
   const [viewMode, setViewMode] = useState<'list' | 'auditoria' | 'academic'>('list');
   const [selectedSolicitud, setSelectedSolicitud] = useState<SolicitudAuditoriaView | null>(null);
-  const [dataHistorial, setDataHistorial] = useState<HistorialAcademicoResponse | null>(null); 
+  const [dataHistorial, setDataHistorial] = useState<HistorialAcademicoResponse | null>(null);
   const [loadingHistorial, setLoadingHistorial] = useState(false);
 
-  // 🟢 ESTADOS PARA EL BUSCADOR DE IDENTIDAD Y FICHA INDIVIDUAL
+  // ESTADOS PARA EL BUSCADOR DE IDENTIDAD Y FICHA INDIVIDUAL
   const [student, setStudent] = useState<StudentData | null>(null);
   const [studentLoading, setStudentLoading] = useState(false);
   const [cedulaBusqueda, setCedulaBusqueda] = useState("");
   const [mostrarResultado, setMostrarResultado] = useState(false);
   const [, setPasoActual] = useState<number>(1);
 
-  // 🟢 ESTADOS PARA EL MODAL DE IA CON PERSISTENCIA GLOBAL (localStorage)
+  // ESTADOS PARA EL MODAL DE IA CON PERSISTENCIA GLOBAL (localStorage)
   const [isAptoIAOpen, setIsAptoIAOpen] = useState(false);
   const [loadingIA, setLoadingIA] = useState(false);
-  
+
   const [estudiantesAptosIA, setEstudiantesAptosIA] = useState<EstudianteIAAnalizado[]>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('unimar_ranking_ia_cache');
@@ -91,7 +95,7 @@ export default function ValidarBecaPage({ searchParams }: ValidarBecaPageProps) 
     }
     return false;
   });
-  
+
   const [filtros, setFiltros] = useState<FiltrosValidacionState>({
     search: initialFilters?.search || "",
     status: initialFilters?.status || "",
@@ -111,34 +115,55 @@ export default function ValidarBecaPage({ searchParams }: ValidarBecaPageProps) 
     tendencia: initialFilters?.tendencia || "",
     scope: initialFilters?.scope || ""
   });
-  
+
   const [paginaActual, setPaginaActual] = useState(1);
   const [totalPaginas, setTotalPaginas] = useState(1);
   const [, setTotalRegistros] = useState(0);
 
   const abortControllerRef = useRef<AbortController | null>(null);
-  const isFirstRender = useRef(true); 
-  const lastFiltersRef = useRef<string>(""); 
+  const isFirstRender = useRef(true);
+  const lastFiltersRef = useRef<string>("");
   const auditoriaAbiertaRef = useRef<string | null>(null);
 
   useEffect(() => {
-    const cargarPeriodo = async () => {
+    const inicializarContexto = async () => {
       try {
-        const res = await obtenerOCrearPeriodoObjetivo();
-        const idFinal = (res && typeof res === 'object') ? ((res as Record<string, unknown>).id || (res as Record<string, unknown>).periodo_id) : res;
+        const [resPeriodo, session] = await Promise.all([
+          obtenerOCrearPeriodoObjetivo(),
+          getSession(),
+        ]);
+
+        const idFinal =
+          resPeriodo && typeof resPeriodo === 'object'
+            ? ((resPeriodo as Record<string, unknown>).id ||
+                (resPeriodo as Record<string, unknown>).periodo_id)
+            : resPeriodo;
         if (idFinal) setPeriodoActualId(Number(idFinal));
+
+        const esSec = Boolean(
+          session.isLoggedIn &&
+          'esSecretariaGeneral' in session &&
+          session.esSecretariaGeneral
+        );
+        setEsSecretariaGeneral(esSec);
+
+        if (esSec) {
+          setFiltros((prev) => ({ ...prev, status: 'En Revisión' }));
+        }
       } catch (error) {
-        console.error("Error obteniendo periodo actual:", error);
+        console.error("Error inicializando contexto de validación:", error);
+      } finally {
+        setRolCargado(true);
       }
     };
-    cargarPeriodo();
+    inicializarContexto();
   }, []);
 
-  // 🟢 CAPTURA DIRECTA Y APERTURA AUTOMÁTICA DE AUDITORÍA POR CÉDULA (SIN IMPORTAR LA PÁGINA)
+  // CAPTURA DIRECTA Y APERTURA AUTOMÁTICA DE AUDITORÍA POR CÉDULA (SIN IMPORTAR LA PÁGINA)
   const cedulaTarget = urlSearchParams.get('abrirAuditoria') || initialFilters?.abrirAuditoria;
 
   useEffect(() => {
-    if (!cedulaTarget || auditoriaAbiertaRef.current === cedulaTarget) return;
+    if (!rolCargado || !cedulaTarget || auditoriaAbiertaRef.current === cedulaTarget) return;
 
     const abrirExpedienteDirecto = async () => {
       auditoriaAbiertaRef.current = cedulaTarget;
@@ -146,6 +171,7 @@ export default function ValidarBecaPage({ searchParams }: ValidarBecaPageProps) 
       try {
         const res = (await obtenerTodasLasSolicitudes({
           search: cedulaTarget.trim(),
+          status: esSecretariaGeneral ? 'En Revisión' : undefined,
           page: 1,
           limit: 1
         })) as RespuestaSolicitudes;
@@ -162,7 +188,7 @@ export default function ValidarBecaPage({ searchParams }: ValidarBecaPageProps) 
     };
 
     abrirExpedienteDirecto();
-  }, [cedulaTarget]);
+  }, [cedulaTarget, rolCargado, esSecretariaGeneral]);
 
   const cargarDatos = useCallback(async (actualFiltros: FiltrosValidacionState, pagina: number) => {
     const currentFiltersKey = JSON.stringify({ ...actualFiltros, pagina });
@@ -173,18 +199,18 @@ export default function ValidarBecaPage({ searchParams }: ValidarBecaPageProps) 
     setLoading(true);
 
     try {
-      const res = (await obtenerTodasLasSolicitudes({ 
-        ...actualFiltros, 
-        page: pagina, 
-        limit: actualFiltros.limit 
+      const res = (await obtenerTodasLasSolicitudes({
+        ...actualFiltros,
+        page: pagina,
+        limit: actualFiltros.limit
       })) as RespuestaSolicitudes;
-      
+
       if (controller.signal.aborted) return;
       if (res && res.data) {
         setSolicitudes(res.data);
         setTotalPaginas(res.totalPaginas || 1);
         setTotalRegistros(res.totalRegistros || 0);
-        lastFiltersRef.current = currentFiltersKey; 
+        lastFiltersRef.current = currentFiltersKey;
       }
     } catch (error) {
       console.error("Error cargando solicitudes para validación:", error);
@@ -194,31 +220,49 @@ export default function ValidarBecaPage({ searchParams }: ValidarBecaPageProps) 
   }, []);
 
   useEffect(() => {
-    if (viewMode !== 'list') return;
+    if (!rolCargado || viewMode !== 'list') return;
     const timeout = setTimeout(() => {
       cargarDatos(filtros, paginaActual);
       isFirstRender.current = false;
     }, isFirstRender.current ? 50 : 0);
     return () => clearTimeout(timeout);
-  }, [filtros, paginaActual, cargarDatos, viewMode]);
+  }, [filtros, paginaActual, cargarDatos, viewMode, rolCargado]);
 
   const handleStatusChange = async (
-    id: number, 
-    newStatus: string, 
-    observaciones?: string, 
+    id: number,
+    newStatus: string,
+    observaciones?: string,
     confirmacionEspecial: boolean = false,
     departamentoAsigned?: string
-  ) => {
+  ): Promise<ResultadoActualizacionEstatus> => {
     try {
       const resultado = await actualizarEstatusBeca(
-        id, 
-        newStatus, 
-        observaciones, 
-        confirmacionEspecial, 
+        id,
+        newStatus,
+        observaciones,
+        confirmacionEspecial,
         departamentoAsigned
       );
-      if (resultado.error === "REGLAMENTO_INCUMPLIDO") return resultado; 
-      lastFiltersRef.current = ""; 
+
+      if (resultado.error === "REGLAMENTO_INCUMPLIDO" || resultado.error) {
+        return resultado;
+      }
+
+      if (resultado.success) {
+        const obsLimpias = observaciones && observaciones.trim() !== '' ? observaciones.trim() : null;
+        setSelectedSolicitud((prev) =>
+          prev && Number(prev.id) === Number(id)
+            ? {
+                ...prev,
+                estatus: newStatus,
+                observaciones_admin: obsLimpias,
+                departamento_asignado: departamentoAsigned ?? prev.departamento_asignado,
+              }
+            : prev
+        );
+      }
+
+      lastFiltersRef.current = "";
       await cargarDatos(filtros, paginaActual);
       return resultado;
     } catch {
@@ -230,12 +274,13 @@ export default function ValidarBecaPage({ searchParams }: ValidarBecaPageProps) 
     if (!cedulaBusqueda.trim()) return;
     setStudentLoading(true);
     try {
-      const res = (await obtenerTodasLasSolicitudes({ 
-        search: cedulaBusqueda.trim(), 
-        page: 1, 
-        limit: 1 
+      const res = (await obtenerTodasLasSolicitudes({
+        search: cedulaBusqueda.trim(),
+        status: esSecretariaGeneral ? 'En Revisión' : undefined,
+        page: 1,
+        limit: 1
       })) as RespuestaSolicitudes;
-      
+
       if (res && res.data && res.data.length > 0) {
         setStudent(res.data[0] as unknown as StudentData);
         setMostrarResultado(true);
@@ -286,6 +331,7 @@ export default function ValidarBecaPage({ searchParams }: ValidarBecaPageProps) 
   };
 
   const handleOpenAptoIA = async () => {
+    if (esSecretariaGeneral) return;
     setIsAptoIAOpen(true);
     if (!iaYaCargada || estudiantesAptosIA.length === 0) {
       await ejecutarAnalisisIA();
@@ -304,7 +350,7 @@ export default function ValidarBecaPage({ searchParams }: ValidarBecaPageProps) 
         nombre: encontrada.nombre || undefined,
         apellido: encontrada.apellido || undefined
       });
-      setViewMode('auditoria'); 
+      setViewMode('auditoria');
     } else {
       setFiltros(prev => ({ ...prev, search: cedulaEstudiante }));
       setIsAptoIAOpen(false);
@@ -326,45 +372,51 @@ export default function ValidarBecaPage({ searchParams }: ValidarBecaPageProps) 
   } : null;
 
   if (viewMode === 'academic') return (
-    <ValidarBecaViewAcademic 
-      selectedSolicitud={selectedSolicitudAcademica} 
-      dataHistorial={dataHistorial} 
-      loadingHistorial={loadingHistorial} 
-      onClose={handleCloseSubViews} 
+    <ValidarBecaViewAcademic
+      selectedSolicitud={selectedSolicitudAcademica}
+      dataHistorial={dataHistorial}
+      loadingHistorial={loadingHistorial}
+      onClose={handleCloseSubViews}
     />
   );
 
   if (viewMode === 'auditoria') return (
-    <ValidarBecaViewAuditoria 
-      selectedSolicitud={selectedSolicitud} 
-      onStatusChange={handleStatusChange} 
-      onClose={handleCloseSubViews} 
-      periodoActualId={periodoActualId} 
+    <ValidarBecaViewAuditoria
+      selectedSolicitud={selectedSolicitud}
+      onStatusChange={handleStatusChange}
+      onClose={handleCloseSubViews}
+      periodoActualId={periodoActualId}
+      esSecretariaGeneral={esSecretariaGeneral}
     />
   );
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 w-full max-w-[1600px] mx-auto px-4 md:px-8 py-6">
-      <ValidarBecaHeader 
-        currentStatus={filtros.status || "Todas"} 
-        onStatusChange={(e: { status: string }) => setFiltros({...filtros, status: e.status === "Todas" ? "" : e.status, limit: 7})} 
-      />
-      <ValidarBecaFilters 
-        initialFilters={filtros} 
-        onFilterChange={(f: FiltrosValidacionState) => { 
-          setFiltros(f); 
+      <ValidarBecaHeader
+        currentStatus={esSecretariaGeneral ? "En Revisión" : (filtros.status || "Todas")}
+        esSecretariaGeneral={esSecretariaGeneral}
+        onStatusChange={(e: { status: string }) => {
+          if (esSecretariaGeneral) return;
+          setFiltros({ ...filtros, status: e.status === "Todas" ? "" : e.status, limit: 7 });
         }}
-        paginaActual={paginaActual} 
-        setPaginaActual={setPaginaActual} 
-        totalPaginas={totalPaginas} 
-        loading={loading} 
-        hasData={solicitudes.length > 0} 
-        registrosPorPagina={filtros.limit} 
+      />
+      <ValidarBecaFilters
+        initialFilters={filtros}
+        esSecretariaGeneral={esSecretariaGeneral}
+        onFilterChange={(f: FiltrosValidacionState) => {
+          setFiltros(esSecretariaGeneral ? { ...f, status: "En Revisión" } : f);
+        }}
+        paginaActual={paginaActual}
+        setPaginaActual={setPaginaActual}
+        totalPaginas={totalPaginas}
+        loading={loading}
+        hasData={solicitudes.length > 0}
+        registrosPorPagina={filtros.limit}
         setRegistrosPorPagina={(val: number) => {
-          setFiltros({...filtros, limit: val});
-          setPaginaActual(1); 
-        }} 
-        onOpenAptoIA={handleOpenAptoIA} 
+          setFiltros({ ...filtros, limit: val });
+          setPaginaActual(1);
+        }}
+        onOpenAptoIA={handleOpenAptoIA}
         student={student}
         studentLoading={studentLoading}
         cedulaBusqueda={cedulaBusqueda}
@@ -380,10 +432,11 @@ export default function ValidarBecaPage({ searchParams }: ValidarBecaPageProps) 
           setViewMode('auditoria');
         }}
       />
-      <ValidarBecaTable 
-        loading={loading} 
-        solicitudes={solicitudes} 
+      <ValidarBecaTable
+        loading={loading}
+        solicitudes={solicitudes}
         periodoActualId={periodoActualId}
+        esSecretariaGeneral={esSecretariaGeneral}
         onStatusChange={handleStatusChange}
         onViewAuditoria={(s: SolicitudItem) => { setSelectedSolicitud(s as SolicitudAuditoriaView); setViewMode('auditoria'); }}
         onViewAcademic={async (s: SolicitudItem) => {
@@ -395,15 +448,17 @@ export default function ValidarBecaPage({ searchParams }: ValidarBecaPageProps) 
         }}
       />
 
-      <AptoIA 
-        isOpen={isAptoIAOpen}
-        onClose={() => setIsAptoIAOpen(false)}
-        loading={loadingIA}
-        estudiantesAptos={estudiantesAptosIA}
-        onSelectEstudiante={handleSelectEstudianteDesdeIA}
-        periodoNombre={periodoActualId ? `Periodo ID: ${periodoActualId}` : "Periodo Actual"} 
-        onRefreshIA={handleRefreshIA}
-      />
+      {!esSecretariaGeneral && (
+        <AptoIA
+          isOpen={isAptoIAOpen}
+          onClose={() => setIsAptoIAOpen(false)}
+          loading={loadingIA}
+          estudiantesAptos={estudiantesAptosIA}
+          onSelectEstudiante={handleSelectEstudianteDesdeIA}
+          periodoNombre={periodoActualId ? `Periodo ID: ${periodoActualId}` : "Periodo Actual"}
+          onRefreshIA={handleRefreshIA}
+        />
+      )}
     </div>
   )
 }

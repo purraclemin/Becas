@@ -18,6 +18,8 @@ interface IngresosState {
   extra: string;
   pension: string;
   ayuda: string;
+  rentas: string;
+  otros: string;
 }
 
 interface EgresosState {
@@ -25,6 +27,9 @@ interface EgresosState {
   vivienda: string;
   salud: string;
   servicios: string;
+  suntuarios: string;
+  estudios: string;
+  recreacion: string;
 }
 
 const sanitizarEnteroInicial = (val: string | number | null | undefined): string => {
@@ -48,14 +53,19 @@ export function StepEncuestaRangoIngreso({
     familiar: sanitizarEnteroInicial(user?.monto_ingreso_familiar),
     extra: sanitizarEnteroInicial(user?.monto_ingreso_extra),
     pension: sanitizarEnteroInicial(user?.monto_ingreso_pension),
-    ayuda: sanitizarEnteroInicial(user?.monto_ingreso_ayuda)
+    ayuda: sanitizarEnteroInicial(user?.monto_ingreso_ayuda),
+    rentas: sanitizarEnteroInicial(user?.monto_ingreso_rentas) || "0",
+    otros: sanitizarEnteroInicial(user?.monto_ingreso_otros) || "0",
   });
 
   const [egresos, setEgresos] = useState<EgresosState>({
     mercado: sanitizarEnteroInicial(user?.monto_egreso_mercado),
     vivienda: sanitizarEnteroInicial(user?.monto_egreso_vivienda),
     salud: sanitizarEnteroInicial(user?.monto_egreso_salud),
-    servicios: sanitizarEnteroInicial(user?.monto_egreso_servicios)
+    servicios: sanitizarEnteroInicial(user?.monto_egreso_servicios),
+    suntuarios: sanitizarEnteroInicial(user?.monto_egreso_suntuarios) || "0",
+    estudios: sanitizarEnteroInicial(user?.monto_egreso_estudios) || "0",
+    recreacion: sanitizarEnteroInicial(user?.monto_egreso_recreacion) || "0",
   });
 
   const [hasAttemptedNext, setHasAttemptedNext] = useState<boolean>(false);
@@ -69,7 +79,6 @@ export function StepEncuestaRangoIngreso({
   const egresoSaludRef = useRef<HTMLInputElement>(null);
   const egresoServiciosRef = useRef<HTMLInputElement>(null);
 
-  // Validaciones obligatorias (enteros >= 0)
   const isIngresoValid = ingresos.familiar.trim() !== "";
   const isExtraValid = ingresos.extra.trim() !== "";
   const isPensionValid = ingresos.pension.trim() !== "";
@@ -120,7 +129,6 @@ export function StepEncuestaRangoIngreso({
     isServiciosValid
   ]);
 
-  // Sanitización estricta: solo números enteros no negativos
   const handleSoloEnterosIngresos = (field: keyof IngresosState) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value.replace(/\D/g, "").slice(0, 7);
     setIngresos(prev => ({ ...prev, [field]: val }));
@@ -131,24 +139,28 @@ export function StepEncuestaRangoIngreso({
     setEgresos(prev => ({ ...prev, [field]: val }));
   };
 
-  const incomeClass = "h-12 lg:h-9 bg-emerald-50/30 border-emerald-200 font-black text-emerald-900 text-sm lg:text-xs focus:bg-white focus:ring-1 focus:ring-emerald-500/10 transition-all px-2.5 rounded-xl";
-  const expenseClass = "h-12 lg:h-9 bg-rose-50/30 border-rose-200 font-black text-rose-900 text-sm lg:text-xs focus:bg-white focus:ring-1 focus:ring-rose-500/10 transition-all px-2.5 rounded-xl";
+  // UF-Scale: h-12/text-sm en móvil, h-9/text-xs en PC
+  const incomeClass =
+    "h-12 lg:h-9 bg-emerald-50/30 border-emerald-200 font-black text-emerald-900 text-sm lg:text-xs focus:bg-white focus:ring-1 focus:ring-emerald-500/10 transition-all px-2.5 rounded-xl";
+  const expenseClass =
+    "h-12 lg:h-9 bg-rose-50/30 border-rose-200 font-black text-rose-900 text-sm lg:text-xs focus:bg-white focus:ring-1 focus:ring-rose-500/10 transition-all px-2.5 rounded-xl";
 
   return (
-    <div className="flex flex-col gap-2.5 animate-in fade-in duration-500 pb-8 lg:pb-0">
+    <div className="flex flex-col gap-2 animate-in fade-in duration-500 pb-6 lg:pb-0">
 
       {/* 1. SELECCIÓN DE RANGO */}
-      <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-sm space-y-1.5 shrink-0">
-        <div className="flex items-center gap-1.5">
-          <Banknote className="h-3.5 w-3.5 text-[#d4a843]" />
-          <Label className="text-[8.5px] font-black uppercase tracking-widest text-slate-500">
-            Estimación de Ingreso Familiar
-          </Label>
+      <div className="bg-white p-2.5 lg:p-2 rounded-xl border border-slate-200 shadow-sm space-y-1.5 shrink-0">
+        <div className="flex flex-wrap items-center justify-between gap-1">
+          <div className="flex items-center gap-1.5">
+            <Banknote className="h-3.5 w-3.5 text-[#d4a843]" />
+            <Label className="text-[8.5px] font-black uppercase tracking-widest text-slate-500">
+              4- Área Económica: Ingreso Mensual Familiar
+            </Label>
+          </div>
+          <span className="text-[10px] lg:text-[9px] font-bold text-[#1e3a5f]">
+            ¿En qué rango se ubica el ingreso total mensual familiar?
+          </span>
         </div>
-
-        <Label className="text-xs lg:text-[10px] font-bold text-[#1e3a5f] block leading-tight">
-          ¿En qué rango se ubica el ingreso total mensual de su grupo familiar?
-        </Label>
 
         <RadioGroup
           value={rangoIngreso}
@@ -175,22 +187,22 @@ export function StepEncuestaRangoIngreso({
       </div>
 
       {/* 2. DETALLE NUMÉRICO (ENTEROS NO NEGATIVOS) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
 
         {/* BLOQUE DE INGRESOS */}
-        <div className="p-2.5 bg-emerald-50/20 rounded-xl border border-emerald-100 space-y-2">
+        <div className="p-2.5 lg:p-2 bg-emerald-50/20 rounded-xl border border-emerald-100 space-y-1.5">
           <div className="flex items-center gap-1.5">
             <TrendingUp className="h-3.5 w-3.5 text-emerald-600" />
-            <Label className="text-[8.5px] font-black text-emerald-700 uppercase tracking-widest">Ingresos ($ enteros)</Label>
+            <Label className="text-[8.5px] font-black text-emerald-700 uppercase tracking-widest">Ingresos Mensuales ($)</Label>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <div className="col-span-1 sm:col-span-2 space-y-0.5">
+          <div className="grid grid-cols-2 gap-1.5">
+            <div className="space-y-0.5">
               <Label className={cn(
-                "text-[8px] font-black uppercase transition-colors",
+                "text-[8px] font-black uppercase transition-colors leading-none",
                 hasAttemptedNext && !isIngresoValid ? "text-red-500 font-extrabold" : "text-slate-500"
               )}>
-                Sueldos (Familiar) {hasAttemptedNext && !isIngresoValid && "*"}
+                Sueldos y Salarios {hasAttemptedNext && !isIngresoValid && "*"}
               </Label>
               <Input
                 ref={ingresoFamiliarRef}
@@ -210,42 +222,12 @@ export function StepEncuestaRangoIngreso({
               />
             </div>
 
-            {([
-              { key: "extra", label: "Extras", valid: isExtraValid, ref: ingresoExtraRef },
-              { key: "pension", label: "Pensión", valid: isPensionValid, ref: ingresoPensionRef }
-            ] as const).map((item) => (
-              <div key={item.key} className="space-y-0.5">
-                <Label className={cn(
-                  "text-[8px] font-black uppercase transition-colors",
-                  hasAttemptedNext && !item.valid ? "text-red-500 font-extrabold" : "text-slate-500"
-                )}>
-                  {item.label} {hasAttemptedNext && !item.valid && "*"}
-                </Label>
-                <Input
-                  ref={item.ref}
-                  name={`monto_ingreso_${item.key}`}
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={7}
-                  disabled={disabled}
-                  value={ingresos[item.key]}
-                  onChange={handleSoloEnterosIngresos(item.key)}
-                  required
-                  placeholder="0"
-                  className={cn(
-                    incomeClass,
-                    hasAttemptedNext && !item.valid && "border-red-500 bg-red-50/50 text-red-900 focus:ring-red-500 animate-pulse"
-                  )}
-                />
-              </div>
-            ))}
-
-            <div className="col-span-1 sm:col-span-2 space-y-0.5">
+            <div className="space-y-0.5">
               <Label className={cn(
-                "text-[8px] font-black uppercase transition-colors",
+                "text-[8px] font-black uppercase transition-colors leading-none",
                 hasAttemptedNext && !isAyudaValid ? "text-red-500 font-extrabold" : "text-slate-500"
               )}>
-                Remesas / Ayudas {hasAttemptedNext && !isAyudaValid && "*"}
+                Ayudas Familiares {hasAttemptedNext && !isAyudaValid && "*"}
               </Label>
               <Input
                 ref={ingresoAyudaRef}
@@ -264,25 +246,64 @@ export function StepEncuestaRangoIngreso({
                 )}
               />
             </div>
+
+            {([
+              { key: "extra", label: "Ingresos Particulares", valid: isExtraValid, ref: ingresoExtraRef },
+              { key: "pension", label: "Pensión / Jubilación", valid: isPensionValid, ref: ingresoPensionRef },
+              { key: "rentas", label: "Rentas", valid: true, ref: undefined },
+              { key: "otros", label: "Otros Ingresos", valid: true, ref: undefined }
+            ] as const).map((item) => (
+              <div key={item.key} className="space-y-0.5">
+                <Label className={cn(
+                  "text-[8px] font-black uppercase transition-colors leading-none",
+                  hasAttemptedNext && !item.valid ? "text-red-500 font-extrabold" : "text-slate-500"
+                )}>
+                  {item.label} {hasAttemptedNext && !item.valid && "*"}
+                </Label>
+                <Input
+                  ref={item.ref}
+                  name={`monto_ingreso_${item.key}`}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={7}
+                  disabled={disabled}
+                  value={ingresos[item.key]}
+                  onChange={handleSoloEnterosIngresos(item.key)}
+                  required={item.key === "extra" || item.key === "pension"}
+                  placeholder="0"
+                  className={cn(
+                    incomeClass,
+                    hasAttemptedNext && !item.valid && "border-red-500 bg-red-50/50 text-red-900 focus:ring-red-500 animate-pulse"
+                  )}
+                />
+              </div>
+            ))}
           </div>
         </div>
 
         {/* BLOQUE DE EGRESOS */}
-        <div className="p-2.5 bg-rose-50/20 rounded-xl border border-rose-100 space-y-2">
+        <div className="p-2.5 lg:p-2 bg-rose-50/20 rounded-xl border border-rose-100 space-y-1.5">
           <div className="flex items-center gap-1.5">
             <TrendingDown className="h-3.5 w-3.5 text-rose-600" />
-            <Label className="text-[8.5px] font-black text-rose-700 uppercase tracking-widest">Gastos ($ enteros)</Label>
+            <Label className="text-[8.5px] font-black text-rose-700 uppercase tracking-widest">Egresos Mensuales ($)</Label>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-1.5">
             {([
-              { key: "mercado", label: "Alimentación", valid: isMercadoValid, span: "col-span-1 sm:col-span-2", ref: egresoMercadoRef },
-              { key: "vivienda", label: "Alquiler", valid: isViviendaValid, span: "", ref: egresoViviendaRef },
-              { key: "salud", label: "Salud", valid: isSaludValid, span: "", ref: egresoSaludRef }
+              { key: "mercado", label: "Mercado", valid: isMercadoValid, ref: egresoMercadoRef },
+              { key: "vivienda", label: "Vivienda", valid: isViviendaValid, ref: egresoViviendaRef },
+              { key: "servicios", label: "Servicios Públicos", valid: isServiciosValid, ref: egresoServiciosRef },
+              { key: "salud", label: "Salud", valid: isSaludValid, ref: egresoSaludRef },
+              { key: "suntuarios", label: "*Gastos Suntuarios", valid: true, ref: undefined },
+              { key: "estudios", label: "Estudios", valid: true, ref: undefined },
+              { key: "recreacion", label: "Recreación", valid: true, ref: undefined }
             ] as const).map((item) => (
-              <div key={item.key} className={cn("space-y-0.5", item.span)}>
+              <div
+                key={item.key}
+                className={cn("space-y-0.5", item.key === "recreacion" && "col-span-2 sm:col-span-1")}
+              >
                 <Label className={cn(
-                  "text-[8px] font-black uppercase transition-colors",
+                  "text-[8px] font-black uppercase transition-colors leading-none",
                   hasAttemptedNext && !item.valid ? "text-red-500 font-extrabold" : "text-slate-500"
                 )}>
                   {item.label} {hasAttemptedNext && !item.valid && "*"}
@@ -296,7 +317,12 @@ export function StepEncuestaRangoIngreso({
                   disabled={disabled}
                   value={egresos[item.key]}
                   onChange={handleSoloEnterosEgresos(item.key)}
-                  required
+                  required={
+                    item.key === "mercado" ||
+                    item.key === "vivienda" ||
+                    item.key === "servicios" ||
+                    item.key === "salud"
+                  }
                   placeholder="0"
                   className={cn(
                     expenseClass,
@@ -305,40 +331,15 @@ export function StepEncuestaRangoIngreso({
                 />
               </div>
             ))}
-
-            <div className="col-span-1 sm:col-span-2 space-y-0.5">
-              <Label className={cn(
-                "text-[8px] font-black uppercase transition-colors",
-                hasAttemptedNext && !isServiciosValid ? "text-red-500 font-extrabold" : "text-slate-500"
-              )}>
-                Servicios (Luz, Agua...) {hasAttemptedNext && !isServiciosValid && "*"}
-              </Label>
-              <Input
-                ref={egresoServiciosRef}
-                name="monto_egreso_servicios"
-                type="text"
-                inputMode="numeric"
-                maxLength={7}
-                disabled={disabled}
-                value={egresos.servicios}
-                onChange={handleSoloEnterosEgresos("servicios")}
-                required
-                placeholder="0"
-                className={cn(
-                  expenseClass,
-                  hasAttemptedNext && !isServiciosValid && "border-red-500 bg-red-50/50 text-red-900 focus:ring-red-500 animate-pulse"
-                )}
-              />
-            </div>
           </div>
         </div>
       </div>
 
       {/* Nota de Veracidad */}
-      <div className="p-2 bg-slate-50 border border-slate-200 rounded-lg flex items-center gap-2 shrink-0">
+      <div className="px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-lg flex items-center gap-2 shrink-0">
         <Info className="h-3 w-3 text-[#1e3a5f] shrink-0" />
-        <p className="text-[8.5px] text-slate-500 font-bold uppercase tracking-tight leading-none">
-          Ingrese el promedio mensual de los últimos 3 meses en divisas ($), solo números enteros sin negativos (coloque 0 si no aplica).
+        <p className="text-[8.5px] text-slate-500 font-bold uppercase tracking-tight leading-snug">
+          *Gastos suntuarios: (celulares, tarjetas de crédito, TV por cable, internet). Coloque 0 si no aplica.
         </p>
       </div>
 

@@ -1,6 +1,6 @@
 export interface SolicitudItem {
   id: number | string;
-  user_id?: number | string; // 👈 Añadido para resolver el tipado en la vista académica de page.tsx
+  user_id?: number | string;
   nombre?: string;
   apellido?: string;
   cedula?: string;
@@ -14,6 +14,8 @@ export interface SolicitudItem {
   promedio_historico?: number | string;
   indice_global?: number | string;
   estatus?: string;
+  observaciones_admin?: string | null;
+  departamento_asignado?: string | null;
   periodo_id?: number | string;
   created_at?: string;
   fecha_solicitud?: string;
@@ -30,7 +32,7 @@ export interface SortConfig {
  */
 export function ordenarSolicitudes(listaDatos: SolicitudItem[], sortConfig: SortConfig) {
   if (!sortConfig.key) return listaDatos;
-  
+
   return [...listaDatos].sort((a: SolicitudItem, b: SolicitudItem) => {
     let aValue: string | number = "";
     let bValue: string | number = "";
@@ -68,7 +70,7 @@ export function ordenarSolicitudes(listaDatos: SolicitudItem[], sortConfig: Sort
  */
 export function formatearFechaEnvio(s: SolicitudItem): string {
   const rawFecha = s.fecha_registro || s.created_at || s.fecha_solicitud;
-  return rawFecha 
-    ? new Date(rawFecha).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: '2-digit' }) 
+  return rawFecha
+    ? new Date(rawFecha).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: '2-digit' })
     : 'S/F';
 }

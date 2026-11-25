@@ -4,7 +4,15 @@ import React, { useState, useEffect, useRef } from "react"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Briefcase, Building2, BadgeDollarSign, Info, UserRoundSearch } from "lucide-react"
+import {
+  Briefcase,
+  Building2,
+  BadgeDollarSign,
+  Info,
+  UserRoundSearch,
+  MapPin,
+  Phone
+} from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { PostulacionUser } from "../types"
 
@@ -12,6 +20,11 @@ const sanitizarEnteroNoNegativoInicial = (val: string | number | undefined): str
   if (val === undefined || val === null || val === "") return "";
   const num = Math.trunc(Number(val));
   return !isNaN(num) && num >= 0 ? String(num) : "";
+};
+
+const sanitizarEmpresa = (val: string | undefined): string => {
+  if (!val || val === "NO") return "";
+  return val.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s.,\-&/()]/g, "");
 };
 
 const sanitizarSoloLetras = (val: string | undefined): string => {
@@ -36,10 +49,28 @@ export function StepEncuestaSituacionLaboral({
     sanitizarEnteroNoNegativoInicial(user?.monto_ingreso_sueldo) || "0"
   );
   const [empresa, setEmpresa] = useState<string>(
-    sanitizarSoloLetras(user?.socio_trabajo_empresa)
+    sanitizarEmpresa(user?.socio_trabajo_empresa)
   );
   const [cargo, setCargo] = useState<string>(
     sanitizarSoloLetras(user?.socio_trabajo_cargo)
+  );
+  const [direccionTrabajo, setDireccionTrabajo] = useState<string>(
+    user?.socio_trabajo_direccion && user.socio_trabajo_direccion !== "NO"
+      ? user.socio_trabajo_direccion
+      : ""
+  );
+  const [telefonoTrabajo, setTelefonoTrabajo] = useState<string>(
+    user?.socio_trabajo_telefono && user.socio_trabajo_telefono !== "NO"
+      ? user.socio_trabajo_telefono.replace(/\D/g, "").slice(0, 15)
+      : ""
+  );
+  const [condicionTipo, setCondicionTipo] = useState<string>(
+    user?.socio_condicion_laboral_tipo || "Empleado"
+  );
+  const [condicionDesc, setCondicionDesc] = useState<string>(
+    user?.socio_condicion_laboral_desc && user.socio_condicion_laboral_desc !== "NO"
+      ? user.socio_condicion_laboral_desc
+      : ""
   );
 
   const [hasAttemptedNext, setHasAttemptedNext] = useState<boolean>(false);
@@ -69,21 +100,20 @@ export function StepEncuestaSituacionLaboral({
     return () => window.removeEventListener("intentar-avanzar-laboral", handleValidationAttempt);
   }, [isEmpresaValid, isCargoValid, isSueldoValid]);
 
-  // Restricción para permitir solo letras y espacios en empresa y cargo
-  const handleSoloLetrasEmpresa = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEmpresa(e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, ""));
+  const handleEmpresaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEmpresa(e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s.,\-&/()]/g, ""));
   };
 
   const handleSoloLetrasCargo = (e: React.ChangeEvent<HTMLInputElement>) => {
     setCargo(e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, ""));
   };
 
-  // Restricción estricta: solo números enteros no negativos
   const handleSoloEnteroSueldo = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSueldo(e.target.value.replace(/\D/g, "").slice(0, 7));
   };
 
-  const editableClass = "h-12 lg:h-9 bg-slate-50 border-slate-200 font-bold text-[#1e3a5f] text-sm lg:text-xs focus:bg-white focus:ring-1 focus:ring-[#1e3a5f]/5 transition-all px-2.5 rounded-xl";
+  const editableClass =
+    "h-12 lg:h-9 bg-slate-50 border-slate-200 font-bold text-[#1e3a5f] text-sm lg:text-xs focus:bg-white focus:ring-1 focus:ring-[#1e3a5f]/5 transition-all px-2.5 rounded-xl";
 
   return (
     <div className="flex flex-col gap-2.5 animate-in fade-in duration-500 pb-12 lg:pb-0">
@@ -110,6 +140,9 @@ export function StepEncuestaSituacionLaboral({
               setSueldo("0");
               setEmpresa("");
               setCargo("");
+              setDireccionTrabajo("");
+              setTelefonoTrabajo("");
+              setCondicionDesc("");
             } else if (sueldo === "0") {
               setSueldo("");
             }
@@ -142,18 +175,18 @@ export function StepEncuestaSituacionLaboral({
             <div className="h-6 w-6 rounded-lg bg-[#1e3a5f] flex items-center justify-center shadow-sm">
               <Briefcase className="h-3 w-3 text-[#d4a843]" />
             </div>
-            <span className="text-[9px] font-black uppercase text-[#1e3a5f] tracking-widest">Información del Empleo</span>
+            <span className="text-[9px] font-black uppercase text-[#1e3a5f] tracking-widest">En Caso de Trabajar</span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
 
-            {/* Empresa / Negocio   */}
+            {/* Empresa / Negocio */}
             <div className="space-y-0.5">
               <Label className={cn(
                 "text-[8px] font-black uppercase flex items-center gap-1.5 transition-colors",
                 hasAttemptedNext && !isEmpresaValid ? "text-red-500 font-extrabold" : "text-slate-500"
               )}>
-                <Building2 className="h-2.5 w-2.5 text-[#d4a843]" /> Empresa / Negocio {hasAttemptedNext && !isEmpresaValid && "*"}
+                <Building2 className="h-2.5 w-2.5 text-[#d4a843]" /> Nombre de la Empresa {hasAttemptedNext && !isEmpresaValid && "*"}
               </Label>
               <Input
                 ref={empresaRef}
@@ -161,7 +194,7 @@ export function StepEncuestaSituacionLaboral({
                 type="text"
                 disabled={disabled}
                 value={empresa}
-                onChange={handleSoloLetrasEmpresa}
+                onChange={handleEmpresaChange}
                 placeholder="Nombre de la empresa"
                 required={tieneEmpleo}
                 className={cn(
@@ -171,7 +204,7 @@ export function StepEncuestaSituacionLaboral({
               />
             </div>
 
-            {/* Cargo   */}
+            {/* Cargo */}
             <div className="space-y-0.5">
               <Label className={cn(
                 "text-[8px] font-black uppercase flex items-center gap-1.5 transition-colors",
@@ -195,7 +228,7 @@ export function StepEncuestaSituacionLaboral({
               />
             </div>
 
-            {/* Sueldo Mensual (Entero no negativo) */}
+            {/* Sueldo Mensual */}
             <div className="space-y-0.5">
               <Label className={cn(
                 "text-[8px] font-black uppercase flex items-center gap-1.5 transition-colors",
@@ -225,6 +258,76 @@ export function StepEncuestaSituacionLaboral({
               </div>
             </div>
 
+            {/* Dirección de Trabajo */}
+            <div className="sm:col-span-2 space-y-0.5">
+              <Label className="text-[8px] font-black uppercase flex items-center gap-1.5 text-slate-500">
+                <MapPin className="h-2.5 w-2.5 text-[#d4a843]" /> Dirección de Trabajo
+              </Label>
+              <Input
+                name="socio_trabajo_direccion"
+                type="text"
+                maxLength={250}
+                disabled={disabled}
+                value={direccionTrabajo}
+                onChange={(e) => setDireccionTrabajo(e.target.value)}
+                placeholder="Dirección del lugar de trabajo"
+                className={editableClass}
+              />
+            </div>
+
+            {/* Teléfono de Trabajo */}
+            <div className="space-y-0.5">
+              <Label className="text-[8px] font-black uppercase flex items-center gap-1.5 text-slate-500">
+                <Phone className="h-2.5 w-2.5 text-[#d4a843]" /> Teléfono Trabajo
+              </Label>
+              <Input
+                name="socio_trabajo_telefono"
+                type="text"
+                inputMode="numeric"
+                maxLength={15}
+                disabled={disabled}
+                value={telefonoTrabajo}
+                onChange={(e) => setTelefonoTrabajo(e.target.value.replace(/\D/g, "").slice(0, 15))}
+                placeholder="02950000000"
+                className={editableClass}
+              />
+            </div>
+
+            {/* Condición Laboral (Comerciante / Economía Informal / Empleado) */}
+            <div className="space-y-0.5">
+              <Label className="text-[8px] font-black uppercase text-slate-500">
+                Condición / Modalidad
+              </Label>
+              <select
+                name="socio_condicion_laboral_tipo"
+                disabled={disabled}
+                value={condicionTipo}
+                onChange={(e) => setCondicionTipo(e.target.value)}
+                className={cn(editableClass, "w-full outline-none cursor-pointer")}
+              >
+                <option value="Empleado">Empleado / Dependiente</option>
+                <option value="Comerciante">Comerciante</option>
+                <option value="Economía Informal">Economía Informal</option>
+              </select>
+            </div>
+
+            {/* Especificar Condición Laboral */}
+            <div className="sm:col-span-2 space-y-0.5">
+              <Label className="text-[8px] font-black uppercase text-slate-500">
+                Especificar
+              </Label>
+              <Input
+                name="socio_condicion_laboral_desc"
+                type="text"
+                maxLength={250}
+                disabled={disabled}
+                value={condicionDesc}
+                onChange={(e) => setCondicionDesc(e.target.value)}
+                placeholder="Detalles adicionales de su actividad laboral..."
+                className={editableClass}
+              />
+            </div>
+
           </div>
         </div>
       ) : (
@@ -235,6 +338,10 @@ export function StepEncuestaSituacionLaboral({
           </p>
           <input type="hidden" name="socio_trabajo_empresa" value="NO" />
           <input type="hidden" name="socio_trabajo_cargo" value="NO" />
+          <input type="hidden" name="socio_trabajo_direccion" value="NO" />
+          <input type="hidden" name="socio_trabajo_telefono" value="NO" />
+          <input type="hidden" name="socio_condicion_laboral_tipo" value="No aplica" />
+          <input type="hidden" name="socio_condicion_laboral_desc" value="NO" />
           <input type="hidden" name="monto_ingreso_sueldo" value="0" />
         </div>
       )}

@@ -1,7 +1,7 @@
 "use client"
 
 import React from "react"
-import { ArrowLeft, ArrowRight, Loader2, Send } from "lucide-react"
+import { ArrowLeft, ArrowRight, CheckCircle2, Loader2, Send } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -22,9 +22,7 @@ export interface PostulacionFooterProps {
 export function PostulacionFooter({
   pasoActual,
   totalPasos,
-  activeEncuestaTab,
   isPending,
-  materiasValidas,
   detallesValidos,
   encuestaValida,
   archivosValidos,
@@ -33,21 +31,20 @@ export function PostulacionFooter({
   handleSubmit
 }: PostulacionFooterProps) {
 
-  const isAnteriorDisabled = (pasoActual === 1 && activeEncuestaTab === "personal") || isPending;
+  const isAnteriorDisabled = pasoActual <= 1 || isPending;
 
   const isSiguienteDisabled =
     isPending ||
-    (pasoActual === 1 && !materiasValidas) ||
-    (pasoActual === 2 && !detallesValidos) ||
-    (pasoActual === 3 && !encuestaValida) ||
-    (pasoActual === 4 && !archivosValidos);
+    (pasoActual === 1 && !detallesValidos) ||
+    (pasoActual === 2 && !encuestaValida) ||
+    (pasoActual === 3 && !archivosValidos);
 
   const isUltimoPaso = pasoActual === totalPasos;
 
   return (
     <footer
       className={cn(
-        "w-full bg-white border-t border-[#e2e8f0] px-4 sm:px-6 py-2 flex items-center justify-between transition-all z-50",
+        "w-full bg-white border-t border-[#e2e8f0] px-4 sm:px-6 py-2.5 flex items-center justify-between gap-2 transition-all z-50 shrink-0",
         "fixed bottom-0 left-0 lg:static",
         "h-[60px] lg:h-auto"
       )}
@@ -58,15 +55,23 @@ export function PostulacionFooter({
         type="button"
         onClick={handleAnterior}
         disabled={isAnteriorDisabled}
-        className="rounded-full h-10 lg:h-9 px-4 sm:px-5 font-bold uppercase text-xs lg:text-[10px] tracking-wider text-[#6b7280] hover:text-[#1e3a5f] hover:bg-slate-100 transition-all active:scale-95 disabled:opacity-40"
+        className="rounded-full h-10 lg:h-9 px-4 sm:px-5 font-bold uppercase text-xs lg:text-[10px] tracking-wider text-[#6b7280] hover:text-[#1e3a5f] hover:bg-slate-100 transition-all active:scale-95 disabled:opacity-40 shrink-0"
       >
         <ArrowLeft className="mr-1.5 h-3.5 w-3.5" />
         <span className="hidden sm:inline">Anterior</span>
         <span className="inline sm:hidden">Atrás</span>
       </Button>
 
+      {/* Centro: Fe de Juramento */}
+      <div className="hidden md:flex items-center justify-center shrink-0">
+        <div className="flex items-center gap-1.5 text-[9px] font-black text-slate-400 uppercase tracking-widest italic">
+          <CheckCircle2 className="h-3 w-3 text-[#d4a843] shrink-0" />
+          <span>Información bajo fe de juramento</span>
+        </div>
+      </div>
+
       {/* Controles de Avance */}
-      <div className="flex items-center gap-3 sm:gap-5">
+      <div className="flex items-center gap-3 sm:gap-5 shrink-0">
         <span className="hidden sm:block text-[#6b7280] font-bold text-[9px] uppercase tracking-widest">
           Paso {pasoActual} de {totalPasos}
         </span>

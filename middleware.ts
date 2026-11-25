@@ -1,9 +1,25 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
+const ROLES_ADMINISTRATIVOS: ReadonlyArray<string> = ['admin', 'secretaria']
+
+/**
+ * Rutas permitidas exclusivamente para el rol de Secretaría General.
+ */
+const RUTAS_PERMITIDAS_SECRETARIA: ReadonlyArray<string> = [
+  '/admin/validarBeca',
+  '/admin/reportes',
+]
+
+function esRutaPermitidaSecretaria(pathname: string): boolean {
+  return RUTAS_PERMITIDAS_SECRETARIA.some(
+    (ruta) => pathname === ruta || pathname.startsWith(`${ruta}/`)
+  )
+}
+
 /**
  * MIDDLEWARE DE CONTROL DE ACCESO - UNIMAR 2026
- * Gestiona la seguridad perimetral de la plataforma.
+ * Gestiona la seguridad perimetral y segregación de roles de la plataforma.
  */
 export default function middleware(request: NextRequest) {
   const session = request.cookies.get('session_token')?.value
@@ -11,10 +27,15 @@ export default function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // --- 1. ZONA ADMINISTRATIVA (/admin/...) ---
-  // Protege los 8 archivos y cualquier subcarpeta dentro de admin
+  // Permite acceso a Coordinación ('admin') y Secretaría General ('secretaria')
   if (pathname.startsWith('/admin')) {
-    if (!session || role !== 'admin') {
+    if (!session || !role || !ROLES_ADMINISTRATIVOS.includes(role)) {
       return NextResponse.redirect(new URL('/login', request.url))
+    }
+
+    // Restricción perimetral exclusiva para Secretaría General
+    if (role === 'secretaria' && !esRutaPermitidaSecretaria(pathname)) {
+      return NextResponse.redirect(new URL('/admin/validarBeca', request.url))
     }
   }
 
@@ -29,9 +50,15 @@ export default function middleware(request: NextRequest) {
   // --- 3. GESTIÓN DE PÁGINAS PÚBLICAS (Login/Registro) ---
   // Si el usuario ya está logueado, lo redirigimos a su área correspondiente
   const isPublicAuthPage = pathname === '/login' || pathname.startsWith('/registro')
-  
+
   if (isPublicAuthPage && session) {
-    const homeRedirect = role === 'admin' ? '/admin/dashboard' : '/postulacion'
+    const homeRedirect =
+      role === 'admin'
+        ? '/admin/dashboard'
+        : role === 'secretaria'
+          ? '/admin/validarBeca'
+          : '/postulacion'
+
     return NextResponse.redirect(new URL(homeRedirect, request.url))
   }
 
@@ -44,7 +71,7 @@ export default function middleware(request: NextRequest) {
  */
 export const config = {
   matcher: [
-    '/admin/:path*',    // Cubre tus 8 archivos y más
+    '/admin/:path*',       // Cubre la zona administrativa y segrega Coordinación vs Secretaría
     '/postulacion/:path*', // Protege la página de solicitudes y sus subrutas
     '/login',
     '/registro/:path*',

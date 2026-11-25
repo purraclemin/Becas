@@ -3,10 +3,10 @@
 import React, { useState, useEffect } from "react"
 import { Loader2 } from "lucide-react"
 import { ResultCard } from "@/components/admin/socioeconomico/ResultCard"
-import { buscarEstudianteConEstudio } from "@/lib/ActionsSocioeconomico" 
+import { buscarEstudianteConEstudio } from "@/lib/ActionsSocioeconomico"
 import { DiagnosticoBeca } from "@/lib/ActionsBecaValidators"
+import type { ResultadoActualizacionEstatus } from "@/lib/ActionsEstatusBeca"
 
-// Importaciones locales y autónomas dentro del módulo validarBeca
 import { ValidarBecaDecisionBox } from "./ValidarBecaDecisionBox"
 import { ValidarBecaInfo } from "@/app/admin/validarBeca/components/ValidarBecaInfo"
 import { ValidarBecaTrace } from "@/app/admin/validarBeca/components/ValidarBecaTrace"
@@ -16,6 +16,7 @@ export interface SolicitudAuditoriaPanelData {
   cedula?: string | null;
   periodo_id?: number | string | null;
   estatus?: string | null;
+  observaciones_admin?: string | null;
   email_institucional?: string | null;
   departamento_asignado?: string | null;
   [key: string]: unknown;
@@ -23,33 +24,47 @@ export interface SolicitudAuditoriaPanelData {
 
 interface ValidarBecaAuditoriaPanelProps {
   solicitud: SolicitudAuditoriaPanelData;
-  onStatusChange: (id: number, status: string, observaciones?: string, confirmacionEspecial?: boolean, departamentoAsignado?: string) => void;
+  onStatusChange: (
+    id: number,
+    status: string,
+    observaciones?: string,
+    confirmacionEspecial?: boolean,
+    departamentoAsignado?: string
+  ) => Promise<ResultadoActualizacionEstatus>;
   onClose: () => void;
   periodoActualId: number | null;
+  esSecretariaGeneral?: boolean;
 }
 
-export function ValidarBecaAuditoriaPanel({ solicitud, onStatusChange, onClose, periodoActualId }: ValidarBecaAuditoriaPanelProps) {
-  const [observaciones, setObservaciones] = useState("")
-  
-  // 🟢 Inicialización sincronizada con el valor proveniente de la base de datos
+export function ValidarBecaAuditoriaPanel({
+  solicitud,
+  onStatusChange,
+  onClose,
+  periodoActualId,
+  esSecretariaGeneral = false
+}: ValidarBecaAuditoriaPanelProps) {
+  const [observaciones, setObservaciones] = useState(String(solicitud.observaciones_admin || ""))
   const [departamentoAsignado, setDepartamentoAsignado] = useState(String(solicitud.departamento_asignado || ""))
 
-  // 🟢 EFECTO DE SINCRONIZACIÓN: Actualiza el estado local si la prop cambia o se recarga el expediente
+  useEffect(() => {
+    setObservaciones(String(solicitud.observaciones_admin || ""));
+  }, [solicitud.id, solicitud.observaciones_admin]);
+
   useEffect(() => {
     setDepartamentoAsignado(String(solicitud.departamento_asignado || ""));
-  }, [solicitud.departamento_asignado]);
-  
+  }, [solicitud.id, solicitud.departamento_asignado]);
+
   const [expedienteDetallado, setExpedienteDetallado] = useState<Record<string, unknown> | null>(null)
   const [loading, setLoading] = useState(true)
   const [, setDiagnostico] = useState<DiagnosticoBeca | null>(null)
 
   const esPeriodoActual = Number(solicitud.periodo_id) === Number(periodoActualId);
 
-  // Mapeo seguro con tipos garantizados para los subcomponentes hijos
   const solicitudParaHijos = {
     ...solicitud,
     cedula: solicitud.cedula || "",
     estatus: solicitud.estatus || undefined,
+    observaciones_admin: solicitud.observaciones_admin ?? null,
     departamento_asignado: departamentoAsignado,
   };
 
@@ -62,24 +77,37 @@ export function ValidarBecaAuditoriaPanel({ solicitud, onStatusChange, onClose, 
       setLoading(true);
       try {
         const resultados = await buscarEstudianteConEstudio(solicitud.cedula);
-        
-        // 🟢 Tipado estricto (Record<string, unknown>) para prevenir errores de compilación en TS
+
         const estudioAdmin = (resultados as Array<Record<string, unknown>>)?.find((r) => {
           const tipo = r.tipo ? String(r.tipo).trim().toLowerCase() : "";
-          return tipo === 'administrador' || r.puntaje_admin !== null || r.nivel_admin !== null;
+          return (
+            tipo === 'administrador' ||
+            (r.puntaje_admin !== null && r.puntaje_admin !== undefined) ||
+            (r.nivel_admin !== null && r.nivel_admin !== undefined)
+          );
         });
 
         const baseData = estudioAdmin || (resultados && resultados.length > 0 ? (resultados[0] as Record<string, unknown>) : {});
-        
+
         const estudioAdminTyped = estudioAdmin as Record<string, unknown> | undefined;
+        const tieneEstudioAdminReal = Boolean(
+          estudioAdminTyped &&
+          (String(estudioAdminTyped.tipo || "").trim().toLowerCase() === "administrador" ||
+            (estudioAdminTyped.puntaje_admin !== null && estudioAdminTyped.puntaje_admin !== undefined) ||
+            (estudioAdminTyped.puntaje !== null && estudioAdminTyped.puntaje !== undefined))
+        );
 
         setExpedienteDetallado({
           ...solicitud,
-          ...baseData, // 🟢 PRIORIDAD A BASEDATA: Evita que los campos vacíos de la solicitud pisen los datos reales de la BD
+          ...baseData,
           email: solicitud.email_institucional,
-          puntaje_admin: estudioAdminTyped ? (estudioAdminTyped.puntaje_admin || estudioAdminTyped.puntaje) : null,
-          nivel_admin: estudioAdminTyped ? (estudioAdminTyped.nivel_admin || estudioAdminTyped.nivel_riesgo) : null,
-          es_estudio_oficial: !!estudioAdmin
+          puntaje_admin: tieneEstudioAdminReal
+            ? ((estudioAdminTyped?.puntaje_admin ?? estudioAdminTyped?.puntaje) as number | null)
+            : null,
+          nivel_admin: tieneEstudioAdminReal
+            ? ((estudioAdminTyped?.nivel_admin ?? estudioAdminTyped?.nivel_riesgo) as string | null)
+            : null,
+          es_estudio_oficial: tieneEstudioAdminReal
         });
       } catch (error) {
         console.error("Error al sincronizar expediente:", error);
@@ -103,27 +131,30 @@ export function ValidarBecaAuditoriaPanel({ solicitud, onStatusChange, onClose, 
   return (
     <div className="flex flex-col lg:flex-row gap-6 animate-in fade-in slide-in-from-right-8 duration-500 pb-10">
       <div className="flex-1 space-y-6">
-        <ResultCard student={expedienteDetallado} formData={expedienteDetallado} />
+        <ResultCard
+          student={expedienteDetallado}
+          formData={expedienteDetallado}
+          soloLectura={esSecretariaGeneral}
+        />
       </div>
 
       <div className="w-full lg:w-[400px] space-y-6">
-        {/* Panel de decisión unificado y adaptado que inyecta el departamento seleccionado */}
-        <ValidarBecaDecisionBox 
+        <ValidarBecaDecisionBox
           solicitud={solicitudParaHijos}
           esPeriodoActual={esPeriodoActual}
           periodoActualId={periodoActualId}
           observaciones={observaciones}
           setObservaciones={setObservaciones}
-          departamentoAsignado={departamentoAsignado}         
-          setDepartamentoAsignado={setDepartamentoAsignado} 
+          departamentoAsignado={departamentoAsignado}
+          setDepartamentoAsignado={setDepartamentoAsignado}
           onStatusChange={onStatusChange}
           onClose={onClose}
           bloqueadoPorEstudio={!tieneEstudioAdmin}
+          esSecretariaGeneral={esSecretariaGeneral}
         />
 
-        {/* Resumen académico / Info */}
-        <ValidarBecaInfo 
-          solicitud={solicitudParaHijos} 
+        <ValidarBecaInfo
+          solicitud={solicitudParaHijos}
           sinEstudio={!tieneEstudioAdmin}
         />
 

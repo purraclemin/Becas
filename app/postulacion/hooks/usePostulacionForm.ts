@@ -6,40 +6,43 @@ import { useToast } from "@/hooks/use-toast"
 import { enviarSolicitud } from "@/lib/ActionsSolicitud"
 import type { PostulacionUser } from "../types"
 
-export const TABS_ENCUESTA = ["personal", "uni", "familia", "laboral", "ingresos", "hogar", "salud"];
-export const TOTAL_PASOS = 5;
-
-const MODALIDADES_REQUIEREN_18: ReadonlyArray<string> = [
-  "BECA SOCIAL",
-  "BECA A LA EXCELENCIA",
-  "BECA A LA EXCELENCIA ACADÉMICA"
-];
-
-const PROMEDIO_MINIMO_EXCELENCIA = 18;
+export const TABS_ENCUESTA = ["familia", "laboral", "ingresos", "hogar", "salud"];
+export const TOTAL_PASOS = 4;
 
 export interface UsePostulacionFormProps {
   user: PostulacionUser;
   trimestreActual?: string | number;
 }
 
+function obtenerPromedioInicial(user: PostulacionUser): string {
+  const candidata = user?.indice_global ?? user?.promedio_notas;
+  if (candidata !== undefined && candidata !== null && String(candidata).trim() !== "") {
+    const num = parseFloat(String(candidata).replace(",", "."));
+    if (Number.isFinite(num) && num >= 0 && num <= 20) {
+      return num.toFixed(2);
+    }
+  }
+  return "0.00";
+}
+
 export function usePostulacionForm({ user, trimestreActual }: UsePostulacionFormProps) {
   // Referencia React al formulario (Cero DOM nativo)
   const formRef = useRef<HTMLFormElement>(null);
 
-  // Estados principales de navegación y UI
+  // Estados principales de navegación y UI (4 pasos: Detalles, Estudio Social, Documentación, Resumen)
   const [pasoActual, setPasoActual] = useState<number>(1);
   const [isPending, setIsPending] = useState<boolean>(false);
 
-  // Estados de valores y validaciones generales
-  const [promedio, setPromedio] = useState<string>(user?.promedio_notas?.toString() || "0.00");
-  const [materiasValidas, setMateriasValidas] = useState<boolean>(false);
+  // Estados de valores y validaciones generales (anclado al Índice Global del estudiante)
+  const [promedio] = useState<string>(() => obtenerPromedioInicial(user || {}));
+  const [materiasValidas, setMateriasValidas] = useState<boolean>(true);
   const [detallesValidos, setDetallesValidos] = useState<boolean>(false);
-  const [encuestaValida, setEncuestaValida] = useState<boolean>(false);
+  const [encuestaValida, setEncuestaValida] = useState<boolean>(true);
   const [archivosValidos, setArchivosValidos] = useState<boolean>(false);
   const [tipoBecaSeleccionada, setTipoBecaSeleccionada] = useState<string>(user?.tipo_beca || "");
 
   // Estados individuales de validación para cada sub-pestaña de la Encuesta Socioeconómica
-  const [personalValido, setPersonalValido] = useState<boolean>(false);
+  const [personalValido, setPersonalValido] = useState<boolean>(true);
   const [uniValido, setUniValido] = useState<boolean>(true);
   const [familiaValido, setFamiliaValido] = useState<boolean>(true);
   const [laboralValido, setLaboralValido] = useState<boolean>(true);
@@ -47,9 +50,9 @@ export function usePostulacionForm({ user, trimestreActual }: UsePostulacionForm
   const [hogarValido, setHogarValido] = useState<boolean>(true);
   const [saludValido, setSaludValido] = useState<boolean>(true);
 
-  // Estado maestro para la persistencia de datos y control de pestañas
+  // Estado maestro para la persistencia de datos y control de pestañas (inicia en Familiar)
   const [formData, setFormData] = useState<PostulacionUser>(user || {});
-  const [activeEncuestaTab, setActiveEncuestaTab] = useState<string>("personal");
+  const [activeEncuestaTab, setActiveEncuestaTab] = useState<string>("familia");
 
   const { toast } = useToast();
   const router = useRouter();
@@ -57,34 +60,27 @@ export function usePostulacionForm({ user, trimestreActual }: UsePostulacionForm
   const progreso = (pasoActual / TOTAL_PASOS) * 100;
 
   // Sincronización del formulario vía useRef al estado maestro
-  const syncFormData = useCallback(() => {
+  const syncFormData = useCallback((): PostulacionUser => {
     const form = formRef.current;
+    const merged: PostulacionUser = { ...formData };
     if (form) {
       const formObj = new FormData(form);
-      const data: PostulacionUser = { ...formData };
       formObj.forEach((value, key) => {
         if (typeof value === "string") {
-          data[key] = value;
+          merged[key] = value;
         }
       });
-      setFormData(data);
+      setFormData(merged);
     }
+    return merged;
   }, [formData]);
 
   // Lógica de Navegación Inteligente con feedback visual directo en los inputs
   const handleSiguiente = useCallback(() => {
     syncFormData();
 
-    // Gestión de sub-pestañas en el Paso 3 (Estudio Social) con bloqueo y marcado visual
-    if (pasoActual === 3) {
-      if (activeEncuestaTab === "personal" && !personalValido) {
-        window.dispatchEvent(new CustomEvent('intentar-avanzar-personal'));
-        return;
-      }
-      if (activeEncuestaTab === "uni" && !uniValido) {
-        window.dispatchEvent(new CustomEvent('intentar-avanzar-uni'));
-        return;
-      }
+    // Gestión de sub-pestañas en el Paso 2 (Estudio Social) con bloqueo y marcado visual
+    if (pasoActual === 2) {
       if (activeEncuestaTab === "familia" && !familiaValido) {
         window.dispatchEvent(new CustomEvent('intentar-avanzar-familia'));
         return;
@@ -107,14 +103,14 @@ export function usePostulacionForm({ user, trimestreActual }: UsePostulacionForm
       }
 
       const currentIndex = TABS_ENCUESTA.indexOf(activeEncuestaTab);
-      if (currentIndex < TABS_ENCUESTA.length - 1) {
+      if (currentIndex >= 0 && currentIndex < TABS_ENCUESTA.length - 1) {
         setActiveEncuestaTab(TABS_ENCUESTA[currentIndex + 1]);
         return;
       }
     }
 
-    // Bloqueo de avance en Paso 4 (Documentación) si faltan archivos obligatorios
-    if (pasoActual === 4 && !archivosValidos) {
+    // Bloqueo de avance en Paso 3 (Documentación) si faltan archivos obligatorios
+    if (pasoActual === 3 && !archivosValidos) {
       window.dispatchEvent(new CustomEvent('intentar-avanzar-archivos'));
       toast({
         variant: "destructive",
@@ -128,8 +124,6 @@ export function usePostulacionForm({ user, trimestreActual }: UsePostulacionForm
   }, [
     pasoActual,
     activeEncuestaTab,
-    personalValido,
-    uniValido,
     familiaValido,
     laboralValido,
     ingresosValido,
@@ -143,8 +137,8 @@ export function usePostulacionForm({ user, trimestreActual }: UsePostulacionForm
   const handleAnterior = useCallback(() => {
     syncFormData();
 
-    // Gestión de sub-pestañas en el Paso 3 (Estudio Social)
-    if (pasoActual === 3) {
+    // Gestión de sub-pestañas en el Paso 2 (Estudio Social)
+    if (pasoActual === 2) {
       const currentIndex = TABS_ENCUESTA.indexOf(activeEncuestaTab);
       if (currentIndex > 0) {
         setActiveEncuestaTab(TABS_ENCUESTA[currentIndex - 1]);
@@ -159,28 +153,13 @@ export function usePostulacionForm({ user, trimestreActual }: UsePostulacionForm
     router.push(`/postulacion?trimestre=${trimestre}`, { scroll: false });
   }, [router]);
 
-  const handleMateriasChange = useCallback((notas: string[]) => {
-    const notasNumericas = notas
-      .map(n => parseFloat(n.replace(",", ".")))
-      .filter(n => Number.isFinite(n) && n >= 1 && n <= 20);
-
-    const promedioFormateado = notasNumericas.length > 0
-      ? (notasNumericas.reduce((a, b) => a + b, 0) / notasNumericas.length).toFixed(2)
-      : "0.00";
-
-    setPromedio(promedioFormateado);
-
-    // Sincronización preventiva: si el promedio baja de 18.00, limpia Beca Social o Excelencia
-    if (parseFloat(promedioFormateado) < PROMEDIO_MINIMO_EXCELENCIA) {
-      setTipoBecaSeleccionada((prev) =>
-        MODALIDADES_REQUIEREN_18.includes(prev) ? "" : prev
-      );
-    }
+  const handleMateriasChange = useCallback((_notas: string[]) => {
+    void _notas;
   }, []);
 
   // Envío de la Postulación
   const handleSubmit = async () => {
-    syncFormData();
+    const snapshotDatos = syncFormData();
     const form = formRef.current;
     if (!form) return;
 
@@ -193,7 +172,34 @@ export function usePostulacionForm({ user, trimestreActual }: UsePostulacionForm
       return;
     }
 
-    const finalFormData = new FormData(form);
+    const finalFormData = new FormData();
+
+    Object.entries(snapshotDatos).forEach(([key, val]) => {
+      if (
+        val !== undefined &&
+        val !== null &&
+        typeof val !== "object"
+      ) {
+        finalFormData.set(key, String(val));
+      }
+    });
+
+    const liveFormData = new FormData(form);
+    const arrayKeysVistos = new Set<string>();
+    liveFormData.forEach((value, key) => {
+      if (key.endsWith("[]")) {
+        if (!arrayKeysVistos.has(key)) {
+          arrayKeysVistos.add(key);
+          finalFormData.delete(key);
+          liveFormData.getAll(key).forEach((item) => {
+            finalFormData.append(key, item);
+          });
+        }
+      } else {
+        finalFormData.set(key, value);
+      }
+    });
+
     finalFormData.set('promedio', promedio);
     finalFormData.set('trimestre_seleccionado', trimestreActual?.toString() || "");
     if (tipoBecaSeleccionada) finalFormData.set('tipo_beca', tipoBecaSeleccionada);

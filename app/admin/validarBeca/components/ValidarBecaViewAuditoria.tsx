@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react"
 import { ArrowLeft, ShieldCheck, Award } from "lucide-react"
 import { ValidarBecaAuditoriaPanel, SolicitudAuditoriaPanelData } from "./ValidarBecaAuditoriaPanel"
 import { getBadgeColor } from "@/app/admin/validarBeca/lib/ValidarBecaUtils"
+import type { ResultadoActualizacionEstatus } from "@/lib/ActionsEstatusBeca"
 
 export interface SolicitudAuditoriaView extends SolicitudAuditoriaPanelData {
   nombre?: string | null;
@@ -14,68 +15,81 @@ export interface SolicitudAuditoriaView extends SolicitudAuditoriaPanelData {
 
 interface ValidarBecaViewAuditoriaProps {
   selectedSolicitud: SolicitudAuditoriaView | null;
-  onStatusChange: (id: number, status: string, observaciones?: string, confirmacionEspecial?: boolean, departamentoAsignado?: string) => void;
+  onStatusChange: (
+    id: number,
+    status: string,
+    observaciones?: string,
+    confirmacionEspecial?: boolean,
+    departamentoAsignado?: string
+  ) => Promise<ResultadoActualizacionEstatus>;
   onClose: () => void;
   periodoActualId: number | null;
+  esSecretariaGeneral?: boolean;
 }
 
-export function ValidarBecaViewAuditoria({ 
-  selectedSolicitud, 
-  onStatusChange, 
-  onClose, 
-  periodoActualId 
+export function ValidarBecaViewAuditoria({
+  selectedSolicitud,
+  onStatusChange,
+  onClose,
+  periodoActualId,
+  esSecretariaGeneral = false
 }: ValidarBecaViewAuditoriaProps) {
-  // Estado local reactivo para reflejar el cambio de estatus en tiempo real
   const [estatusActual, setEstatusActual] = useState<string>(
     String(selectedSolicitud?.estatus || "Pendiente")
   );
 
-  // Sincroniza el estado local si cambia la solicitud seleccionada o si el padre actualiza la prop
   useEffect(() => {
     if (selectedSolicitud?.estatus) {
       setEstatusActual(String(selectedSolicitud.estatus));
     }
   }, [selectedSolicitud?.id, selectedSolicitud?.estatus]);
 
-  // Interceptor que actualiza la UI instantáneamente y propaga el evento al componente padre
-  const handleStatusChangeLocal = (
-    id: number, 
-    status: string, 
-    observaciones?: string, 
-    confirmacionEspecial?: boolean, 
+  const handleStatusChangeLocal = async (
+    id: number,
+    status: string,
+    observaciones?: string,
+    confirmacionEspecial?: boolean,
     departamentoAsignado?: string
-  ) => {
-    setEstatusActual(status);
-    onStatusChange(id, status, observaciones, confirmacionEspecial, departamentoAsignado);
+  ): Promise<ResultadoActualizacionEstatus> => {
+    const res = await onStatusChange(id, status, observaciones, confirmacionEspecial, departamentoAsignado);
+    if (res?.success) {
+      setEstatusActual(status);
+    }
+    return res;
   };
 
-  // Objeto seguro por defecto sincronizado con el estatus en tiempo real
-  const solicitudSegura: SolicitudAuditoriaPanelData = selectedSolicitud 
+  const solicitudSegura: SolicitudAuditoriaPanelData = selectedSolicitud
     ? { ...selectedSolicitud, estatus: estatusActual }
     : {
         id: 0,
         cedula: "",
         periodo_id: periodoActualId,
         estatus: estatusActual,
-        email_institucional: ""
+        email_institucional: "",
+        observaciones_admin: null
       };
 
   return (
     <div className="space-y-4 animate-in fade-in duration-500 w-full max-w-[1600px] mx-auto px-4 md:px-8 py-4">
-      {/* CABECERA DE AUDITORÍA: Estandarizada al tamaño de ValidarBecaHeader */}
+      {/* CABECERA DE AUDITORÍA / DICTAMEN */}
       <div className="bg-[#1e3a5f] rounded-2xl px-5 py-4 text-white shadow-sm border border-slate-200 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <button 
+          <button
+            type="button"
             onClick={onClose}
-            className="h-9 w-9 bg-white/10 hover:bg-white/20 rounded-xl text-[#d4a843] flex items-center justify-center transition-all shrink-0"
+            className="h-9 w-9 bg-white/10 hover:bg-white/20 rounded-xl text-[#d4a843] flex items-center justify-center transition-all shrink-0 cursor-pointer"
             title="Volver a la lista"
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
           <div>
-            <div className="flex items-center gap-1.5 mb-0.5">
+            <div className="flex items-center gap-2 flex-wrap mb-0.5">
               <ShieldCheck className="h-4 w-4 text-[#d4a843]" />
-              <h1 className="text-xs md:text-sm font-black tracking-wider uppercase text-white">Auditoría y Validación de Beca</h1>
+              <h1 className="text-xs md:text-sm font-black tracking-wider uppercase text-white">
+                {esSecretariaGeneral
+                  ? "Dictamen de Beca — Secretaría General"
+                  : "Auditoría y Gestión de Beca — Coordinación"}
+              </h1>
             </div>
             <p className="text-[10px] text-slate-300 font-medium">
               {String(selectedSolicitud?.nombre || "")} {String(selectedSolicitud?.apellido || "")} V-{String(selectedSolicitud?.cedula || "")}
@@ -83,7 +97,7 @@ export function ValidarBecaViewAuditoria({
           </div>
         </div>
 
-        {/* Estatus Actual reactivo en tiempo real con el color predeterminado idéntico al de la tabla */}
+        {/* Estatus Actual reactivo en tiempo real */}
         <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-[#172e4d] rounded-xl border border-white/10 shrink-0">
           <Award className="h-3.5 w-3.5 text-[#d4a843]" />
           <span className="text-[9px] font-black uppercase tracking-wider text-slate-300">Estatus:</span>
@@ -93,12 +107,13 @@ export function ValidarBecaViewAuditoria({
         </div>
       </div>
 
-      {/* PANEL DE AUDITORÍA INTEGRADO Y AUTÓNOMO */}
-      <ValidarBecaAuditoriaPanel 
+      {/* PANEL DE AUDITORÍA INTEGRADO */}
+      <ValidarBecaAuditoriaPanel
         solicitud={solicitudSegura}
         onStatusChange={handleStatusChangeLocal}
         onClose={onClose}
         periodoActualId={periodoActualId}
+        esSecretariaGeneral={esSecretariaGeneral}
       />
     </div>
   )

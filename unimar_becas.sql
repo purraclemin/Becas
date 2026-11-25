@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 17-10-2026 a las 02:25:18
+-- Tiempo de generación: 24-11-2026 a las 23:56:48
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -130,18 +130,94 @@ CREATE TABLE `estudios_socioeconomicos` (
   `familia_relacion` varchar(50) DEFAULT NULL,
   `puntaje` int(11) NOT NULL,
   `nivel_riesgo` varchar(20) NOT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `observaciones_solicitante` text DEFAULT NULL COMMENT 'Observaciones declaradas por el solicitante en la encuesta',
+  `socio_trabajo_direccion` varchar(255) DEFAULT NULL COMMENT 'Dirección del lugar de trabajo del solicitante',
+  `socio_trabajo_telefono` varchar(30) DEFAULT NULL COMMENT 'Teléfono del lugar de trabajo del solicitante',
+  `socio_condicion_laboral_tipo` varchar(60) DEFAULT NULL COMMENT 'Comerciante / Economía Informal / Empleado / Otro',
+  `socio_condicion_laboral_desc` varchar(255) DEFAULT NULL COMMENT 'Especificación de condición laboral',
+  `padre_nacionalidad` varchar(50) DEFAULT NULL,
+  `padre_instruccion` varchar(100) DEFAULT NULL,
+  `madre_nacionalidad` varchar(50) DEFAULT NULL,
+  `madre_instruccion` varchar(100) DEFAULT NULL,
+  `familia_estatus_conyugal` varchar(60) DEFAULT NULL COMMENT 'Matrimonio Civil / Concubinato / Separados / Divorciados',
+  `familia_hermanos_uni_sn` varchar(10) DEFAULT NULL COMMENT 'Si / No hermanos universitarios',
+  `familia_nucleo_json` longtext DEFAULT NULL COMMENT 'Conformación del núcleo familiar (nombre, edad, sexo, parentesco, instrucción, ocupación)',
+  `monto_ingreso_rentas` decimal(10,2) DEFAULT 0.00,
+  `monto_ingreso_otros` decimal(10,2) DEFAULT 0.00,
+  `monto_egreso_suntuarios` decimal(10,2) DEFAULT 0.00,
+  `monto_egreso_estudios` decimal(10,2) DEFAULT 0.00,
+  `monto_egreso_recreacion` decimal(10,2) DEFAULT 0.00,
+  `serv_telefono` varchar(10) DEFAULT 'off',
+  `serv_cloacas` varchar(10) DEFAULT 'off',
+  `equip_aire` varchar(10) DEFAULT 'off',
+  `equip_ventilador` varchar(10) DEFAULT 'off',
+  `equip_tv` varchar(10) DEFAULT 'off',
+  `equip_cocina` varchar(10) DEFAULT 'off',
+  `equip_microondas` varchar(10) DEFAULT 'off',
+  `equip_sonido` varchar(10) DEFAULT 'off',
+  `equip_computadora` varchar(10) DEFAULT 'off',
+  `equip_celular` varchar(10) DEFAULT 'off',
+  `familia_problema_sn` varchar(10) DEFAULT NULL,
+  `familia_problema_desc` text DEFAULT NULL,
+  `organizacion_activa` varchar(100) DEFAULT NULL COMMENT 'Deportiva / Cultural / Vecinal / Religiosa / Ninguna'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `estudios_socioeconomicos`
 --
 
-INSERT INTO `estudios_socioeconomicos` (`id`, `student_id`, `periodo_id`, `tipo`, `evaluador_id`, `socio_lugar_nac`, `socio_nacionalidad`, `socio_estado_civil`, `socio_telf_hab`, `direccion_completa`, `socio_trabajo_empresa`, `socio_trabajo_cargo`, `monto_ingreso_sueldo`, `monto_ingreso_extra`, `monto_ingreso_pension`, `monto_ingreso_ayuda`, `monto_ingreso_familiar`, `socio_ue_procedencia`, `socio_otros_estudios`, `socio_fecha_unimar`, `socio_modalidad`, `padre_nombre`, `padre_edad`, `padre_ocupacion`, `padre_trabajo`, `madre_nombre`, `madre_edad`, `madre_ocupacion`, `madre_trabajo`, `rango_ingreso_familiar`, `vivienda_tipo`, `vivienda_estatus`, `serv_internet`, `familia_num_hermanos`, `familia_hermanos_uni`, `monto_egreso_mercado`, `monto_egreso_vivienda`, `monto_egreso_salud`, `monto_egreso_servicios`, `situacion_laboral_jefe`, `salud_condicion_especial`, `serv_agua`, `serv_gas`, `serv_aseo`, `equip_lavadora`, `equip_nevera`, `serv_luz`, `equip_cable`, `salud_enfermedad_desc`, `salud_tratamiento`, `familia_relacion`, `puntaje`, `nivel_riesgo`, `created_at`) VALUES
-(237, 10, 3, 'estudiante', NULL, 'qq', 'Venezolano/a', 'Soltero/a', '11', '1q1q1q1', '1qq', 'q', 1110.00, 11.00, 1.00, 11.00, 11.00, '1q1q1', '1q1q1', '0011-11-11', 'S', 'qq', 11, 'q', 'q', 'qq', 1, 'q', 'qq', '2', 'Apartamento', 'Residencia', 'on', 11, 11, 1.00, 11.00, 1.00, 111.00, 'Si', 'No', 'on', 'on', 'on', 'on', 'on', 'on', 'on', 'NO', 'NO', 'Regular', 17, 'Bajo', '2026-09-03 01:27:16'),
-(540, 10, 3, 'administrador', 1, 'qq', 'Venezolano/a', 'Soltero/a', '11', '1q1q1q1', '1qq', 'q', 1110.00, 11.00, 1.00, 11.00, 11.00, '1q1q1', '1q1q1', '1911-11-11', 'S', 'qq', 11, 'q', 'q', 'qq', 1, 'q', 'qq', '2', 'Apartamento', 'Residencia', 'on', 11, 11, 1.00, 11.00, 1.00, 111.00, 'Si', 'No', 'on', 'on', 'on', 'on', 'on', 'on', 'on', 'NO', 'NO', 'Regular', 22, 'Bajo', '2026-09-05 07:20:11'),
-(759, 1051, 3, 'estudiante', NULL, 'fgfgf', 'Venezolano/a', 'Casado/a', '33', 'fdfdfd', 'NO', 'NO', 0.00, 111.00, 111.00, 1111.00, 1111.00, 'dddddddddd', 'ddddddddddddddd', '2026-02-16', 'S', 'ddddddddddd', 2, 'ddddddddd', 'ddddddddddddd', 'ddddddddddddddddddd', 2, 'dddddddddd', 'ddddddddddddddd', '2', 'Casa', 'Residencia', 'off', 1, 1, 111.00, 111.00, 111.00, 1111.00, 'No', 'No', 'off', 'off', 'off', 'on', 'off', 'on', 'off', 'NO', 'NO', 'Buena', 29, 'Medio', '2026-10-16 05:16:06'),
-(760, 1051, 3, 'administrador', 1, 'fgfgf', 'Venezolano/a', 'Casado/a', '33', 'fdfdfd', 'NO', 'NO', 0.00, 111.00, 111.00, 1111.00, 1111.00, 'dddddddddd', 'ddddddddddddddd', '2026-02-16', 'S', 'ddddddddddd', 2, 'ddddddddd', 'ddddddddddddd', 'ddddddddddddddddddd', 2, 'dddddddddd', 'ddddddddddddddd', '2', 'Casa', 'Residencia', 'off', 1, 1, 111.00, 111.00, 111.00, 1111.00, 'No', 'No', 'off', 'off', 'off', 'on', 'off', 'on', 'off', 'NO', 'NO', 'Buena', 29, 'Medio', '2026-10-16 05:16:59');
+INSERT INTO `estudios_socioeconomicos` (`id`, `student_id`, `periodo_id`, `tipo`, `evaluador_id`, `socio_lugar_nac`, `socio_nacionalidad`, `socio_estado_civil`, `socio_telf_hab`, `direccion_completa`, `socio_trabajo_empresa`, `socio_trabajo_cargo`, `monto_ingreso_sueldo`, `monto_ingreso_extra`, `monto_ingreso_pension`, `monto_ingreso_ayuda`, `monto_ingreso_familiar`, `socio_ue_procedencia`, `socio_otros_estudios`, `socio_fecha_unimar`, `socio_modalidad`, `padre_nombre`, `padre_edad`, `padre_ocupacion`, `padre_trabajo`, `madre_nombre`, `madre_edad`, `madre_ocupacion`, `madre_trabajo`, `rango_ingreso_familiar`, `vivienda_tipo`, `vivienda_estatus`, `serv_internet`, `familia_num_hermanos`, `familia_hermanos_uni`, `monto_egreso_mercado`, `monto_egreso_vivienda`, `monto_egreso_salud`, `monto_egreso_servicios`, `situacion_laboral_jefe`, `salud_condicion_especial`, `serv_agua`, `serv_gas`, `serv_aseo`, `equip_lavadora`, `equip_nevera`, `serv_luz`, `equip_cable`, `salud_enfermedad_desc`, `salud_tratamiento`, `familia_relacion`, `puntaje`, `nivel_riesgo`, `created_at`, `observaciones_solicitante`, `socio_trabajo_direccion`, `socio_trabajo_telefono`, `socio_condicion_laboral_tipo`, `socio_condicion_laboral_desc`, `padre_nacionalidad`, `padre_instruccion`, `madre_nacionalidad`, `madre_instruccion`, `familia_estatus_conyugal`, `familia_hermanos_uni_sn`, `familia_nucleo_json`, `monto_ingreso_rentas`, `monto_ingreso_otros`, `monto_egreso_suntuarios`, `monto_egreso_estudios`, `monto_egreso_recreacion`, `serv_telefono`, `serv_cloacas`, `equip_aire`, `equip_ventilador`, `equip_tv`, `equip_cocina`, `equip_microondas`, `equip_sonido`, `equip_computadora`, `equip_celular`, `familia_problema_sn`, `familia_problema_desc`, `organizacion_activa`) VALUES
+(1046, 1001, 3, 'estudiante', NULL, 'Porlamar Nueva Esparta', 'Venezolano/a', 'Soltero/a', '02952622841', 'Urb. Playa El Ángel, Calle 3, Mun. Maneiro', 'NO', 'NO', 0.00, 0.00, 0.00, 0.00, 100.00, 'UEP Instituto Nueva Esparta', 'Curso Básico de Inglés Técnico', '2024-01-15', 'P', 'sdsadsad', 40, 'sadssad', 'adsadsad', 'sadsadsadsa', 40, 'dsad', 'sadsads', '1', 'otro estructura', 'otro vivienda', 'off', 3, 1, 100.00, 150.00, 20.00, 200.00, 'No', 'No', 'off', 'on', 'off', 'on', 'on', 'on', 'off', 'NO', 'NO', 'Regular', 78, 'Crítico', '2026-11-24 22:33:06', NULL, 'NO', 'NO', 'No aplica', 'NO', 'Venezolano/a', 'ssssss', 'Venezolano/a', 'ssssssssss', 'Ninguna', 'Si', '[]', 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'on', 'off', 'off', 'off', 'off', 'off', 'off', 'No', NULL, 'Cultural'),
+(1047, 1002, 3, 'estudiante', NULL, 'Juan Griego, Nueva Esparta', 'Venezolano/a', 'Casado/a', '02952929652', 'Sector Díaz, Calle Principal #22', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E. Dr. Francisco Antonio Rísquez', 'Curso Básico de Inglés Técnico', '2026-03-24', 'P', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1048, 1003, 3, 'estudiante', NULL, 'Pampatar, Nueva Esparta', 'Venezolano/a', 'Concubinato', '02952933973', 'Sector García, Calle Principal #23', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E. Colegio Guayamurí', 'Diplomado Introductorio en Gestión Administrativa', '2025-11-24', 'S', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1049, 1004, 3, 'estudiante', NULL, 'Caracas, Distrito Capital', 'Venezolano/a', 'Soltero/a', '02952938294', 'Sector Gómez, Calle Principal #24', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E.P. Instituto Nueva Esparta', 'Ninguno', '2025-07-24', 'V', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1050, 1005, 3, 'estudiante', NULL, 'Porlamar, Nueva Esparta', 'Venezolano/a', 'Soltero/a', '02952942615', 'Sector Maneiro, Calle Principal #25', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E. Colegio Virgen del Valle', 'Certificación en Ofimática y Hojas de Cálculo', '2025-03-24', 'P', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1051, 1006, 3, 'estudiante', NULL, 'La Asunción, Nueva Esparta', 'Venezolano/a', 'Casado/a', '02952946936', 'Sector Marcano, Calle Principal #26', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E.N. Creación Valle Verde', 'Curso Básico de Inglés Técnico', '2024-11-24', 'S', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1052, 1007, 3, 'estudiante', NULL, 'Juan Griego, Nueva Esparta', 'Venezolano/a', 'Concubinato', '02952951257', 'Sector Mariño, Calle Principal #27', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E. Dr. Francisco Antonio Rísquez', 'Diplomado Introductorio en Gestión Administrativa', '2024-07-24', 'V', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1053, 1008, 3, 'estudiante', NULL, 'Pampatar, Nueva Esparta', 'Extranjero/a', 'Soltero/a', '02952955578', 'Sector Península de Macanao, Calle Principal #28', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E. Colegio Guayamurí', 'Ninguno', '2024-03-24', 'P', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1054, 1009, 3, 'estudiante', NULL, 'Caracas, Distrito Capital', 'Venezolano/a', 'Soltero/a', '02952959899', 'Sector Tubores, Calle Principal #29', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E.P. Instituto Nueva Esparta', 'Certificación en Ofimática y Hojas de Cálculo', '2023-11-24', 'S', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1055, 1010, 3, 'estudiante', NULL, 'Porlamar, Nueva Esparta', 'Venezolano/a', 'Casado/a', '02952964220', 'Sector Villalba, Calle Principal #30', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E. Colegio Virgen del Valle', 'Curso Básico de Inglés Técnico', '2023-07-24', 'V', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1056, 1011, 3, 'estudiante', NULL, 'La Asunción, Nueva Esparta', 'Venezolano/a', 'Concubinato', '02952968541', 'Sector Arismendi, Calle Principal #31', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E.N. Creación Valle Verde', 'Diplomado Introductorio en Gestión Administrativa', '2026-09-24', 'P', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1057, 1012, 3, 'estudiante', NULL, 'Juan Griego, Nueva Esparta', 'Venezolano/a', 'Soltero/a', '02952972862', 'Sector Antolín del Campo, Calle Principal #32', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E. Dr. Francisco Antonio Rísquez', 'Ninguno', '2026-07-24', 'S', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1058, 1013, 3, 'estudiante', NULL, 'Pampatar, Nueva Esparta', 'Venezolano/a', 'Soltero/a', '02952977183', 'Sector Díaz, Calle Principal #33', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E. Colegio Guayamurí', 'Certificación en Ofimática y Hojas de Cálculo', '2026-03-24', 'V', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1059, 1014, 3, 'estudiante', NULL, 'Caracas, Distrito Capital', 'Venezolano/a', 'Casado/a', '02952981504', 'Sector García, Calle Principal #34', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E.P. Instituto Nueva Esparta', 'Curso Básico de Inglés Técnico', '2025-11-24', 'P', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1060, 1015, 3, 'estudiante', NULL, 'Porlamar, Nueva Esparta', 'Venezolano/a', 'Concubinato', '02952985825', 'Sector Gómez, Calle Principal #35', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E. Colegio Virgen del Valle', 'Diplomado Introductorio en Gestión Administrativa', '2025-07-24', 'S', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1061, 1016, 3, 'estudiante', NULL, 'La Asunción, Nueva Esparta', 'Venezolano/a', 'Soltero/a', '02952990146', 'Sector Maneiro, Calle Principal #36', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E.N. Creación Valle Verde', 'Ninguno', '2025-03-24', 'V', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1062, 1017, 3, 'estudiante', NULL, 'Juan Griego, Nueva Esparta', 'Extranjero/a', 'Soltero/a', '02952994467', 'Sector Marcano, Calle Principal #37', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E. Dr. Francisco Antonio Rísquez', 'Certificación en Ofimática y Hojas de Cálculo', '2024-11-24', 'P', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1063, 1018, 3, 'estudiante', NULL, 'Pampatar, Nueva Esparta', 'Venezolano/a', 'Casado/a', '02952998788', 'Sector Mariño, Calle Principal #38', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E. Colegio Guayamurí', 'Curso Básico de Inglés Técnico', '2024-07-24', 'S', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1064, 1019, 3, 'estudiante', NULL, 'Caracas, Distrito Capital', 'Venezolano/a', 'Concubinato', '02952603110', 'Sector Península de Macanao, Calle Principal #39', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E.P. Instituto Nueva Esparta', 'Diplomado Introductorio en Gestión Administrativa', '2024-03-24', 'V', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1065, 1020, 3, 'estudiante', NULL, 'Porlamar, Nueva Esparta', 'Venezolano/a', 'Soltero/a', '02952607431', 'Sector Tubores, Calle Principal #40', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E. Colegio Virgen del Valle', 'Ninguno', '2023-11-24', 'P', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1066, 1021, 3, 'estudiante', NULL, 'La Asunción, Nueva Esparta', 'Venezolano/a', 'Soltero/a', '02952611752', 'Sector Villalba, Calle Principal #41', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E.N. Creación Valle Verde', 'Certificación en Ofimática y Hojas de Cálculo', '2023-07-24', 'S', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1067, 1022, 3, 'estudiante', NULL, 'Juan Griego, Nueva Esparta', 'Venezolano/a', 'Casado/a', '02952616073', 'Sector Arismendi, Calle Principal #42', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E. Dr. Francisco Antonio Rísquez', 'Curso Básico de Inglés Técnico', '2026-09-24', 'V', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1068, 1023, 3, 'estudiante', NULL, 'Pampatar, Nueva Esparta', 'Venezolano/a', 'Concubinato', '02952620394', 'Sector Antolín del Campo, Calle Principal #43', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E. Colegio Guayamurí', 'Diplomado Introductorio en Gestión Administrativa', '2026-07-24', 'P', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1069, 1024, 3, 'estudiante', NULL, 'Caracas, Distrito Capital', 'Venezolano/a', 'Soltero/a', '02952624715', 'Sector Díaz, Calle Principal #44', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E.P. Instituto Nueva Esparta', 'Ninguno', '2026-03-24', 'S', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1070, 1025, 3, 'estudiante', NULL, 'Porlamar, Nueva Esparta', 'Venezolano/a', 'Soltero/a', '02952629036', 'Sector García, Calle Principal #45', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E. Colegio Virgen del Valle', 'Certificación en Ofimática y Hojas de Cálculo', '2025-11-24', 'V', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1071, 1026, 3, 'estudiante', NULL, 'La Asunción, Nueva Esparta', 'Extranjero/a', 'Casado/a', '02952633357', 'Sector Gómez, Calle Principal #46', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E.N. Creación Valle Verde', 'Curso Básico de Inglés Técnico', '2025-07-24', 'P', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1072, 1027, 3, 'estudiante', NULL, 'Juan Griego, Nueva Esparta', 'Venezolano/a', 'Concubinato', '02952637678', 'Sector Maneiro, Calle Principal #47', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E. Dr. Francisco Antonio Rísquez', 'Diplomado Introductorio en Gestión Administrativa', '2025-03-24', 'S', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1073, 1028, 3, 'estudiante', NULL, 'Pampatar, Nueva Esparta', 'Venezolano/a', 'Soltero/a', '02952641999', 'Sector Marcano, Calle Principal #48', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E. Colegio Guayamurí', 'Ninguno', '2024-11-24', 'V', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1074, 1029, 3, 'estudiante', NULL, 'Caracas, Distrito Capital', 'Venezolano/a', 'Soltero/a', '02952646320', 'Sector Mariño, Calle Principal #49', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E.P. Instituto Nueva Esparta', 'Certificación en Ofimática y Hojas de Cálculo', '2024-07-24', 'P', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1075, 1030, 3, 'estudiante', NULL, 'Porlamar, Nueva Esparta', 'Venezolano/a', 'Casado/a', '02952650641', 'Sector Península de Macanao, Calle Principal #50', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E. Colegio Virgen del Valle', 'Curso Básico de Inglés Técnico', '2024-03-24', 'S', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1076, 1031, 3, 'estudiante', NULL, 'La Asunción, Nueva Esparta', 'Venezolano/a', 'Concubinato', '02952654962', 'Sector Tubores, Calle Principal #51', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E.N. Creación Valle Verde', 'Diplomado Introductorio en Gestión Administrativa', '2023-11-24', 'V', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1077, 1032, 3, 'estudiante', NULL, 'Juan Griego, Nueva Esparta', 'Venezolano/a', 'Soltero/a', '02952659283', 'Sector Villalba, Calle Principal #52', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E. Dr. Francisco Antonio Rísquez', 'Ninguno', '2023-07-24', 'P', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1078, 1033, 3, 'estudiante', NULL, 'Pampatar, Nueva Esparta', 'Venezolano/a', 'Soltero/a', '02952663604', 'Sector Arismendi, Calle Principal #53', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E. Colegio Guayamurí', 'Certificación en Ofimática y Hojas de Cálculo', '2026-09-24', 'S', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1079, 1034, 3, 'estudiante', NULL, 'Caracas, Distrito Capital', 'Venezolano/a', 'Casado/a', '02952667925', 'Sector Antolín del Campo, Calle Principal #54', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E.P. Instituto Nueva Esparta', 'Curso Básico de Inglés Técnico', '2026-07-24', 'V', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1080, 1035, 3, 'estudiante', NULL, 'Porlamar, Nueva Esparta', 'Extranjero/a', 'Concubinato', '02952672246', 'Sector Díaz, Calle Principal #55', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E. Colegio Virgen del Valle', 'Diplomado Introductorio en Gestión Administrativa', '2026-03-24', 'P', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1081, 1036, 3, 'estudiante', NULL, 'La Asunción, Nueva Esparta', 'Venezolano/a', 'Soltero/a', '02952676567', 'Sector García, Calle Principal #56', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E.N. Creación Valle Verde', 'Ninguno', '2025-11-24', 'S', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1082, 1037, 3, 'estudiante', NULL, 'Juan Griego, Nueva Esparta', 'Venezolano/a', 'Soltero/a', '02952680888', 'Sector Gómez, Calle Principal #57', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E. Dr. Francisco Antonio Rísquez', 'Certificación en Ofimática y Hojas de Cálculo', '2025-07-24', 'V', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1083, 1038, 3, 'estudiante', NULL, 'Pampatar, Nueva Esparta', 'Venezolano/a', 'Casado/a', '02952685209', 'Sector Maneiro, Calle Principal #58', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E. Colegio Guayamurí', 'Curso Básico de Inglés Técnico', '2025-03-24', 'P', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1084, 1039, 3, 'estudiante', NULL, 'Caracas, Distrito Capital', 'Venezolano/a', 'Concubinato', '02952689530', 'Sector Marcano, Calle Principal #59', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E.P. Instituto Nueva Esparta', 'Diplomado Introductorio en Gestión Administrativa', '2024-11-24', 'S', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1085, 1040, 3, 'estudiante', NULL, 'Porlamar, Nueva Esparta', 'Venezolano/a', 'Soltero/a', '02952693851', 'Sector Mariño, Calle Principal #60', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E. Colegio Virgen del Valle', 'Ninguno', '2024-07-24', 'V', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1086, 1041, 3, 'estudiante', NULL, 'La Asunción, Nueva Esparta', 'Venezolano/a', 'Soltero/a', '02952698172', 'Sector Península de Macanao, Calle Principal #61', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E.N. Creación Valle Verde', 'Certificación en Ofimática y Hojas de Cálculo', '2024-03-24', 'P', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1087, 1042, 3, 'estudiante', NULL, 'Juan Griego, Nueva Esparta', 'Venezolano/a', 'Casado/a', '02952702493', 'Sector Tubores, Calle Principal #62', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E. Dr. Francisco Antonio Rísquez', 'Curso Básico de Inglés Técnico', '2023-11-24', 'S', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1088, 1043, 3, 'estudiante', NULL, 'Pampatar, Nueva Esparta', 'Venezolano/a', 'Concubinato', '02952706814', 'Sector Villalba, Calle Principal #63', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E. Colegio Guayamurí', 'Diplomado Introductorio en Gestión Administrativa', '2023-07-24', 'V', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1089, 1044, 3, 'estudiante', NULL, 'Caracas, Distrito Capital', 'Extranjero/a', 'Soltero/a', '02952711135', 'Sector Arismendi, Calle Principal #64', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E.P. Instituto Nueva Esparta', 'Ninguno', '2026-09-24', 'P', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1090, 1045, 3, 'estudiante', NULL, 'Porlamar, Nueva Esparta', 'Venezolano/a', 'Soltero/a', '02952715456', 'Sector Antolín del Campo, Calle Principal #65', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E. Colegio Virgen del Valle', 'Certificación en Ofimática y Hojas de Cálculo', '2026-07-24', 'S', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1091, 1046, 3, 'estudiante', NULL, 'La Asunción, Nueva Esparta', 'Venezolano/a', 'Casado/a', '02952719777', 'Sector Díaz, Calle Principal #66', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E.N. Creación Valle Verde', 'Curso Básico de Inglés Técnico', '2026-03-24', 'V', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1092, 1047, 3, 'estudiante', NULL, 'Juan Griego, Nueva Esparta', 'Venezolano/a', 'Concubinato', '02952724098', 'Sector García, Calle Principal #67', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E. Dr. Francisco Antonio Rísquez', 'Diplomado Introductorio en Gestión Administrativa', '2025-11-24', 'P', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1093, 1048, 3, 'estudiante', NULL, 'Pampatar, Nueva Esparta', 'Venezolano/a', 'Soltero/a', '02952728419', 'Sector Gómez, Calle Principal #68', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E. Colegio Guayamurí', 'Ninguno', '2025-07-24', 'S', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1094, 1049, 3, 'estudiante', NULL, 'Caracas, Distrito Capital', 'Venezolano/a', 'Soltero/a', '02952732740', 'Sector Maneiro, Calle Principal #69', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E.P. Instituto Nueva Esparta', 'Certificación en Ofimática y Hojas de Cálculo', '2025-03-24', 'V', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL),
+(1095, 1050, 3, 'estudiante', NULL, 'Porlamar, Nueva Esparta', 'Venezolano/a', 'Casado/a', '02952737061', 'Sector Marcano, Calle Principal #70', NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 'U.E. Colegio Virgen del Valle', 'Curso Básico de Inglés Técnico', '2024-11-24', 'P', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'off', NULL, NULL, 0.00, 0.00, 0.00, 0.00, NULL, NULL, 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL, 0, 'Bajo', '2026-11-24 19:44:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.00, 0.00, 0.00, 0.00, 0.00, 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -175,13 +251,7 @@ CREATE TABLE `historial_aprobaciones` (
 --
 
 INSERT INTO `historial_aprobaciones` (`id`, `solicitud_id`, `user_id`, `periodo_id`, `admin_id`, `promedio_ciclo`, `trimestre`, `puntaje_baremo_`, `nivel_riesgo`, `tipo_beca_snapshot`, `estatus_previo`, `estatus_nuevo`, `observacion_admin`, `materias_snapshot_json`, `indice_global_snapshot`, `fecha_aprobacion`, `token_verificacion`, `ip_accion`) VALUES
-(62, 1165, 1051, 3, 1, 10.00, 7, 29, 'Medio', 'Ayuda Económica para Hijos de Trabajadores', 'Pendiente', 'Convocado a Entrevista', NULL, '{\"trimestre\":6,\"materias\":[{\"codigo\":\"MER0605342\",\"nombre\":\"MECÁNICA RACIONAL II\",\"nota\":10},{\"codigo\":\"ESP0605342\",\"nombre\":\"ESTADÍSTICA I\",\"nota\":10},{\"codigo\":\"TEI0604342\",\"nombre\":\"TERMODINÁMICA I\",\"nota\":10},{\"codigo\":\"COI0604342\",\"nombre\":\"COMPUTACIÓN PARA INGENIEROS\",\"nota\":10},{\"codigo\":\"REI0605342\",\"nombre\":\"RESISTENCIA DE MATERIALES I\",\"nota\":10}],\"fecha_proceso\":\"2026-10-16T05:16:06.423Z\"}', 10.00, '2026-10-16 06:22:55', 'ac1b47b2-f9ef-4d84-9d40-7a65d0b76588', '127.0.0.1'),
-(63, 1165, 1051, 3, 1, 10.00, 7, 29, 'Medio', 'Ayuda Económica para Hijos de Trabajadores', 'Pendiente', 'Convocado a Entrevista', NULL, '{\"trimestre\":6,\"materias\":[{\"codigo\":\"MER0605342\",\"nombre\":\"MECÁNICA RACIONAL II\",\"nota\":10},{\"codigo\":\"ESP0605342\",\"nombre\":\"ESTADÍSTICA I\",\"nota\":10},{\"codigo\":\"TEI0604342\",\"nombre\":\"TERMODINÁMICA I\",\"nota\":10},{\"codigo\":\"COI0604342\",\"nombre\":\"COMPUTACIÓN PARA INGENIEROS\",\"nota\":10},{\"codigo\":\"REI0605342\",\"nombre\":\"RESISTENCIA DE MATERIALES I\",\"nota\":10}],\"fecha_proceso\":\"2026-10-16T05:16:06.423Z\"}', 10.00, '2026-10-16 06:26:32', '65ad7d09-b876-4161-8702-449b87ba7c87', '127.0.0.1'),
-(64, 1165, 1051, 3, 1, 10.00, 7, 29, 'Medio', 'Ayuda Económica para Hijos de Trabajadores', 'Convocado a Entrevista', 'En Revisión', NULL, '{\"trimestre\":6,\"materias\":[{\"codigo\":\"MER0605342\",\"nombre\":\"MECÁNICA RACIONAL II\",\"nota\":10},{\"codigo\":\"ESP0605342\",\"nombre\":\"ESTADÍSTICA I\",\"nota\":10},{\"codigo\":\"TEI0604342\",\"nombre\":\"TERMODINÁMICA I\",\"nota\":10},{\"codigo\":\"COI0604342\",\"nombre\":\"COMPUTACIÓN PARA INGENIEROS\",\"nota\":10},{\"codigo\":\"REI0605342\",\"nombre\":\"RESISTENCIA DE MATERIALES I\",\"nota\":10}],\"fecha_proceso\":\"2026-10-16T05:16:06.423Z\"}', 10.00, '2026-10-16 06:42:38', 'e5e6e0d9-baa6-4b66-a1cf-72bf8bc92b03', '127.0.0.1'),
-(71, 664, 10, 3, 1, 20.00, 9, 22, 'Bajo', 'BECA SOCIAL', 'En Revisión', 'Aprobada', NULL, '{\"trimestre\":8,\"materias\":[{\"codigo\":\"INV0804341\",\"nombre\":\"INVESTIGACIÓN DE OPERACIONES\",\"nota\":20},{\"codigo\":\"SIS0805341\",\"nombre\":\"SISTEMAS DE INFORMACIÓN\",\"nota\":20},{\"codigo\":\"RED0805341\",\"nombre\":\"REDES DE DATOS I\",\"nota\":20}],\"fecha_proceso\":\"2026-09-03T01:27:16.452Z\"}', 20.00, '2026-10-16 16:14:39', '4f304df3-96ab-4506-91bf-2f71944c6c6c', '127.0.0.1'),
-(72, 664, 10, 3, 1, 20.00, 9, 22, 'Bajo', 'BECA SOCIAL', 'Aprobada', 'En Revisión', NULL, '{\"trimestre\":8,\"materias\":[{\"codigo\":\"INV0804341\",\"nombre\":\"INVESTIGACIÓN DE OPERACIONES\",\"nota\":20},{\"codigo\":\"SIS0805341\",\"nombre\":\"SISTEMAS DE INFORMACIÓN\",\"nota\":20},{\"codigo\":\"RED0805341\",\"nombre\":\"REDES DE DATOS I\",\"nota\":20}],\"fecha_proceso\":\"2026-09-03T01:27:16.452Z\"}', 20.00, '2026-10-16 16:15:03', 'c7d49280-e5bb-48c8-b34c-ef8af02ab9f2', '127.0.0.1'),
-(73, 664, 10, 3, 1, 20.00, 9, 22, 'Bajo', 'BECA SOCIAL', 'En Revisión', 'Aprobada', NULL, '{\"trimestre\":8,\"materias\":[{\"codigo\":\"INV0804341\",\"nombre\":\"INVESTIGACIÓN DE OPERACIONES\",\"nota\":20},{\"codigo\":\"SIS0805341\",\"nombre\":\"SISTEMAS DE INFORMACIÓN\",\"nota\":20},{\"codigo\":\"RED0805341\",\"nombre\":\"REDES DE DATOS I\",\"nota\":20}],\"fecha_proceso\":\"2026-09-03T01:27:16.452Z\"}', 20.00, '2026-10-16 16:15:17', '80be9df5-9e3d-48b3-9ab3-7176c43e8ea9', '127.0.0.1'),
-(78, 664, 10, 3, 1, 20.00, 9, 22, 'Bajo', 'BECA SOCIAL', 'Aprobada', 'Aprobada', 'Actualización de departamento asignado', '{\"trimestre\":8,\"materias\":[{\"codigo\":\"INV0804341\",\"nombre\":\"INVESTIGACIÓN DE OPERACIONES\",\"nota\":20},{\"codigo\":\"SIS0805341\",\"nombre\":\"SISTEMAS DE INFORMACIÓN\",\"nota\":20},{\"codigo\":\"RED0805341\",\"nombre\":\"REDES DE DATOS I\",\"nota\":20}],\"fecha_proceso\":\"2026-09-03T01:27:16.452Z\"}', 20.00, '2026-10-16 16:56:08', 'e33f0c9c-e736-4c51-9770-1318f7784f14', '127.0.0.1');
+(91, 1172, 1001, 3, 1, 17.77, 9, 0, 'Bajo', 'Ayuda Económica General', 'Pendiente', 'Convocado a Entrevista', NULL, '{\"trimestre\":8,\"materias\":[{\"codigo\":\"INV0804341\",\"nombre\":\"INVESTIGACIÓN DE OPERACIONES\",\"nota\":19},{\"codigo\":\"RED0805341\",\"nombre\":\"REDES DE DATOS I\",\"nota\":16},{\"codigo\":\"SIS0805341\",\"nombre\":\"SISTEMAS DE INFORMACIÓN\",\"nota\":19}],\"fecha_proceso\":\"2026-11-24T22:33:06.527Z\"}', 17.77, '2026-11-24 22:42:52', 'd99ee256-9741-4668-b2bd-afa87332a1b6', '127.0.0.1');
 
 -- --------------------------------------------------------
 
@@ -866,6 +936,75 @@ INSERT INTO `periodos_academicos` (`id`, `codigo`, `nombre`, `fecha_inicio`, `fe
 -- --------------------------------------------------------
 
 --
+-- Estructura de tabla para la tabla `record_academico`
+--
+
+CREATE TABLE `record_academico` (
+  `id` int(11) NOT NULL,
+  `student_id` int(11) NOT NULL,
+  `pensum_materia_id` int(11) NOT NULL,
+  `trimestre_cursado` int(11) NOT NULL,
+  `codigo_materia` varchar(20) NOT NULL,
+  `nombre_materia` varchar(150) NOT NULL,
+  `unidades_credito` int(11) NOT NULL DEFAULT 3,
+  `nota` decimal(4,2) NOT NULL CHECK (`nota` >= 0.00 and `nota` <= 20.00),
+  `aprobada` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `record_academico`
+--
+
+INSERT INTO `record_academico` (`id`, `student_id`, `pensum_materia_id`, `trimestre_cursado`, `codigo_materia`, `nombre_materia`, `unidades_credito`, `nota`, `aprobada`, `created_at`) VALUES
+(4227, 1001, 7, 1, 'ADR0102100', 'ACTIVIDADES DEPORTIVAS Y RECREATIVAS', 1, 17.00, 1, '2026-11-24 19:44:34'),
+(4228, 1001, 2, 1, 'FOC0104300', 'FORMACIÓN CIUDADANA', 3, 17.00, 1, '2026-11-24 19:44:34'),
+(4229, 1001, 1, 1, 'GRL0104300', 'GRAMÁTICA Y LECTURA', 3, 19.00, 1, '2026-11-24 19:44:34'),
+(4230, 1001, 4, 1, 'IG0104341', 'INTRODUCCIÓN A LA INGENIERÍA DE SISTEMAS', 3, 19.00, 1, '2026-11-24 19:44:34'),
+(4231, 1001, 5, 1, 'INM0104300', 'INTRODUCCIÓN A LA MATEMÁTICA', 3, 15.00, 1, '2026-11-24 19:44:34'),
+(4232, 1001, 6, 1, 'ITI0104300', 'INTRODUCCIÓN A LA TECNOLOGÍA DE LA INFORMACIÓN', 3, 16.00, 1, '2026-11-24 19:44:34'),
+(4233, 1001, 3, 1, 'TEE0104300', 'TÉCNICAS DE ESTUDIO', 3, 16.00, 1, '2026-11-24 19:44:34'),
+(4234, 1001, 11, 2, 'ALD0204341', 'ÁLGEBRA DISCRETA', 3, 18.00, 1, '2026-11-24 19:44:34'),
+(4235, 1001, 9, 2, 'AMS0204300', 'AMBIENTE SOSTENIBLE', 3, 20.00, 1, '2026-11-24 19:44:34'),
+(4236, 1001, 12, 2, 'DIB0203141', 'DIBUJO I', 1, 18.00, 1, '2026-11-24 19:44:34'),
+(4237, 1001, 13, 2, 'GEA0205341', 'GEOMETRÍA ANALÍTICA', 3, 20.00, 1, '2026-11-24 19:44:34'),
+(4238, 1001, 8, 2, 'IDR0204300', 'IDENTIDAD REGIONAL', 3, 19.00, 1, '2026-11-24 19:44:34'),
+(4239, 1001, 10, 2, 'MAT0205341', 'MATEMÁTICA I', 3, 17.00, 1, '2026-11-24 19:44:34'),
+(4240, 1001, 14, 2, 'QUG0205341', 'QUÍMICA GENERAL', 3, 16.00, 1, '2026-11-24 19:44:34'),
+(4241, 1001, 120, 3, 'ESH0302201', 'ELECTIVA SOCIO-HUMANÍSTICA 1', 2, 19.00, 1, '2026-11-24 19:44:34'),
+(4242, 1001, 16, 3, 'FIS0304341', 'FÍSICA I', 3, 16.00, 1, '2026-11-24 19:44:34'),
+(4243, 1001, 17, 3, 'INI0304341', 'INGLÉS INSTRUMENTAL I', 3, 17.00, 1, '2026-11-24 19:44:34'),
+(4244, 1001, 19, 3, 'LQU0303141', 'LABORATORIO DE QUÍMICA GENERAL', 1, 19.00, 1, '2026-11-24 19:44:34'),
+(4245, 1001, 15, 3, 'MAT0305341', 'MATEMÁTICA II', 3, 17.00, 1, '2026-11-24 19:44:34'),
+(4246, 1001, 18, 3, 'TEP0304341', 'TÉCNICAS DE PROGRAMACIÓN', 3, 16.00, 1, '2026-11-24 19:44:34'),
+(4247, 1001, 121, 4, 'ESH0402201', 'ELECTIVA SOCIO-HUMANÍSTICA 2', 2, 19.00, 1, '2026-11-24 19:44:34'),
+(4248, 1001, 20, 4, 'FIS0405341', 'FÍSICA II', 3, 18.00, 1, '2026-11-24 19:44:34'),
+(4249, 1001, 22, 4, 'INI0404341', 'INGLÉS INSTRUMENTAL II', 3, 19.00, 1, '2026-11-24 19:44:34'),
+(4250, 1001, 24, 4, 'LAF0403141', 'LABORATORIO DE FÍSICA I', 1, 17.00, 1, '2026-11-24 19:44:34'),
+(4251, 1001, 21, 4, 'MAT0405341', 'MATEMÁTICA III', 3, 18.00, 1, '2026-11-24 19:44:34'),
+(4252, 1001, 23, 4, 'PRO0405341', 'PROGRAMACIÓN I', 3, 17.00, 1, '2026-11-24 19:44:34'),
+(4253, 1001, 28, 5, 'CIE0505341', 'CIRCUITOS ELÉCTRICOS', 3, 19.00, 1, '2026-11-24 19:44:34'),
+(4254, 1001, 26, 5, 'ESD0504341', 'ESTRUCTURA DE DATOS', 3, 16.00, 1, '2026-11-24 19:44:34'),
+(4255, 1001, 30, 5, 'INI0504341', 'INGLÉS INSTRUMENTAL III', 3, 20.00, 1, '2026-11-24 19:44:34'),
+(4256, 1001, 25, 5, 'MAT0505341', 'MATEMÁTICA IV', 3, 20.00, 1, '2026-11-24 19:44:34'),
+(4257, 1001, 29, 5, 'MER0505341', 'MECÁNICA RACIONAL', 3, 16.00, 1, '2026-11-24 19:44:34'),
+(4258, 1001, 27, 5, 'PRO0505341', 'PROGRAMACIÓN II', 3, 20.00, 1, '2026-11-24 19:44:34'),
+(4259, 1001, 35, 6, 'ARC0604341', 'ARQUITECTURA DEL COMPUTADOR', 3, 16.00, 1, '2026-11-24 19:44:34'),
+(4260, 1001, 34, 6, 'ELE0606341', 'ELECTRÓNICA', 3, 19.00, 1, '2026-11-24 19:44:34'),
+(4261, 1001, 122, 6, 'ESH0702201', 'ELECTIVA SOCIO-HUMANÍSTICA 3', 2, 19.00, 1, '2026-11-24 19:44:34'),
+(4262, 1001, 32, 6, 'ESP0605341', 'ESTADÍSTICA Y PROBABILIDADES', 3, 19.00, 1, '2026-11-24 19:44:34'),
+(4263, 1001, 31, 6, 'MAT0605341', 'MATEMÁTICA V', 3, 20.00, 1, '2026-11-24 19:44:34'),
+(4264, 1001, 33, 6, 'PRO0605341', 'PROGRAMACIÓN III', 3, 16.00, 1, '2026-11-24 19:44:34'),
+(4265, 1001, 38, 7, 'ESA0704341', 'ESTADÍSTICA APLICADA', 3, 18.00, 1, '2026-11-24 19:44:34'),
+(4266, 1001, 36, 7, 'PRO0705341', 'PROGRAMACIÓN IV', 3, 16.00, 1, '2026-11-24 19:44:34'),
+(4267, 1001, 37, 7, 'SID0705341', 'SISTEMAS DIGITALES', 3, 15.00, 1, '2026-11-24 19:44:34'),
+(4268, 1001, 39, 8, 'INV0804341', 'INVESTIGACIÓN DE OPERACIONES', 3, 19.00, 1, '2026-11-24 19:44:34'),
+(4269, 1001, 41, 8, 'RED0805341', 'REDES DE DATOS I', 3, 16.00, 1, '2026-11-24 19:44:34'),
+(4270, 1001, 40, 8, 'SIS0805341', 'SISTEMAS DE INFORMACIÓN', 3, 19.00, 1, '2026-11-24 19:44:34');
+
+-- --------------------------------------------------------
+
+--
 -- Estructura de tabla para la tabla `sistema_config`
 --
 
@@ -927,8 +1066,7 @@ CREATE TABLE `solicitudes` (
 --
 
 INSERT INTO `solicitudes` (`id`, `user_id`, `periodo_id`, `email_institucional`, `tipo_beca`, `promedio_notas`, `motivo_solicitud`, `departamento_asignado`, `materias_json`, `estatus`, `fecha_registro`, `foto_carnet`, `copia_cedula`, `constancia_residencia`, `declaracion_manutencion`, `informe_medico`, `partida_nacimiento`, `constancia_club`, `constancia_notas`, `notas_certificadas`, `carnet_discapacidad`, `documentos_filiacion`, `planilla_inscripcion`, `fecha_revision`, `fecha_decision`, `observaciones_admin`, `revisado_por`, `porcentaje_cobertura`, `categoria_rechazo`, `fecha_convocatoria`) VALUES
-(664, 10, 3, 'Roy@unimar.edu.ve', 'BECA SOCIAL', 20.00, '111', 'Bienestar Estudiantil', '{\"trimestre\":8,\"materias\":[{\"codigo\":\"INV0804341\",\"nombre\":\"INVESTIGACIÓN DE OPERACIONES\",\"nota\":20},{\"codigo\":\"SIS0805341\",\"nombre\":\"SISTEMAS DE INFORMACIÓN\",\"nota\":20},{\"codigo\":\"RED0805341\",\"nombre\":\"REDES DE DATOS I\",\"nota\":20}],\"fecha_proceso\":\"2026-09-03T01:27:16.452Z\"}', 'Aprobada', '2026-09-03 01:27:16', '/uploads/1788398836468-Gemini_Generated_Image_bh7jk1bh7jk1bh7j.png', '/uploads/1788398836466-Gemini_Generated_Image_bh7jk1bh7jk1bh7j.png', NULL, NULL, '/uploads/1788398836461-Gemini_Generated_Image_bh7jk1bh7jk1bh7j.png', NULL, NULL, NULL, NULL, '/uploads/1788398836463-Gemini_Generated_Image_bh7jk1bh7jk1bh7j.png', NULL, NULL, '2026-10-16 12:15:03', '2026-10-16 12:56:08', 'Actualización de departamento asignado', 1, 100, NULL, NULL),
-(1165, 1051, 3, 'purraclemin@gmail.com', 'Ayuda Económica para Hijos de Trabajadores', 10.00, 'jjhjhjhhjhjh', NULL, '{\"trimestre\":6,\"materias\":[{\"codigo\":\"MER0605342\",\"nombre\":\"MECÁNICA RACIONAL II\",\"nota\":10},{\"codigo\":\"ESP0605342\",\"nombre\":\"ESTADÍSTICA I\",\"nota\":10},{\"codigo\":\"TEI0604342\",\"nombre\":\"TERMODINÁMICA I\",\"nota\":10},{\"codigo\":\"COI0604342\",\"nombre\":\"COMPUTACIÓN PARA INGENIEROS\",\"nota\":10},{\"codigo\":\"REI0605342\",\"nombre\":\"RESISTENCIA DE MATERIALES I\",\"nota\":10}],\"fecha_proceso\":\"2026-10-16T05:16:06.423Z\"}', 'En Revisión', '2026-10-16 05:16:06', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-10-16 02:42:38', NULL, NULL, 1, 100, NULL, NULL);
+(1172, 1001, 3, 'rgomez.2841@unimar.edu.ve', 'Ayuda Económica General', 17.77, 'sssssssssssssssssssssssss', NULL, '{\"trimestre\":8,\"materias\":[{\"codigo\":\"INV0804341\",\"nombre\":\"INVESTIGACIÓN DE OPERACIONES\",\"nota\":19},{\"codigo\":\"RED0805341\",\"nombre\":\"REDES DE DATOS I\",\"nota\":16},{\"codigo\":\"SIS0805341\",\"nombre\":\"SISTEMAS DE INFORMACIÓN\",\"nota\":19}],\"fecha_proceso\":\"2026-11-24T22:33:06.527Z\"}', 'Convocado a Entrevista', '2026-11-24 22:33:06', '/uploads/1795559586535-1795093357543-logounimarmini4.png', '/uploads/1795559586536-1795093357543-logounimarmini4.png', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 1, 100, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -959,14 +1097,56 @@ CREATE TABLE `students` (
 --
 
 INSERT INTO `students` (`id`, `nombre`, `apellido`, `cedula`, `sexo`, `fecha_nacimiento`, `telefono`, `carrera`, `semestre`, `indice_global`, `email`, `municipio_residencia`, `ha_tenido_beca`, `beca_perdida`, `motivo_exclusion`) VALUES
-(10, 'Roy Vincent', 'Gomez Santana', '22652841', 'F', '1994-11-12', '04265860480', 'Ingeniería de Sistemas', 9, 20.00, 'Roy@unimar.edu.ve', 'Península de Macanao', 1, 0, NULL),
-(12, 'Juan', 'Perez', '22652842', 'M', '2026-02-10', '042658414', 'Ingeniería de Sistemas', 5, 20.00, 'juan@unimar.edu.ve', 'Marcano', 0, 0, NULL),
-(114, 'mario', 'gomez', '22652800', 'M', '2026-03-04', '04265860480', 'Ingeniería Industrial', 9, 20.00, 'mario@unimar.edu.ve', 'Marcano', 0, 0, NULL),
-(115, 'roys', 'gomes', '22652843', 'M', '2024-08-01', '0426586040', 'Ingeniería de Sistemas', 9, 20.00, 'roys@unimar.edu.ve', 'Tubores', 0, 0, NULL),
-(948, 'ro', 'ro', '444', 'M', '2026-10-21', '4', 'Ingeniería de Sistemas', 9, 0.00, 'ro@unimar.edu.ve', 'Mariño', 0, 0, NULL),
-(949, 'royki', 'kiki', '22652848', 'M', '2007-07-13', '111111111', 'Administración', 8, 0.00, 'rgomez.2841@unimar.edu.ve', 'Maneiro', 0, 0, NULL),
-(950, 'ttttttttttttt', 'ttttttttttt', '44444444', 'M', '2026-10-14', '44444444', 'Ingeniería Industrial', 8, 0.00, 'rgomez.28413@unimar.edu.ve', 'Marcano', 0, 0, NULL),
-(1051, 'xzxzx', 'xzxzx', '111111', 'M', '2012-10-10', '1111', 'Ingeniería Industrial', 7, 10.00, 'purraclemin@gmail.com', 'Marcano', 0, 0, NULL);
+(1001, 'Roy Vincent', 'Gomez Santana', '22652841', 'M', '1994-11-12', '04122265284', 'Ingeniería de Sistemas', 9, 17.77, 'rgomez.2841@unimar.edu.ve', 'Maneiro', 0, 0, NULL),
+(1002, 'Diego', 'Hernández', '25000274', 'F', '1986-11-24', '04161034778', 'Ingeniería Industrial', 3, 0.00, 'estudiante.sim2@unimar.edu.ve', 'Díaz', 0, 0, NULL),
+(1003, 'María', 'Pérez', '25000411', 'M', '1985-11-24', '04241052167', 'Artes mención Diseño Gráfico', 4, 0.00, 'estudiante.sim3@unimar.edu.ve', 'García', 0, 0, NULL),
+(1004, 'Gabriel', 'Martínez', '25000548', 'F', '1984-11-24', '04261069556', 'Idiomas Modernos', 5, 0.00, 'estudiante.sim4@unimar.edu.ve', 'Gómez', 0, 0, NULL),
+(1005, 'Valeria', 'González', '25000685', 'M', '1983-11-24', '04121086945', 'Administración', 6, 0.00, 'estudiante.sim5@unimar.edu.ve', 'Maneiro', 0, 0, NULL),
+(1006, 'Carlos', 'Díaz', '25000822', 'F', '1982-11-24', '04141104334', 'Contaduría Pública', 7, 0.00, 'estudiante.sim6@unimar.edu.ve', 'Marcano', 0, 0, NULL),
+(1007, 'Daniela', 'Torres', '25000959', 'M', '1988-11-24', '04161121723', 'Derecho', 8, 0.00, 'estudiante.sim7@unimar.edu.ve', 'Mariño', 0, 0, NULL),
+(1008, 'Andrés', 'Vargas', '25001096', 'F', '1987-11-24', '04241139112', 'Psicología', 9, 0.00, 'estudiante.sim8@unimar.edu.ve', 'Península de Macanao', 0, 0, NULL),
+(1009, 'Sofía', 'Flores', '25001233', 'M', '1986-11-24', '04261156501', 'Ingeniería de Sistemas', 10, 0.00, 'estudiante.sim9@unimar.edu.ve', 'Tubores', 0, 0, NULL),
+(1010, 'Luis', 'Rodríguez', '25001370', 'F', '1985-11-24', '04121173890', 'Ingeniería Industrial', 11, 0.00, 'estudiante.sim10@unimar.edu.ve', 'Villalba', 0, 0, NULL),
+(1011, 'Camila', 'Gómez', '25001507', 'M', '1984-11-24', '04141191279', 'Artes mención Diseño Gráfico', 1, 0.00, 'estudiante.sim11@unimar.edu.ve', 'Arismendi', 0, 0, NULL),
+(1012, 'Diego', 'Hernández', '25001644', 'F', '1983-11-24', '04161208668', 'Idiomas Modernos', 2, 0.00, 'estudiante.sim12@unimar.edu.ve', 'Antolín del Campo', 0, 0, NULL),
+(1013, 'María', 'Pérez', '25001781', 'M', '1982-11-24', '04241226057', 'Administración', 3, 0.00, 'estudiante.sim13@unimar.edu.ve', 'Díaz', 0, 0, NULL),
+(1014, 'Gabriel', 'Martínez', '25001918', 'F', '1988-11-24', '04261243446', 'Contaduría Pública', 4, 0.00, 'estudiante.sim14@unimar.edu.ve', 'García', 0, 0, NULL),
+(1015, 'Valeria', 'González', '25002055', 'M', '1987-11-24', '04121260835', 'Derecho', 5, 0.00, 'estudiante.sim15@unimar.edu.ve', 'Gómez', 0, 0, NULL),
+(1016, 'Carlos', 'Díaz', '25002192', 'F', '1986-11-24', '04141278224', 'Psicología', 6, 0.00, 'estudiante.sim16@unimar.edu.ve', 'Maneiro', 0, 0, NULL),
+(1017, 'Daniela', 'Torres', '25002329', 'M', '1985-11-24', '04161295613', 'Ingeniería de Sistemas', 7, 0.00, 'estudiante.sim17@unimar.edu.ve', 'Marcano', 0, 0, NULL),
+(1018, 'Andrés', 'Vargas', '25002466', 'F', '1984-11-24', '04241313002', 'Ingeniería Industrial', 8, 0.00, 'estudiante.sim18@unimar.edu.ve', 'Mariño', 0, 0, NULL),
+(1019, 'Sofía', 'Flores', '25002603', 'M', '1983-11-24', '04261330391', 'Artes mención Diseño Gráfico', 9, 0.00, 'estudiante.sim19@unimar.edu.ve', 'Península de Macanao', 0, 0, NULL),
+(1020, 'Luis', 'Rodríguez', '25002740', 'F', '1982-11-24', '04121347780', 'Idiomas Modernos', 10, 0.00, 'estudiante.sim20@unimar.edu.ve', 'Tubores', 0, 0, NULL),
+(1021, 'Camila', 'Gómez', '25002877', 'M', '1988-11-24', '04141365169', 'Administración', 11, 0.00, 'estudiante.sim21@unimar.edu.ve', 'Villalba', 0, 0, NULL),
+(1022, 'Diego', 'Hernández', '25003014', 'F', '1987-11-24', '04161382558', 'Contaduría Pública', 1, 0.00, 'estudiante.sim22@unimar.edu.ve', 'Arismendi', 0, 0, NULL),
+(1023, 'María', 'Pérez', '25003151', 'M', '1986-11-24', '04241399947', 'Derecho', 2, 0.00, 'estudiante.sim23@unimar.edu.ve', 'Antolín del Campo', 0, 0, NULL),
+(1024, 'Gabriel', 'Martínez', '25003288', 'F', '1985-11-24', '04261417336', 'Psicología', 3, 0.00, 'estudiante.sim24@unimar.edu.ve', 'Díaz', 0, 0, NULL),
+(1025, 'Valeria', 'González', '25003425', 'M', '1984-11-24', '04121434725', 'Ingeniería de Sistemas', 4, 0.00, 'estudiante.sim25@unimar.edu.ve', 'García', 0, 0, NULL),
+(1026, 'Carlos', 'Díaz', '25003562', 'F', '1983-11-24', '04141452114', 'Ingeniería Industrial', 5, 0.00, 'estudiante.sim26@unimar.edu.ve', 'Gómez', 0, 0, NULL),
+(1027, 'Daniela', 'Torres', '25003699', 'M', '1982-11-24', '04161469503', 'Artes mención Diseño Gráfico', 6, 0.00, 'estudiante.sim27@unimar.edu.ve', 'Maneiro', 0, 0, NULL),
+(1028, 'Andrés', 'Vargas', '25003836', 'F', '1988-11-24', '04241486892', 'Idiomas Modernos', 7, 0.00, 'estudiante.sim28@unimar.edu.ve', 'Marcano', 0, 0, NULL),
+(1029, 'Sofía', 'Flores', '25003973', 'M', '1987-11-24', '04261504281', 'Administración', 8, 0.00, 'estudiante.sim29@unimar.edu.ve', 'Mariño', 0, 0, NULL),
+(1030, 'Luis', 'Rodríguez', '25004110', 'F', '1986-11-24', '04121521670', 'Contaduría Pública', 9, 0.00, 'estudiante.sim30@unimar.edu.ve', 'Península de Macanao', 0, 0, NULL),
+(1031, 'Camila', 'Gómez', '25004247', 'M', '1985-11-24', '04141539059', 'Derecho', 10, 0.00, 'estudiante.sim31@unimar.edu.ve', 'Tubores', 0, 0, NULL),
+(1032, 'Diego', 'Hernández', '25004384', 'F', '1984-11-24', '04161556448', 'Psicología', 11, 0.00, 'estudiante.sim32@unimar.edu.ve', 'Villalba', 0, 0, NULL),
+(1033, 'María', 'Pérez', '25004521', 'M', '1983-11-24', '04241573837', 'Ingeniería de Sistemas', 1, 0.00, 'estudiante.sim33@unimar.edu.ve', 'Arismendi', 0, 0, NULL),
+(1034, 'Gabriel', 'Martínez', '25004658', 'F', '1982-11-24', '04261591226', 'Ingeniería Industrial', 2, 0.00, 'estudiante.sim34@unimar.edu.ve', 'Antolín del Campo', 0, 0, NULL),
+(1035, 'Valeria', 'González', '25004795', 'M', '1988-11-24', '04121608615', 'Artes mención Diseño Gráfico', 3, 0.00, 'estudiante.sim35@unimar.edu.ve', 'Díaz', 0, 0, NULL),
+(1036, 'Carlos', 'Díaz', '25004932', 'F', '1987-11-24', '04141626004', 'Idiomas Modernos', 4, 0.00, 'estudiante.sim36@unimar.edu.ve', 'García', 0, 0, NULL),
+(1037, 'Daniela', 'Torres', '25005069', 'M', '1986-11-24', '04161643393', 'Administración', 5, 0.00, 'estudiante.sim37@unimar.edu.ve', 'Gómez', 0, 0, NULL),
+(1038, 'Andrés', 'Vargas', '25005206', 'F', '1985-11-24', '04241660782', 'Contaduría Pública', 6, 0.00, 'estudiante.sim38@unimar.edu.ve', 'Maneiro', 0, 0, NULL),
+(1039, 'Sofía', 'Flores', '25005343', 'M', '1984-11-24', '04261678171', 'Derecho', 7, 0.00, 'estudiante.sim39@unimar.edu.ve', 'Marcano', 0, 0, NULL),
+(1040, 'Luis', 'Rodríguez', '25005480', 'F', '1983-11-24', '04121695560', 'Psicología', 8, 0.00, 'estudiante.sim40@unimar.edu.ve', 'Mariño', 0, 0, NULL),
+(1041, 'Camila', 'Gómez', '25005617', 'M', '1982-11-24', '04141712949', 'Ingeniería de Sistemas', 9, 0.00, 'estudiante.sim41@unimar.edu.ve', 'Península de Macanao', 0, 0, NULL),
+(1042, 'Diego', 'Hernández', '25005754', 'F', '1988-11-24', '04161730338', 'Ingeniería Industrial', 10, 0.00, 'estudiante.sim42@unimar.edu.ve', 'Tubores', 0, 0, NULL),
+(1043, 'María', 'Pérez', '25005891', 'M', '1987-11-24', '04241747727', 'Artes mención Diseño Gráfico', 11, 0.00, 'estudiante.sim43@unimar.edu.ve', 'Villalba', 0, 0, NULL),
+(1044, 'Gabriel', 'Martínez', '25006028', 'F', '1986-11-24', '04261765116', 'Idiomas Modernos', 1, 0.00, 'estudiante.sim44@unimar.edu.ve', 'Arismendi', 0, 0, NULL),
+(1045, 'Valeria', 'González', '25006165', 'M', '1985-11-24', '04121782505', 'Administración', 2, 0.00, 'estudiante.sim45@unimar.edu.ve', 'Antolín del Campo', 0, 0, NULL),
+(1046, 'Carlos', 'Díaz', '25006302', 'F', '1984-11-24', '04141799894', 'Contaduría Pública', 3, 0.00, 'estudiante.sim46@unimar.edu.ve', 'Díaz', 0, 0, NULL),
+(1047, 'Daniela', 'Torres', '25006439', 'M', '1983-11-24', '04161817283', 'Derecho', 4, 0.00, 'estudiante.sim47@unimar.edu.ve', 'García', 0, 0, NULL),
+(1048, 'Andrés', 'Vargas', '25006576', 'F', '1982-11-24', '04241834672', 'Psicología', 5, 0.00, 'estudiante.sim48@unimar.edu.ve', 'Gómez', 0, 0, NULL),
+(1049, 'Sofía', 'Flores', '25006713', 'M', '1988-11-24', '04261852061', 'Ingeniería de Sistemas', 6, 0.00, 'estudiante.sim49@unimar.edu.ve', 'Maneiro', 0, 0, NULL),
+(1050, 'Luis', 'Rodríguez', '25006850', 'F', '1987-11-24', '04121869450', 'Ingeniería Industrial', 7, 0.00, 'estudiante.sim50@unimar.edu.ve', 'Marcano', 0, 0, NULL);
 
 -- --------------------------------------------------------
 
@@ -989,44 +1169,56 @@ CREATE TABLE `users` (
 INSERT INTO `users` (`id`, `email`, `password`, `role`, `created_at`) VALUES
 (0, 'sistema@unimar.edu.ve', 'SYSTEM_BOT_NO_LOGIN', 'admin', '2026-02-18 18:52:39'),
 (1, 'Admin@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'admin', '2026-02-12 05:17:42'),
-(10, 'Roy@unimar.edu.ve', '$2b$10$Mf0zMQTBQq5hNSwgy8cL4u9qPM1uzrI84Cgv34ayHSilo4QeukECq', 'estudiante', '2026-02-16 03:15:01'),
-(12, 'juan@unimar.edu.ve', '$2b$10$N98KOBodUhts7/9UrB/EQ.uCPispBch2MARnDuHCcjdxJcQH460iC', 'estudiante', '2026-02-21 01:42:00'),
-(114, 'mario@unimar.edu.ve', '$2b$10$I61aE0Cgupp8FhhsPcSx1eqVFr1ZMJgzl6Md4LM0txUd921gD7dtK', 'estudiante', '2026-03-04 06:52:03'),
-(115, 'roys@unimar.edu.ve', '$2b$10$sgG.L.6OCVv7JI9dxBBwo.hp53LWAyiSfaNHYcZzKt5SU7UPdBa9q', 'estudiante', '2026-08-06 15:53:19'),
-(116, 'luis.rodriguez1@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
-(117, 'andres.gomez2@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
-(118, 'carlos.flores3@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
-(119, 'daniela.rodriguez4@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
-(120, 'carlos.ramirez5@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
-(121, 'luis.flores6@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
-(122, 'daniel.flores7@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
-(123, 'luis.rodriguez8@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
-(124, 'alejandro.ramirez9@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
-(125, 'alejandro.hernandez10@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
-(126, 'sofia.rodriguez11@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
-(127, 'gabriel.gomez12@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
-(128, 'mariana.ramirez13@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
-(129, 'gabriel.flores14@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
-(130, 'valeria.flores15@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
-(131, 'maria.flores16@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
-(132, 'alejandro.diaz17@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
-(133, 'luis.gomez18@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
-(134, 'gabriel.vargas19@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
-(135, 'maria.torres20@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
-(136, 'miguel.torres21@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
-(137, 'miguel.diaz22@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
-(138, 'andres.torres23@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
-(139, 'gabriela.gomez24@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
-(140, 'andrea.diaz25@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
-(141, 'gabriela.ramirez26@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
-(142, 'victoria.torres27@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
-(143, 'jose.perez28@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
-(144, 'miguel.gomez29@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
-(145, 'gabriel.gomez30@unimar.edu.ve', '$2b$10$yEWZ8SvgvU9n/.j/CDxR1uk9ZlVa5prL3fWmjntsGjneerZuVyjr2', 'estudiante', '2026-08-20 01:26:28'),
-(948, 'ro@unimar.edu.ve', '$2b$10$FJBUZ6.QotOyNfbqwAlbIeP/l9uUycDRpkPR8k0jHKgBHRQJ5JJ4G', 'estudiante', '2026-10-12 21:27:17'),
-(949, 'rgomez.2841@unimar.edu.ve', '$2b$10$ITrd9x9p5DdHzcSYlsQGoOiNxhPehDea2sgsV924qhTT.HS9KIJUq', 'estudiante', '2026-10-16 01:09:44'),
-(950, 'rgomez.28413@unimar.edu.ve', '$2b$10$sZoxCn0Bz3um6Vra4x8pWeXpDwg7DIZ7Ef/nK8ThGjx7lRF/fW/Xu', 'estudiante', '2026-10-16 01:36:14'),
-(1051, 'purraclemin@gmail.com', '$2b$10$Qf9Glh2qjuO4jjs8r.Ikau.skjJY6sheq5oZN0J4bTN4nvB7lPrFy', 'estudiante', '2026-10-16 05:13:41');
+(1001, 'rgomez.2841@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1002, 'estudiante.sim2@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1003, 'estudiante.sim3@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1004, 'estudiante.sim4@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1005, 'estudiante.sim5@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1006, 'estudiante.sim6@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1007, 'estudiante.sim7@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1008, 'estudiante.sim8@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1009, 'estudiante.sim9@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1010, 'estudiante.sim10@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1011, 'estudiante.sim11@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1012, 'estudiante.sim12@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1013, 'estudiante.sim13@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1014, 'estudiante.sim14@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1015, 'estudiante.sim15@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1016, 'estudiante.sim16@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1017, 'estudiante.sim17@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1018, 'estudiante.sim18@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1019, 'estudiante.sim19@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1020, 'estudiante.sim20@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1021, 'estudiante.sim21@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1022, 'estudiante.sim22@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1023, 'estudiante.sim23@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1024, 'estudiante.sim24@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1025, 'estudiante.sim25@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1026, 'estudiante.sim26@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1027, 'estudiante.sim27@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1028, 'estudiante.sim28@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1029, 'estudiante.sim29@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1030, 'estudiante.sim30@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1031, 'estudiante.sim31@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1032, 'estudiante.sim32@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1033, 'estudiante.sim33@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1034, 'estudiante.sim34@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1035, 'estudiante.sim35@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1036, 'estudiante.sim36@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1037, 'estudiante.sim37@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1038, 'estudiante.sim38@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1039, 'estudiante.sim39@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1040, 'estudiante.sim40@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1041, 'estudiante.sim41@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1042, 'estudiante.sim42@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1043, 'estudiante.sim43@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1044, 'estudiante.sim44@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1045, 'estudiante.sim45@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1046, 'estudiante.sim46@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1047, 'estudiante.sim47@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1048, 'estudiante.sim48@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1049, 'estudiante.sim49@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27'),
+(1050, 'estudiante.sim50@unimar.edu.ve', '$2b$10$.aKIJ7DRNmTig/HB7xyUEeNrsO64WzpK0ZaCHd7ZEZGIjE2GNSegi', 'estudiante', '2026-11-24 19:44:27');
 
 --
 -- Índices para tablas volcadas
@@ -1079,6 +1271,17 @@ ALTER TABLE `periodos_academicos`
   ADD PRIMARY KEY (`id`);
 
 --
+-- Indices de la tabla `record_academico`
+--
+ALTER TABLE `record_academico`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uk_record_student_materia` (`student_id`,`pensum_materia_id`),
+  ADD UNIQUE KEY `uk_record_student_codigo_trim` (`student_id`,`codigo_materia`,`trimestre_cursado`),
+  ADD KEY `idx_record_student_trimestre` (`student_id`,`trimestre_cursado`),
+  ADD KEY `idx_record_student_aprobada` (`student_id`,`aprobada`),
+  ADD KEY `fk_record_pensum` (`pensum_materia_id`);
+
+--
 -- Indices de la tabla `sistema_config`
 --
 ALTER TABLE `sistema_config`
@@ -1121,19 +1324,19 @@ ALTER TABLE `carreras`
 -- AUTO_INCREMENT de la tabla `email_verifications`
 --
 ALTER TABLE `email_verifications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT de la tabla `estudios_socioeconomicos`
 --
 ALTER TABLE `estudios_socioeconomicos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=785;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1115;
 
 --
 -- AUTO_INCREMENT de la tabla `historial_aprobaciones`
 --
 ALTER TABLE `historial_aprobaciones`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=89;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=92;
 
 --
 -- AUTO_INCREMENT de la tabla `pensum_materias`
@@ -1148,16 +1351,22 @@ ALTER TABLE `periodos_academicos`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 --
+-- AUTO_INCREMENT de la tabla `record_academico`
+--
+ALTER TABLE `record_academico`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4271;
+
+--
 -- AUTO_INCREMENT de la tabla `solicitudes`
 --
 ALTER TABLE `solicitudes`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1166;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1173;
 
 --
 -- AUTO_INCREMENT de la tabla `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1052;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1053;
 
 --
 -- Restricciones para tablas volcadas
@@ -1182,6 +1391,13 @@ ALTER TABLE `historial_aprobaciones`
 --
 ALTER TABLE `pensum_materias`
   ADD CONSTRAINT `pensum_materias_ibfk_1` FOREIGN KEY (`carrera_id`) REFERENCES `carreras` (`id`);
+
+--
+-- Filtros para la tabla `record_academico`
+--
+ALTER TABLE `record_academico`
+  ADD CONSTRAINT `fk_record_pensum` FOREIGN KEY (`pensum_materia_id`) REFERENCES `pensum_materias` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_record_student` FOREIGN KEY (`student_id`) REFERENCES `students` (`id`) ON DELETE CASCADE;
 
 --
 -- Filtros para la tabla `solicitudes`

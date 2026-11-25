@@ -22,9 +22,14 @@ interface OpcionesFiltrosProps {
   handleInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
   resetFilters: () => void;
   onOpenAptoIA: () => void;
+  esSecretariaGeneral?: boolean;
 }
 
-export function OpcionesFiltros({ filters, handleInputChange, resetFilters, onOpenAptoIA }: OpcionesFiltrosProps) {
+export function OpcionesFiltros({
+  filters,
+  handleInputChange,
+  esSecretariaGeneral = false
+}: OpcionesFiltrosProps) {
   const selectClass = "w-full h-12 md:h-9 pl-2 pr-6 bg-slate-50/50 border border-slate-200 rounded text-sm md:text-[10px] font-bold text-slate-600 outline-none focus:border-[#1e3a5f] focus:bg-white transition-all appearance-none cursor-pointer hover:border-slate-300 text-center"
   const iconClass = "absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-300 pointer-events-none"
   const labelClass = "text-[9px] font-black uppercase tracking-wider text-[#1e3a5f]/80 truncate"
@@ -32,22 +37,39 @@ export function OpcionesFiltros({ filters, handleInputChange, resetFilters, onOp
 
   return (
     <div className="bg-slate-50/30 p-3">
-      {/* 🟢 Ajustado a 8 columnas exactas para que los filtros ocupen todo el ancho de manera uniforme tras remover el botón */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2 items-end">
-        
+
         {/* Estatus */}
         <div className="flex flex-col gap-1">
           <label htmlFor="filtro-status" className={labelClass}>Estatus</label>
           <div className="relative">
-            <select id="filtro-status" name="status" value={filters.status} onChange={handleInputChange} className={selectClass}>
-              <option value="">Todos</option>
-              <option value="Pendiente">Pendiente</option>
-              <option value="En Revisión">Revisión</option>
-              <option value="Convocado a Entrevista">Convocado a Entrevista</option>
-              <option value="Renovacion">Renovacion</option>
-              <option value="Aprobada">Aprobada</option>
-              <option value="Rechazada">Rechazada</option>
-            </select>
+            {esSecretariaGeneral ? (
+              <select
+                id="filtro-status"
+                name="status"
+                value="En Revisión"
+                disabled
+                className={`${selectClass} bg-blue-50/80 text-blue-800 border-blue-200 cursor-not-allowed`}
+              >
+                <option value="En Revisión">En Revisión</option>
+              </select>
+            ) : (
+              <select
+                id="filtro-status"
+                name="status"
+                value={filters.status}
+                onChange={handleInputChange}
+                className={selectClass}
+              >
+                <option value="">Todos</option>
+                <option value="Pendiente">Pendiente</option>
+                <option value="En Revisión">Revisión</option>
+                <option value="Convocado a Entrevista">Convocado a Entrevista</option>
+                <option value="Renovacion">Renovacion</option>
+                <option value="Aprobada">Aprobada</option>
+                <option value="Rechazada">Rechazada</option>
+              </select>
+            )}
             <ArrowDown10 className={iconClass} />
           </div>
         </div>
@@ -99,7 +121,7 @@ export function OpcionesFiltros({ filters, handleInputChange, resetFilters, onOp
           <div className="relative">
             <select id="filtro-trimestre" name="trimestre" value={filters.trimestre} onChange={handleInputChange} className={selectClass}>
               <option value="">Todos</option>
-              {[1,2,3,4,5,6,7,8,9,10,11,12].map(t => (<option key={t} value={t}>{t}° Trimestre</option>))}
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(t => (<option key={t} value={t}>{t}° Trimestre</option>))}
             </select>
             <Hash className={iconClass} />
           </div>
