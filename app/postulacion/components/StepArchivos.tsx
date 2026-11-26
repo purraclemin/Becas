@@ -10,6 +10,7 @@ import {
   AlertCircle
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { normalizarTipoBecaOficial } from "@/lib/RecordAcademicoUtils"
 
 const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024; // 2 MB
 const IMAGE_MIME_TYPES = ["image/jpeg", "image/jpg", "image/png"];
@@ -100,61 +101,57 @@ export function StepArchivos({
     }));
   };
 
+  const tipoOficial = useMemo(() => normalizarTipoBecaOficial(tipoBeca), [tipoBeca]);
+
   const documentos = useMemo<DocumentoRequisito[]>(() => {
-    // REGLA DE NEGOCIO: Determinamos si el estudiante está en el primer trimestre (Nuevo Ingreso)
     const esPrimerTrimestre = Number(semestre) === 1;
 
-    // Documentos base comunes para todas las modalidades
     const baseDocs: DocumentoRequisito[] = [
       { id: "foto_carnet", label: "Foto Tipo Carnet", desc: "Formato JPG o PNG", soloImagen: true },
       { id: "copia_cedula", label: "Cédula de Identidad Ampliada", desc: "Copia legible y centrada" },
     ];
 
-    // Documentos específicos según la normativa oficial de Unimar
     const extraDocs: Record<string, DocumentoRequisito[]> = {
       "BECA APRENDIZAJE": [
-        { id: "constancia_notas", label: "Constancia de Notas", desc: "Emitida por Control de Estudios" }
+        { id: "constancia_notas", label: "Constancia de Notas", desc: "Emitida por Control de Estudios (Art. 10)" }
       ],
-      "BECA SOCIAL": [
+      "BECA SOCIAL APRENDIZAJE": [
         ...(esPrimerTrimestre
-          ? [{ id: "notas_certificadas", label: "Notas Certificadas", desc: "7to, 8to, 9to y 1er año de Media General" }]
+          ? [{ id: "notas_certificadas", label: "Notas Certificadas", desc: "7to, 8to, 9no y 1er año de Media General (Art. 12)" }]
           : [])
       ],
       "BECA POR DISCAPACIDAD": [
         ...(esPrimerTrimestre
-          ? [{ id: "notas_certificadas", label: "Notas Certificadas", desc: "7to a 1er año (Promedio mínimo 16 pts)" }]
+          ? [{ id: "notas_certificadas", label: "Notas Certificadas", desc: "7to a 1er año — Promedio mínimo 16 pts (Art. 15)" }]
           : []),
-        { id: "informe_medico", label: "Informe Médico", desc: "Emitido por especialista de salud" },
-        { id: "carnet_discapacidad", label: "Carnet de Discapacidad", desc: "Documento oficial vigente" }
-      ],
-      "BECA A LA EXCELENCIA": [
-        { id: "constancia_notas", label: "Constancia de Notas Acumuladas", desc: "Emitida por Control de Estudios" }
+        { id: "informe_medico", label: "Informe Médico", desc: "Emitido por especialista de salud (Art. 15)" },
+        { id: "carnet_discapacidad", label: "Carnet de Discapacidad", desc: "Documento oficial vigente (Art. 15)" }
       ],
       "BECA A LA EXCELENCIA ACADÉMICA": [
-        { id: "constancia_notas", label: "Constancia de Notas Acumuladas", desc: "Emitida por Control de Estudios" }
+        { id: "constancia_notas", label: "Constancia de Notas Acumuladas", desc: "Emitida por Control de Estudios (Art. 8)" }
       ],
-      "Ayuda Económica Familiar": [
-        { id: "documentos_filiacion", label: "Documentos de Filiación", desc: "Partida de nacimiento o nexo familiar" }
+      "AYUDA ECONÓMICA PARA ESTUDIANTES CON FAMILIARES": [
+        { id: "documentos_filiacion", label: "Documentos de Filiación", desc: "Partida de nacimiento o nexo familiar (Art. 20)" }
       ],
-      "Ayuda Económica para Hijos de Trabajadores": [
-        { id: "documentos_filiacion", label: "Documentos de Filiación", desc: "Comprobante de parentesco directo" }
+      "AYUDA ECONÓMICA PARA HIJOS DE TRABAJADORES": [
+        { id: "documentos_filiacion", label: "Documentos de Filiación", desc: "Comprobante de parentesco directo (Art. 19)" }
       ],
-      "Ayuda Económica por Actividades Extracurriculares": [
-        { id: "constancia_club", label: "Constancia de Pertenencia", desc: "Avalada por el club, cultura u orfeón" }
+      "AYUDA ECONÓMICA POR ACTIVIDADES DEPORTIVAS, CULTURALES Y ORFEÓN": [
+        { id: "constancia_club", label: "Constancia de Pertenencia", desc: "Avalada por club deportivo, cultura u orfeón (Art. 21)" }
       ]
     };
 
-    return [...baseDocs, ...(tipoBeca && extraDocs[tipoBeca] ? extraDocs[tipoBeca] : [])];
-  }, [tipoBeca, semestre]);
+    return [...baseDocs, ...(tipoOficial && extraDocs[tipoOficial] ? extraDocs[tipoOficial] : [])];
+  }, [tipoOficial, semestre]);
 
   const totalCargados = useMemo(() => {
     return documentos.filter(doc => cargados[doc.id]?.cargado === true).length;
   }, [documentos, cargados]);
 
   const isValid = useMemo(() => {
-    if (!tipoBeca || documentos.length === 0) return false;
+    if (!tipoOficial || documentos.length === 0) return false;
     return documentos.every(doc => cargados[doc.id]?.cargado === true);
-  }, [documentos, cargados, tipoBeca]);
+  }, [documentos, cargados, tipoOficial]);
 
   useEffect(() => {
     onValidationChange?.(isValid);
@@ -170,8 +167,6 @@ export function StepArchivos({
 
   return (
     <div className="flex flex-col gap-2.5 animate-in fade-in duration-500 pb-12 lg:pb-0">
-
-      {/* Encabezado compacto */}
       <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between gap-2 shrink-0">
         <div className="flex items-center gap-2 min-w-0">
           <div className="h-8 w-8 rounded-lg bg-[#d4a843]/10 flex items-center justify-center border border-[#d4a843]/20 shrink-0">
@@ -182,13 +177,13 @@ export function StepArchivos({
               Documentación de Soporte
             </h4>
             <p className="text-slate-400 text-[9px] lg:text-[8px] font-bold uppercase tracking-widest mt-1 leading-none truncate">
-              {tipoBeca || "Requisitos pendientes"} {Number(semestre) > 1 ? `• Estudiante Regular (Trimestre ${semestre})` : "• Nuevo Ingreso"}
+              {tipoOficial || "Requisitos pendientes"} {Number(semestre) > 1 ? `• Estudiante Regular (Trimestre ${semestre})` : "• Nuevo Ingreso"}
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          {tipoBeca && (
+          {tipoOficial && (
             <div className={cn(
               "px-2.5 py-1 rounded-lg border text-[9px] lg:text-[8px] font-black uppercase tracking-wider",
               isValid
@@ -205,9 +200,8 @@ export function StepArchivos({
         </div>
       </div>
 
-      {/* Grid de Documentos */}
       <div>
-        {tipoBeca ? (
+        {tipoOficial ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 lg:gap-2">
             {documentos.map((doc) => {
               const estado = cargados[doc.id];
@@ -292,7 +286,6 @@ export function StepArchivos({
         )}
       </div>
 
-      {/* Footer de Advertencia compacto */}
       <div className="p-2.5 bg-amber-50/60 rounded-xl border border-amber-100 flex items-center gap-3 shrink-0">
         <div className="h-6 w-6 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
           <Info className="h-3.5 w-3.5 text-amber-600" />
@@ -301,7 +294,6 @@ export function StepArchivos({
           Todos los documentos listados son obligatorios. Verifique que las capturas sean nítidas y legibles. Formatos permitidos: PDF, JPG y PNG (máx. 2 MB).
         </p>
       </div>
-
     </div>
   )
 }

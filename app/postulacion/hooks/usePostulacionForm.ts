@@ -14,10 +14,9 @@ export interface UsePostulacionFormProps {
   trimestreActual?: string | number;
 }
 
-function obtenerPromedioInicial(user: PostulacionUser): string {
-  const candidata = user?.indice_global ?? user?.promedio_notas;
-  if (candidata !== undefined && candidata !== null && String(candidata).trim() !== "") {
-    const num = parseFloat(String(candidata).replace(",", "."));
+function parsearPromedioSeguro(valor: string | number | null | undefined): string {
+  if (valor !== undefined && valor !== null && String(valor).trim() !== "") {
+    const num = parseFloat(String(valor).replace(",", "."));
     if (Number.isFinite(num) && num >= 0 && num <= 20) {
       return num.toFixed(2);
     }
@@ -25,23 +24,29 @@ function obtenerPromedioInicial(user: PostulacionUser): string {
   return "0.00";
 }
 
+function obtenerPromedioTrimestralInicial(user: PostulacionUser): string {
+  return parsearPromedioSeguro(user?.promedio_trimestre ?? user?.promedio_notas);
+}
+
+function obtenerIndiceGlobalInicial(user: PostulacionUser): string {
+  return parsearPromedioSeguro(user?.indice_global);
+}
+
 export function usePostulacionForm({ user, trimestreActual }: UsePostulacionFormProps) {
-  // Referencia React al formulario (Cero DOM nativo)
   const formRef = useRef<HTMLFormElement>(null);
 
-  // Estados principales de navegación y UI (4 pasos: Detalles, Estudio Social, Documentación, Resumen)
   const [pasoActual, setPasoActual] = useState<number>(1);
   const [isPending, setIsPending] = useState<boolean>(false);
 
-  // Estados de valores y validaciones generales (anclado al Índice Global del estudiante)
-  const [promedio] = useState<string>(() => obtenerPromedioInicial(user || {}));
+  // Separación estricta: promedio (trimestre anterior) e indiceGlobal (acumulado de carrera)
+  const [promedio] = useState<string>(() => obtenerPromedioTrimestralInicial(user || {}));
+  const [indiceGlobal] = useState<string>(() => obtenerIndiceGlobalInicial(user || {}));
   const [materiasValidas, setMateriasValidas] = useState<boolean>(true);
   const [detallesValidos, setDetallesValidos] = useState<boolean>(false);
   const [encuestaValida, setEncuestaValida] = useState<boolean>(true);
   const [archivosValidos, setArchivosValidos] = useState<boolean>(false);
   const [tipoBecaSeleccionada, setTipoBecaSeleccionada] = useState<string>(user?.tipo_beca || "");
 
-  // Estados individuales de validación para cada sub-pestaña de la Encuesta Socioeconómica
   const [personalValido, setPersonalValido] = useState<boolean>(true);
   const [uniValido, setUniValido] = useState<boolean>(true);
   const [familiaValido, setFamiliaValido] = useState<boolean>(true);
@@ -50,7 +55,6 @@ export function usePostulacionForm({ user, trimestreActual }: UsePostulacionForm
   const [hogarValido, setHogarValido] = useState<boolean>(true);
   const [saludValido, setSaludValido] = useState<boolean>(true);
 
-  // Estado maestro para la persistencia de datos y control de pestañas (inicia en Familiar)
   const [formData, setFormData] = useState<PostulacionUser>(user || {});
   const [activeEncuestaTab, setActiveEncuestaTab] = useState<string>("familia");
 
@@ -59,7 +63,6 @@ export function usePostulacionForm({ user, trimestreActual }: UsePostulacionForm
 
   const progreso = (pasoActual / TOTAL_PASOS) * 100;
 
-  // Sincronización del formulario vía useRef al estado maestro
   const syncFormData = useCallback((): PostulacionUser => {
     const form = formRef.current;
     const merged: PostulacionUser = { ...formData };
@@ -75,11 +78,9 @@ export function usePostulacionForm({ user, trimestreActual }: UsePostulacionForm
     return merged;
   }, [formData]);
 
-  // Lógica de Navegación Inteligente con feedback visual directo en los inputs
   const handleSiguiente = useCallback(() => {
     syncFormData();
 
-    // Gestión de sub-pestañas en el Paso 2 (Estudio Social) con bloqueo y marcado visual
     if (pasoActual === 2) {
       if (activeEncuestaTab === "familia" && !familiaValido) {
         window.dispatchEvent(new CustomEvent('intentar-avanzar-familia'));
@@ -109,7 +110,6 @@ export function usePostulacionForm({ user, trimestreActual }: UsePostulacionForm
       }
     }
 
-    // Bloqueo de avance en Paso 3 (Documentación) si faltan archivos obligatorios
     if (pasoActual === 3 && !archivosValidos) {
       window.dispatchEvent(new CustomEvent('intentar-avanzar-archivos'));
       toast({
@@ -137,7 +137,6 @@ export function usePostulacionForm({ user, trimestreActual }: UsePostulacionForm
   const handleAnterior = useCallback(() => {
     syncFormData();
 
-    // Gestión de sub-pestañas en el Paso 2 (Estudio Social)
     if (pasoActual === 2) {
       const currentIndex = TABS_ENCUESTA.indexOf(activeEncuestaTab);
       if (currentIndex > 0) {
@@ -157,7 +156,6 @@ export function usePostulacionForm({ user, trimestreActual }: UsePostulacionForm
     void _notas;
   }, []);
 
-  // Envío de la Postulación
   const handleSubmit = async () => {
     const snapshotDatos = syncFormData();
     const form = formRef.current;
@@ -225,10 +223,10 @@ export function usePostulacionForm({ user, trimestreActual }: UsePostulacionForm
 
   return {
     formRef,
-    // Estados
     pasoActual,
     isPending,
     promedio,
+    indiceGlobal,
     materiasValidas,
     detallesValidos,
     encuestaValida,
@@ -237,8 +235,6 @@ export function usePostulacionForm({ user, trimestreActual }: UsePostulacionForm
     formData,
     activeEncuestaTab,
     progreso,
-
-    // Estados de sub-pestañas
     personalValido,
     uniValido,
     familiaValido,
@@ -246,8 +242,6 @@ export function usePostulacionForm({ user, trimestreActual }: UsePostulacionForm
     ingresosValido,
     hogarValido,
     saludValido,
-
-    // Setters
     setMateriasValidas,
     setDetallesValidos,
     setEncuestaValida,
@@ -261,8 +255,6 @@ export function usePostulacionForm({ user, trimestreActual }: UsePostulacionForm
     setIngresosValido,
     setHogarValido,
     setSaludValido,
-
-    // Actions
     handleSiguiente,
     handleAnterior,
     handleTrimestreChange,

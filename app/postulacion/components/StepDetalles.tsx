@@ -1,38 +1,22 @@
 "use client"
 
-import React, { useEffect, useMemo, useState } from "react"
+import React, { useEffect, useState } from "react"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { BookOpen, FileText, Info, LayoutDashboard } from "lucide-react"
+import { BookOpen, FileText, Info, LayoutDashboard, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
+import {
+  MODALIDADES_POSTULABLES_ESTUDIANTE,
+  normalizarTipoBecaOficial,
+} from "@/lib/RecordAcademicoUtils"
 import type { PostulacionUser } from "../types"
 
-const MODALIDADES_BECA = [
-  "BECA SOCIAL",
-  "BECA APRENDIZAJE",
-  "BECA POR DISCAPACIDAD",
-  "BECA A LA EXCELENCIA",
-  "Ayuda Económica General",
-  "Ayuda Económica Familiar",
-  "Ayuda Económica para Trabajadores",
-  "Ayuda Económica para Hijos de Trabajadores",
-  "Ayuda Económica para Estudiantes Preparadores",
-  "Ayuda Económica por Actividades Extracurriculares"
-] as const;
-
-const MODALIDADES_REQUIEREN_18: ReadonlyArray<string> = [
-  "BECA SOCIAL",
-  "BECA A LA EXCELENCIA"
-];
-
-const PROMEDIO_MINIMO_EXCELENCIA = 18;
 const MIN_CARACTERES_MOTIVO = 20;
 const MIN_LETRAS_MOTIVO = 10;
 const MAX_CARACTERES_MOTIVO = 1000;
 
 const sanitizarMotivo = (val: string): string => {
-  // Permite letras en español, números, saltos de línea y puntuación normal; bloquea símbolos inseguros
   return val.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s.,;:¡!¿?()\-/"]/g, "");
 };
 
@@ -42,6 +26,7 @@ export function StepDetalles({
   onTipoBecaChange,
   tipoBecaSeleccionada,
   promedio,
+  indiceGlobal,
   onValidationChange
 }: {
   disabled: boolean;
@@ -49,6 +34,7 @@ export function StepDetalles({
   onTipoBecaChange?: (value: string) => void;
   tipoBecaSeleccionada?: string;
   promedio: string;
+  indiceGlobal?: string;
   onValidationChange?: (isValid: boolean) => void;
 }) {
   const [motivo, setMotivo] = useState<string>(
@@ -56,27 +42,33 @@ export function StepDetalles({
   );
 
   const parsedAvg = parseFloat(promedio);
-  const avg = Number.isFinite(parsedAvg) ? parsedAvg : 0;
-  const cumplePromedio18 = avg >= PROMEDIO_MINIMO_EXCELENCIA;
+  const avgTrimestral = Number.isFinite(parsedAvg) ? parsedAvg : 0;
+  const parsedGlobal = parseFloat(indiceGlobal || String(user?.indice_global ?? "0"));
+  const avgGlobal = Number.isFinite(parsedGlobal) ? parsedGlobal : 0;
+
+  const semestreNum = Number(user?.semestre ?? 1) || 1;
+  const esPrimerTrimestre = semestreNum <= 1;
+  const trimestreAnteriorNum =
+    user?.trimestre_ultimo_cursado && user.trimestre_ultimo_cursado > 0
+      ? user.trimestre_ultimo_cursado
+      : Math.max(1, semestreNum - 1);
 
   const trimestreEstudiante = user?.semestre !== undefined ? String(user.semestre) : "";
-  const tipoBecaActual =
+  const tipoBecaBruto =
     tipoBecaSeleccionada !== undefined ? tipoBecaSeleccionada : (user?.tipo_beca || "");
+  const tipoBecaActual = normalizarTipoBecaOficial(tipoBecaBruto) || tipoBecaBruto;
 
-  // Filtra dinámicamente Beca Social y Beca a la Excelencia según el umbral >= 18.00
-  const modalidadesDisponibles = useMemo(() => {
-    if (cumplePromedio18) return [...MODALIDADES_BECA];
-    return MODALIDADES_BECA.filter(
-      (modalidad) => !MODALIDADES_REQUIEREN_18.includes(modalidad)
-    );
-  }, [cumplePromedio18]);
+  // Catálogo estricto de las 8 modalidades postulables por el estudiante
+  const modalidadesDisponibles = MODALIDADES_POSTULABLES_ESTUDIANTE;
 
-  // Limpia automáticamente la selección si el promedio baja de 18.00 tras elegir una beca restringida
   useEffect(() => {
-    if (!cumplePromedio18 && MODALIDADES_REQUIEREN_18.includes(tipoBecaActual)) {
+    if (
+      tipoBecaActual &&
+      !(modalidadesDisponibles as readonly string[]).includes(tipoBecaActual)
+    ) {
       onTipoBecaChange?.("");
     }
-  }, [cumplePromedio18, tipoBecaActual, onTipoBecaChange]);
+  }, [modalidadesDisponibles, tipoBecaActual, onTipoBecaChange]);
 
   const motivoLimpio = motivo.trim();
   const cantidadLetrasMotivo = motivoLimpio.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ]/g, "").length;
@@ -91,15 +83,17 @@ export function StepDetalles({
   }, [isTipoValid, isMotivoValid, onValidationChange]);
 
   const getStatusClasses = (val: number): string => {
+    if (esPrimerTrimestre) return "text-[#1e3a5f] bg-slate-100 border-slate-200";
     if (val < 16) return "text-red-600 bg-red-50 border-red-100";
     if (val >= 16 && val < 18) return "text-blue-600 bg-blue-50 border-blue-100";
-    return "text-green-600 bg-green-50 border-green-100";
+    return "text-emerald-700 bg-emerald-50 border-emerald-200";
   };
 
   const getStatusLabel = (val: number): string => {
-    if (val < 16) return "Índice Regular";
-    if (val >= 16 && val < 18) return "Buen Índice";
-    return "Índice de Excelencia";
+    if (esPrimerTrimestre) return "Nuevo Ingreso";
+    if (val < 16) return "Por debajo de 16 pts";
+    if (val >= 16 && val < 18) return "";
+    return "Rendimiento Destacado";
   };
 
   const getMotivoBadgeText = (): string => {
@@ -114,7 +108,6 @@ export function StepDetalles({
 
   return (
     <div className="space-y-3 lg:space-y-2.5 animate-in fade-in duration-500 h-full flex flex-col pb-16 lg:pb-0">
-
       {/* INPUTS TÉCNICOS OCULTOS */}
       <input type="hidden" name="user_id" value={user?.id !== undefined ? String(user.id) : ""} />
       <input type="hidden" name="email_institucional" value={user?.email || user?.email_institucional || ""} />
@@ -122,7 +115,7 @@ export function StepDetalles({
       <input type="hidden" name="trimestre_seleccionado" value={trimestreEstudiante} />
       <input type="hidden" name="tipo_beca" value={isTipoValid ? tipoBecaActual : ""} />
 
-      {/* Encabezado e Indicador de Promedio */}
+      {/* Encabezado e Indicador de Promedio del Trimestre Anterior */}
       <div className="bg-[#f8fafc] p-2.5 lg:p-2 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shrink-0">
         <div className="flex items-center gap-2.5">
           <div className="h-7 w-7 rounded-lg bg-[#1e3a5f] flex items-center justify-center shadow-sm shrink-0">
@@ -133,28 +126,48 @@ export function StepDetalles({
               Configuración del Beneficio
             </h4>
             <p className="text-slate-500 text-[9px] lg:text-[8px] font-bold uppercase tracking-widest mt-0.5 leading-none">
-              Especifique modalidad y justificación
+              Normativa de Becas y Ayudas Económicas UNIMAR
             </p>
           </div>
         </div>
 
-        <div className={cn(
-          "flex items-center justify-between sm:justify-end gap-3 px-3 py-1.5 lg:py-1 rounded-xl border transition-all duration-500 shadow-sm",
-          getStatusClasses(avg)
-        )}>
-          <div className="flex flex-col items-start sm:items-end">
-            <span className="text-[7px] font-black uppercase tracking-[0.15em] leading-none opacity-70">Promedio Actual</span>
-            <span className="text-[9px] lg:text-[8px] font-black uppercase mt-0.5 leading-none">{getStatusLabel(avg)}</span>
-          </div>
-          <div className="h-6 w-9 lg:h-6 lg:w-8 rounded-lg bg-white/80 backdrop-blur-sm flex items-center justify-center border border-inherit shadow-inner shrink-0">
-            <span className="text-[10px] lg:text-[9px] font-black">{promedio}</span>
+        <div className="flex items-center gap-2">
+          {!esPrimerTrimestre && avgGlobal > 0 && (
+            <div className="hidden md:flex flex-col items-end px-2.5 py-1 rounded-xl bg-white border border-slate-200">
+              <span className="text-[7px] font-black uppercase tracking-[0.15em] text-slate-400 leading-none">
+                Índice Global
+              </span>
+              <span className="text-[10px] font-black text-[#1e3a5f] tabular-nums mt-0.5 leading-none">
+                {avgGlobal.toFixed(2)}
+              </span>
+            </div>
+          )}
+
+          <div className={cn(
+            "flex items-center justify-between sm:justify-end gap-3 px-3 py-1.5 lg:py-1 rounded-xl border transition-all duration-500 shadow-sm",
+            getStatusClasses(avgTrimestral)
+          )}>
+            <div className="flex flex-col items-start sm:items-end">
+              <span className="text-[7px] font-black uppercase tracking-[0.15em] leading-none opacity-75">
+                {esPrimerTrimestre ? "Condición" : `Prom. Trimestre ${trimestreAnteriorNum}`}
+              </span>
+              <span className="text-[9px] lg:text-[8px] font-black uppercase mt-0.5 leading-none">
+                {getStatusLabel(avgTrimestral)}
+              </span>
+            </div>
+            {!esPrimerTrimestre && (
+              <div className="h-6 w-10 lg:h-6 lg:w-9 rounded-lg bg-white/80 backdrop-blur-sm flex items-center justify-center border border-inherit shadow-inner shrink-0">
+                <span className="text-[10px] lg:text-[9px] font-black tabular-nums">
+                  {avgTrimestral.toFixed(2)}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
       <div className="flex flex-col flex-1 min-h-0 space-y-3 lg:space-y-2">
-
-        {/* Selección de Modalidad */}
+        {/* Selección de Modalidad (8 modalidades postulables) */}
         <div className="space-y-1.5 shrink-0">
           <Label className="text-[9px] lg:text-[8px] font-black uppercase tracking-[0.2em] text-slate-400 flex items-center gap-1.5 leading-none">
             <BookOpen className="h-3 w-3 text-[#d4a843]" /> Modalidad de Beneficio Solicitado
@@ -177,7 +190,7 @@ export function StepDetalles({
             </SelectContent>
           </Select>
 
-        
+          
         </div>
 
         {/* Exposición de Motivos */}
@@ -223,7 +236,7 @@ export function StepDetalles({
           <div className="p-2 lg:p-1.5 bg-blue-50/50 rounded-xl border border-blue-100 flex items-center gap-2 shrink-0">
             <Info className="h-3.5 w-3.5 text-blue-400 shrink-0" />
             <p className="text-[9px] lg:text-[8px] text-blue-600/80 font-bold leading-none uppercase tracking-tight">
-              Su exposición de motivos es fundamental para el análisis del Comité de Becas (mínimo {MIN_CARACTERES_MOTIVO} caracteres).
+              Evaluación académica: promedio &ge; 16.00 pts y cero asignaturas reprobadas (&lt; 10 pts) en el trimestre anterior.
             </p>
           </div>
         </div>

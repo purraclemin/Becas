@@ -9,13 +9,14 @@ import { getStudentHistory } from "@/lib/ActionsHistoryMaterias"
 import { getSession } from "@/lib/ActionsSession"
 import { generarRankingAptoIA } from "@/app/admin/validarBeca/lib/AptoIA"
 
-// IMPORTACIONES LOCALES E INDEPENDIENTES Y SUS TIPOS OFICIALES
 import { ValidarBecaViewAcademic } from "@/app/admin/validarBeca/components/ValidarBecaViewAcademic"
 import { ValidarBecaViewAuditoria, SolicitudAuditoriaView } from "@/app/admin/validarBeca/components/ValidarBecaViewAuditoria"
 import { ValidarBecaHeader } from "@/app/admin/validarBeca/components/ValidarBecaHeader"
 import { ValidarBecaFilters, StudentData, FiltrosValidacionState } from "@/app/admin/validarBeca/components/ValidarBecaFilters"
 import { ValidarBecaTable } from "@/app/admin/validarBeca/components/ValidarBecaTablePC"
 import { AptoIA } from "@/app/admin/validarBeca/components/AptoIA"
+import { ModalNominaExcelencia } from "@/app/admin/validarBeca/components/ModalNominaExcelencia"
+import { ModalConcursoSocial } from "@/app/admin/validarBeca/components/ModalConcursoSocial"
 import { SolicitudItem } from "@/app/admin/validarBeca/lib/ProcesadorDatosValidarBeca"
 import { PeriodoHistorial, StatsAcademicas } from "@/app/admin/validarBeca/components/ValidarBecaAcademicHistory"
 
@@ -64,9 +65,14 @@ export default function ValidarBecaPage({ searchParams }: ValidarBecaPageProps) 
   const [rolCargado, setRolCargado] = useState(false);
 
   const [viewMode, setViewMode] = useState<'list' | 'auditoria' | 'academic'>('list');
+  const [academicReturnView, setAcademicReturnView] = useState<'list' | 'auditoria'>('list');
   const [selectedSolicitud, setSelectedSolicitud] = useState<SolicitudAuditoriaView | null>(null);
   const [dataHistorial, setDataHistorial] = useState<HistorialAcademicoResponse | null>(null);
   const [loadingHistorial, setLoadingHistorial] = useState(false);
+
+  // Modales de Gestión Institucional Especial (Solo Coordinación)
+  const [isExcelenciaOpen, setIsExcelenciaOpen] = useState<boolean>(false);
+  const [isConcursoSocialOpen, setIsConcursoSocialOpen] = useState<boolean>(false);
 
   // ESTADOS PARA EL BUSCADOR DE IDENTIDAD Y FICHA INDIVIDUAL
   const [student, setStudent] = useState<StudentData | null>(null);
@@ -75,7 +81,7 @@ export default function ValidarBecaPage({ searchParams }: ValidarBecaPageProps) 
   const [mostrarResultado, setMostrarResultado] = useState(false);
   const [, setPasoActual] = useState<number>(1);
 
-  // ESTADOS PARA EL MODAL DE IA CON PERSISTENCIA GLOBAL (localStorage)
+  // ESTADOS PARA EL MODAL DE IA CON PERSISTENCIA GLOBAL
   const [isAptoIAOpen, setIsAptoIAOpen] = useState(false);
   const [loadingIA, setLoadingIA] = useState(false);
 
@@ -159,7 +165,6 @@ export default function ValidarBecaPage({ searchParams }: ValidarBecaPageProps) 
     inicializarContexto();
   }, []);
 
-  // CAPTURA DIRECTA Y APERTURA AUTOMÁTICA DE AUDITORÍA POR CÉDULA (SIN IMPORTAR LA PÁGINA)
   const cedulaTarget = urlSearchParams.get('abrirAuditoria') || initialFilters?.abrirAuditoria;
 
   useEffect(() => {
@@ -219,6 +224,11 @@ export default function ValidarBecaPage({ searchParams }: ValidarBecaPageProps) 
     }
   }, []);
 
+  const forzarRecargaListado = useCallback(() => {
+    lastFiltersRef.current = "";
+    void cargarDatos(filtros, paginaActual);
+  }, [cargarDatos, filtros, paginaActual]);
+
   useEffect(() => {
     if (!rolCargado || viewMode !== 'list') return;
     const timeout = setTimeout(() => {
@@ -227,6 +237,31 @@ export default function ValidarBecaPage({ searchParams }: ValidarBecaPageProps) 
     }, isFirstRender.current ? 50 : 0);
     return () => clearTimeout(timeout);
   }, [filtros, paginaActual, cargarDatos, viewMode, rolCargado]);
+
+  const handleOpenAcademicHistory = useCallback(
+    async (solicitudTarget: SolicitudItem | SolicitudAuditoriaView, origen: 'list' | 'auditoria') => {
+      setSelectedSolicitud(solicitudTarget as SolicitudAuditoriaView);
+      setAcademicReturnView(origen);
+      setViewMode('academic');
+      setDataHistorial(null);
+      setLoadingHistorial(true);
+
+      try {
+        const userIdVal = Number(solicitudTarget.user_id ?? 0);
+        if (Number.isInteger(userIdVal) && userIdVal > 0) {
+          const res = (await getStudentHistory(userIdVal, false)) as HistorialAcademicoResponse;
+          if (res.success) {
+            setDataHistorial(res);
+          }
+        }
+      } catch (error) {
+        console.error("Error cargando historial académico del estudiante:", error);
+      } finally {
+        setLoadingHistorial(false);
+      }
+    },
+    []
+  );
 
   const handleStatusChange = async (
     id: number,
@@ -359,10 +394,20 @@ export default function ValidarBecaPage({ searchParams }: ValidarBecaPageProps) 
 
   const handleCloseSubViews = () => {
     setViewMode('list');
+    setAcademicReturnView('list');
     if (cedulaTarget) {
       auditoriaAbiertaRef.current = null;
       router.replace('/admin/validarBeca');
     }
+  };
+
+  const handleCloseAcademicView = () => {
+    if (academicReturnView === 'auditoria' && selectedSolicitud) {
+      setViewMode('auditoria');
+      setAcademicReturnView('list');
+      return;
+    }
+    handleCloseSubViews();
   };
 
   const selectedSolicitudAcademica = selectedSolicitud ? {
@@ -376,7 +421,8 @@ export default function ValidarBecaPage({ searchParams }: ValidarBecaPageProps) 
       selectedSolicitud={selectedSolicitudAcademica}
       dataHistorial={dataHistorial}
       loadingHistorial={loadingHistorial}
-      onClose={handleCloseSubViews}
+      onClose={handleCloseAcademicView}
+      backLabel={academicReturnView === 'auditoria' ? "Volver a Auditoría" : "Cerrar Expediente"}
     />
   );
 
@@ -385,6 +431,13 @@ export default function ValidarBecaPage({ searchParams }: ValidarBecaPageProps) 
       selectedSolicitud={selectedSolicitud}
       onStatusChange={handleStatusChange}
       onClose={handleCloseSubViews}
+      onViewAcademic={
+        selectedSolicitud
+          ? () => {
+              void handleOpenAcademicHistory(selectedSolicitud, 'auditoria');
+            }
+          : undefined
+      }
       periodoActualId={periodoActualId}
       esSecretariaGeneral={esSecretariaGeneral}
     />
@@ -395,6 +448,8 @@ export default function ValidarBecaPage({ searchParams }: ValidarBecaPageProps) 
       <ValidarBecaHeader
         currentStatus={esSecretariaGeneral ? "En Revisión" : (filtros.status || "Todas")}
         esSecretariaGeneral={esSecretariaGeneral}
+        onOpenExcelencia={!esSecretariaGeneral ? () => setIsExcelenciaOpen(true) : undefined}
+        onOpenConcursoSocial={!esSecretariaGeneral ? () => setIsConcursoSocialOpen(true) : undefined}
         onStatusChange={(e: { status: string }) => {
           if (esSecretariaGeneral) return;
           setFiltros({ ...filtros, status: e.status === "Todas" ? "" : e.status, limit: 7 });
@@ -439,25 +494,33 @@ export default function ValidarBecaPage({ searchParams }: ValidarBecaPageProps) 
         esSecretariaGeneral={esSecretariaGeneral}
         onStatusChange={handleStatusChange}
         onViewAuditoria={(s: SolicitudItem) => { setSelectedSolicitud(s as SolicitudAuditoriaView); setViewMode('auditoria'); }}
-        onViewAcademic={async (s: SolicitudItem) => {
-          setSelectedSolicitud(s as SolicitudAuditoriaView); setViewMode('academic'); setLoadingHistorial(true);
-          const userIdVal = s.user_id;
-          const res = (await getStudentHistory(Number(userIdVal), false)) as HistorialAcademicoResponse;
-          if (res.success) setDataHistorial(res);
-          setLoadingHistorial(false);
+        onViewAcademic={(s: SolicitudItem) => {
+          void handleOpenAcademicHistory(s, 'list');
         }}
       />
 
       {!esSecretariaGeneral && (
-        <AptoIA
-          isOpen={isAptoIAOpen}
-          onClose={() => setIsAptoIAOpen(false)}
-          loading={loadingIA}
-          estudiantesAptos={estudiantesAptosIA}
-          onSelectEstudiante={handleSelectEstudianteDesdeIA}
-          periodoNombre={periodoActualId ? `Periodo ID: ${periodoActualId}` : "Periodo Actual"}
-          onRefreshIA={handleRefreshIA}
-        />
+        <>
+          <AptoIA
+            isOpen={isAptoIAOpen}
+            onClose={() => setIsAptoIAOpen(false)}
+            loading={loadingIA}
+            estudiantesAptos={estudiantesAptosIA}
+            onSelectEstudiante={handleSelectEstudianteDesdeIA}
+            periodoNombre={periodoActualId ? `Periodo ID: ${periodoActualId}` : "Periodo Actual"}
+            onRefreshIA={handleRefreshIA}
+          />
+          <ModalNominaExcelencia
+            isOpen={isExcelenciaOpen}
+            onClose={() => setIsExcelenciaOpen(false)}
+            onRefreshList={forzarRecargaListado}
+          />
+          <ModalConcursoSocial
+            isOpen={isConcursoSocialOpen}
+            onClose={() => setIsConcursoSocialOpen(false)}
+            onRefreshList={forzarRecargaListado}
+          />
+        </>
       )}
     </div>
   )

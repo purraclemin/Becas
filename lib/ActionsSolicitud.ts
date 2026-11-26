@@ -12,21 +12,19 @@ import {
   asegurarDatosSocioeconomicosSimulados,
   obtenerRecordParaPostulacion,
 } from './ActionsRecordAcademico'
-import { SISTEMA_ADMIN_ID } from './RecordAcademicoUtils'
-// MOTOR UNIFICADO CON LÓGICA DE INGRESO RESIDUAL
+import {
+  SISTEMA_ADMIN_ID,
+  esModalidadPostulableEstudiante,
+  evaluarElegibilidadAcademica,
+  normalizarTipoBecaOficial,
+  obtenerPromedioMinimoPorTipoBeca,
+  obtenerReglaPorTipoBeca,
+} from './RecordAcademicoUtils'
 import { calcularPuntajeUnificado } from './MotorBaremoUnificado'
 
 const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024; // 2 MB
 const IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/jpg", "image/png"]);
 const DOC_MIME_TYPES = new Set(["application/pdf", "image/jpeg", "image/jpg", "image/png"]);
-
-const MODALIDADES_REQUIEREN_18 = new Set([
-  "BECA SOCIAL",
-  "BECA A LA EXCELENCIA",
-  "BECA A LA EXCELENCIA ACADÉMICA"
-]);
-
-const PROMEDIO_MINIMO_EXCELENCIA = 18;
 const REGEX_NOTA_DECIMAL = /^\d{1,2}(\.\d{1,2})?$/;
 
 type DocumentoColumna =
@@ -116,20 +114,20 @@ const validarArchivoSubido = (file: File | null, key: DocumentoColumna): string 
 
 const obtenerDocumentosRequeridos = (tipoBeca: string, semestre: number): DocumentoColumna[] => {
   const esPrimerTrimestre = semestre === 1;
+  const oficial = normalizarTipoBecaOficial(tipoBeca);
   const requeridos: DocumentoColumna[] = ["foto_carnet", "copia_cedula"];
 
-  if (tipoBeca === "BECA APRENDIZAJE") {
+  if (oficial === "BECA APRENDIZAJE") {
     requeridos.push("constancia_notas");
-  } else if (tipoBeca === "BECA SOCIAL") {
-    if (esPrimerTrimestre) requeridos.push("notas_certificadas");
-  } else if (tipoBeca === "BECA POR DISCAPACIDAD") {
+  } else if (oficial === "BECA POR DISCAPACIDAD") {
     if (esPrimerTrimestre) requeridos.push("notas_certificadas");
     requeridos.push("informe_medico", "carnet_discapacidad");
-  } else if (tipoBeca === "BECA A LA EXCELENCIA" || tipoBeca === "BECA A LA EXCELENCIA ACADÉMICA") {
-    requeridos.push("constancia_notas");
-  } else if (tipoBeca === "Ayuda Económica Familiar" || tipoBeca === "Ayuda Económica para Hijos de Trabajadores") {
+  } else if (
+    oficial === "AYUDA ECONÓMICA PARA ESTUDIANTES CON FAMILIARES" ||
+    oficial === "AYUDA ECONÓMICA PARA HIJOS DE TRABAJADORES"
+  ) {
     requeridos.push("documentos_filiacion");
-  } else if (tipoBeca === "Ayuda Económica por Actividades Extracurriculares") {
+  } else if (oficial === "AYUDA ECONÓMICA POR ACTIVIDADES DEPORTIVAS, CULTURALES Y ORFEÓN") {
     requeridos.push("constancia_club");
   }
 
@@ -219,37 +217,37 @@ const getSwitchOnOff = (formData: FormData, key: string): 'on' | 'off' => {
 
 const construirObservacionRechazo = (
   materiasReprobadas: MateriaEnviada[],
-  numPromedio: number,
+  promedioTrimestral: number,
+  trimestreAuditado: number,
   tipoBeca: string,
-  incumpleExcelencia18: boolean
+  minimoExigido: number
 ): string | null => {
   const tieneReprobadas = materiasReprobadas.length > 0;
-  const esPromedioBajo = numPromedio < 16;
+  const esPromedioBajo = promedioTrimestral < minimoExigido;
 
-  if (!tieneReprobadas && !esPromedioBajo && !incumpleExcelencia18) return null;
+  if (!tieneReprobadas && !esPromedioBajo) return null;
 
   const listadoReprobadas = materiasReprobadas
     .map((m) => `${m.nombre} (${m.nota.toFixed(2)} pts)`)
     .join(", ");
 
   if (tieneReprobadas && esPromedioBajo) {
-    return `Solicitud no procedente: no cumple con los requisitos académicos mínimos exigidos por la normativa institucional. Se registró calificación reprobatoria en ${listadoReprobadas} y un promedio general de ${numPromedio.toFixed(2)} pts (mínimo requerido: 16.00 pts).`;
+    return `Solicitud no procedente: no cumple los requisitos académicos del Trimestre ${trimestreAuditado} según la Normativa UNIMAR 2023. Registró calificación reprobatoria (< 10 pts) en ${listadoReprobadas} y un promedio trimestral de ${promedioTrimestral.toFixed(2)} pts (mínimo requerido para ${tipoBeca}: ${minimoExigido.toFixed(2)} pts).`;
   }
 
   if (tieneReprobadas) {
-    return `Solicitud no procedente: según la normativa académica vigente, es requisito indispensable haber aprobado la totalidad de las unidades curriculares inscritas (calificación mínima de 10 puntos). Se registró calificación reprobatoria en: ${listadoReprobadas}.`;
+    return `Solicitud no procedente: registró asignatura(s) reprobada(s) (< 10 pts) en el Trimestre ${trimestreAuditado}: ${listadoReprobadas}.`;
   }
 
-  if (esPromedioBajo) {
-    return `Solicitud no procedente: su promedio académico del período (${numPromedio.toFixed(2)} pts) se encuentra por debajo del índice mínimo requerido (16.00 puntos) para optar al programa de becas.`;
-  }
-
-  return `Solicitud no procedente: la modalidad "${tipoBeca}" exige un promedio académico igual o superior a 18.00 puntos según la normativa institucional vigente (promedio registrado: ${numPromedio.toFixed(2)} pts).`;
+  return `Solicitud no procedente: la modalidad "${tipoBeca}" exige un promedio mínimo de ${minimoExigido.toFixed(2)} puntos en el Trimestre ${trimestreAuditado} según la Normativa UNIMAR 2023 (promedio registrado: ${promedioTrimestral.toFixed(2)} pts).`;
 };
 
 /**
- * Procesa el envío de la solicitud de beca, valida integridad de datos y documentos,
- * calcula el baremo institucional y sincroniza las tablas de solicitudes, historial y estudios socioeconómicos.
+ * Procesa el envío de la solicitud estudiantil (8 modalidades postulables):
+ * - Bloquea BECA A LA EXCELENCIA ACADÉMICA (automática) y BECA SOCIAL APRENDIZAJE (concurso anual).
+ * - Guarda en solicitudes.promedio_notas el PROMEDIO DEL TRIMESTRE ANTERIOR (semestre - 1).
+ * - Evalúa elegibilidad con promedio trimestral >= 16.00 y cero materias reprobadas (< 10) en el trimestre anterior.
+ * - Preserva intacto students.indice_global desde record_academico (sin sobreescribirlo desde solicitudes).
  */
 export async function enviarSolicitud(formData: FormData) {
   let connection: PoolConnection | undefined;
@@ -258,12 +256,26 @@ export async function enviarSolicitud(formData: FormData) {
     // 1. EXTRAER DATOS BÁSICOS
     const userId = getStringOrNull(formData.get('user_id'));
     const emailInstitucional = getStringOrNull(formData.get('email_institucional'));
-    const tipo_beca = getStringOrNull(formData.get('tipo_beca'));
+    const tipoBecaRaw = getStringOrNull(formData.get('tipo_beca'));
     const motivo = getStringOrNull(formData.get('motivo_solicitud'));
     const trimestreSeleccionado = getStringOrNull(formData.get('trimestre_seleccionado'));
 
-    if (!userId || !emailInstitucional || !tipo_beca) {
+    if (!userId || !emailInstitucional || !tipoBecaRaw) {
       return { error: "Faltan datos obligatorios en la sección de beneficios." };
+    }
+
+    const tipo_beca = normalizarTipoBecaOficial(tipoBecaRaw);
+    if (!tipo_beca) {
+      return { error: "La modalidad de beca o ayuda económica seleccionada no es válida según la normativa." };
+    }
+
+    if (!esModalidadPostulableEstudiante(tipo_beca)) {
+      return {
+        error:
+          tipo_beca === "BECA A LA EXCELENCIA ACADÉMICA"
+            ? "La Beca a la Excelencia Académica se asigna automáticamente al mayor Índice Global (>= 18) por carrera y no requiere postulación."
+            : "La Beca Social Aprendizaje se otorga mediante concurso anual gestionado por Bienestar Estudiantil y no se solicita por este formulario.",
+      };
     }
 
     if (!motivo || motivo.length < 20) {
@@ -273,42 +285,62 @@ export async function enviarSolicitud(formData: FormData) {
     const userIdNum = parseInt(userId, 10);
     const trimestreNum = trimestreSeleccionado ? parseInt(trimestreSeleccionado, 10) : 1;
 
-    if (isNaN(userIdNum) || userIdNum <= 0) {
+    if (Number.isNaN(userIdNum) || userIdNum <= 0) {
       return { error: "Identificador de estudiante inválido." };
     }
 
     // 2. VERIFICACIÓN DE VETO Y SEMESTRE REAL DEL ESTUDIANTE
     const [statusRows] = await db.execute<StudentStatusRow[]>(
-      'SELECT beca_perdida, semestre FROM students WHERE id = ?',
+      'SELECT IFNULL(beca_perdida, 0) AS beca_perdida, semestre FROM students WHERE id = ?',
       [userIdNum]
     );
     if (statusRows.length === 0) {
       return { error: "No se encontró el registro académico del estudiante." };
     }
-    if (statusRows[0].beca_perdida === 1) {
-      return { error: "Solicitud Denegada: Su beneficio ha sido revocado permanentemente." };
+    if (Number(statusRows[0].beca_perdida) === 1) {
+      return { error: "Solicitud Denegada (Art. 28): Posee un rechazo o suspensión definitiva previa." };
     }
 
     const semestreEstudiante = Number(statusRows[0].semestre || trimestreNum || 1);
 
-    // Garantizar datos simulados persistidos y sincronizar récord académico oficial
+    const reglaModalidad = obtenerReglaPorTipoBeca(tipo_beca);
+    if (reglaModalidad && semestreEstudiante < reglaModalidad.trimestreMinimo) {
+      return {
+        error: `La modalidad "${tipo_beca}" solo está disponible a partir del ${reglaModalidad.trimestreMinimo}° trimestre según la Normativa UNIMAR.`,
+      };
+    }
+
     await asegurarDatosSocioeconomicosSimulados(userIdNum);
     const recordRes = await obtenerRecordParaPostulacion(userIdNum);
     const expediente = recordRes.success ? recordRes.data : null;
 
-    // 3. PROCESAMIENTO DE MATERIAS Y PROMEDIO (AUTORIDAD DEL RÉCORD OFICIAL SI APLICA)
+    // 3. PROCESAMIENTO DE MATERIAS Y PROMEDIO DEL TRIMESTRE ANTERIOR (semestre - 1)
     let materiasArray: MateriaEnviada[] = [];
-    let numPromedio = 0;
+    let promedioTrimestral = 0;
+    let indiceGlobalOficial = 0;
     let materiasReprobadas: MateriaEnviada[] = [];
-    let trimestreSnapshot = isNaN(trimestreNum) ? semestreEstudiante : trimestreNum;
+    let trimestreSnapshot = Math.max(1, semestreEstudiante - 1);
+    let observacionAutomatica: string | null = null;
+    let debeRechazarAutomatico = false;
 
-    if (semestreEstudiante > 1 && expediente && expediente.recordCompleto.length > 0) {
-      const trimestreObjetivo =
-        expediente.ultimoTrimestreSnapshot?.trimestre ?? Math.max(1, semestreEstudiante - 1);
-      trimestreSnapshot = trimestreObjetivo;
+    const tieneRecordOficial = Boolean(
+      semestreEstudiante > 1 && expediente && expediente.recordCompleto.length > 0
+    );
+
+    if (tieneRecordOficial && expediente) {
+      const evaluacionOficial = evaluarElegibilidadAcademica(
+        semestreEstudiante,
+        expediente.recordCompleto,
+        tipo_beca
+      );
+
+      trimestreSnapshot =
+        evaluacionOficial.trimestreAuditado ||
+        expediente.ultimoTrimestreSnapshot?.trimestre ||
+        Math.max(1, semestreEstudiante - 1);
 
       const materiasUltimoTrimestre = expediente.recordCompleto.filter(
-        (m) => m.trimestre_cursado === trimestreObjetivo
+        (m) => m.trimestre_cursado === trimestreSnapshot
       );
       const fuenteUltimo =
         materiasUltimoTrimestre.length > 0
@@ -321,17 +353,35 @@ export async function enviarSolicitud(formData: FormData) {
         nota: Number(Number(m.nota).toFixed(2)),
       }));
 
-      numPromedio = Number(Number(expediente.indiceGlobal).toFixed(2));
-      materiasReprobadas = expediente.evaluacion.materiasReprobadas.map((m) => ({
+      // En solicitudes.promedio_notas se guarda estrictamente el PROMEDIO DEL TRIMESTRE ANTERIOR
+      promedioTrimestral = Number(evaluacionOficial.promedioTrimestreAnterior.toFixed(2));
+      indiceGlobalOficial = Number(evaluacionOficial.promedioGlobal.toFixed(2));
+
+      materiasReprobadas = evaluacionOficial.materiasReprobadas.map((m) => ({
         codigo: m.codigo_materia,
         nombre: m.nombre_materia,
         nota: Number(Number(m.nota).toFixed(2)),
       }));
+
+      debeRechazarAutomatico = !evaluacionOficial.apto;
+      observacionAutomatica = debeRechazarAutomatico
+        ? (evaluacionOficial.motivoRechazo ||
+            construirObservacionRechazo(
+              materiasReprobadas,
+              promedioTrimestral,
+              trimestreSnapshot,
+              tipo_beca,
+              evaluacionOficial.promedioMinimoRequerido
+            ))
+        : null;
     } else if (semestreEstudiante <= 1) {
       materiasArray = [];
-      numPromedio = 0;
+      promedioTrimestral = 0;
+      indiceGlobalOficial = 0;
       materiasReprobadas = [];
       trimestreSnapshot = 1;
+      debeRechazarAutomatico = false;
+      observacionAutomatica = null;
     } else {
       const materiasCodigos = formData.getAll('materias_codigos[]');
       const materiasNombres = formData.getAll('materias_nombres[]');
@@ -363,8 +413,26 @@ export async function enviarSolicitud(formData: FormData) {
       }
 
       const sumaNotas = materiasArray.reduce((acc, m) => acc + m.nota, 0);
-      numPromedio = Number((sumaNotas / materiasArray.length).toFixed(2));
+      promedioTrimestral = Number((sumaNotas / materiasArray.length).toFixed(2));
+      indiceGlobalOficial = promedioTrimestral;
       materiasReprobadas = materiasArray.filter(m => m.nota < 10);
+
+      const minimoExigidoIngreso = obtenerPromedioMinimoPorTipoBeca(
+        tipo_beca,
+        "ingreso",
+        semestreEstudiante
+      );
+      debeRechazarAutomatico =
+        materiasReprobadas.length > 0 || promedioTrimestral < minimoExigidoIngreso;
+      observacionAutomatica = debeRechazarAutomatico
+        ? construirObservacionRechazo(
+            materiasReprobadas,
+            promedioTrimestral,
+            trimestreSnapshot,
+            tipo_beca,
+            minimoExigidoIngreso
+          )
+        : null;
     }
 
     const materiasJsonString = JSON.stringify({
@@ -373,28 +441,9 @@ export async function enviarSolicitud(formData: FormData) {
       fecha_proceso: new Date().toISOString()
     });
 
-    const tieneReprobadas = materiasReprobadas.length > 0;
-    const incumpleCriterioRegular = semestreEstudiante > 1 && (numPromedio < 16 || tieneReprobadas);
-    const incumpleExcelencia18 =
-      semestreEstudiante > 1 &&
-      MODALIDADES_REQUIEREN_18.has(tipo_beca) &&
-      numPromedio < PROMEDIO_MINIMO_EXCELENCIA;
-
-    const debeRechazarAutomatico = incumpleCriterioRegular || incumpleExcelencia18;
     const estatusFinal = debeRechazarAutomatico ? 'Rechazada' : 'Pendiente';
 
-    const observacionAutomatica = debeRechazarAutomatico
-      ? (incumpleCriterioRegular && expediente?.evaluacion.motivoRechazo
-          ? expediente.evaluacion.motivoRechazo
-          : construirObservacionRechazo(
-              materiasReprobadas,
-              numPromedio,
-              tipo_beca,
-              incumpleExcelencia18
-            ))
-      : null;
-
-    // 4. VALIDACIÓN ESTRICTA DE ENTEROS NO NEGATIVOS (INGRESOS, EGRESOS, EDADES Y HERMANOS)
+    // 4. VALIDACIÓN ESTRICTA DE ENTEROS NO NEGATIVOS
     const sueldoReal = parseEnteroNoNegativoEstricto(formData.get('monto_ingreso_sueldo'));
     const montoFamiliarExtra = parseEnteroNoNegativoEstricto(formData.get('monto_ingreso_familiar'));
     const montoExtra = parseEnteroNoNegativoEstricto(formData.get('monto_ingreso_extra'));
@@ -447,7 +496,7 @@ export async function enviarSolicitud(formData: FormData) {
       return { error: "La cantidad de hermanos universitarios no puede superar el total de hermanos." };
     }
 
-    // 5. VALIDACIÓN DE ARCHIVOS EN MEMORIA ANTES DE ESCRIBIR EN DISCO
+    // 5. VALIDACIÓN DE ARCHIVOS EN MEMORIA
     const archivosEntrantes: Record<DocumentoColumna, File | null> = {
       foto_carnet: obtenerArchivoForm(formData, 'foto_carnet'),
       copia_cedula: obtenerArchivoForm(formData, 'copia_cedula'),
@@ -487,7 +536,7 @@ export async function enviarSolicitud(formData: FormData) {
       }
     }
 
-    // 7. CARGA DE ARCHIVOS (Base + Documentos institucionales)
+    // 7. CARGA DE ARCHIVOS
     await mkdir(path.join(process.cwd(), 'public', 'uploads'), { recursive: true }).catch(() => {});
 
     const [
@@ -541,7 +590,6 @@ export async function enviarSolicitud(formData: FormData) {
         ? "Si"
         : "No";
 
-    // Switches de 7 Servicios Básicos y 11 Equipamientos del Hogar
     const servAgua = getSwitchOnOff(formData, 'serv_agua');
     const servLuz = getSwitchOnOff(formData, 'serv_luz');
     const servGas = getSwitchOnOff(formData, 'serv_gas');
@@ -571,7 +619,7 @@ export async function enviarSolicitud(formData: FormData) {
       montoRentas +
       montoOtrosIngresos;
 
-    // 8. MOTOR DE BAREMO UNIFICADO (sincronizado al 100% con todas las áreas, servicios y equipamiento)
+    // 8. MOTOR DE BAREMO UNIFICADO
     const { puntaje: puntajeCalculado, nivelRiesgo } = await calcularPuntajeUnificado({
       ingresoTotal,
       rango_ingreso_familiar: rangoIngresoFinal,
@@ -653,7 +701,7 @@ export async function enviarSolicitud(formData: FormData) {
           [
             emailInstitucional,
             tipo_beca,
-            numPromedio,
+            promedioTrimestral,
             motivo,
             materiasJsonString,
             estatusFinal,
@@ -688,7 +736,7 @@ export async function enviarSolicitud(formData: FormData) {
             periodoId,
             emailInstitucional,
             tipo_beca,
-            numPromedio,
+            promedioTrimestral,
             motivo,
             materiasJsonString,
             estatusFinal,
@@ -710,7 +758,7 @@ export async function enviarSolicitud(formData: FormData) {
         solicitudIdFinal = Number(insertSolResult.insertId);
       }
 
-      // 10. GUARDADO COMPLETO EN TABLA SOCIOECONÓMICA (COLUMNAS BASE + 30 COLUMNAS NUEVAS)
+      // 10. GUARDADO COMPLETO EN TABLA SOCIOECONÓMICA
       const camposSocio: ReadonlyArray<readonly [string, string | number | null]> = [
         ['student_id', userIdNum],
         ['periodo_id', periodoId],
@@ -812,8 +860,13 @@ export async function enviarSolicitud(formData: FormData) {
         valoresSocio
       );
 
-      // 11. TRAZABILIDAD EN HISTORIAL DE APROBACIONES SI EL SISTEMA RECHAZA AUTOMÁTICAMENTE
+      // 11. TRAZABILIDAD Y BLOQUEO DEFINITIVO (Art. 28) SI EL SISTEMA RECHAZA AUTOMÁTICAMENTE
       if (estatusFinal === 'Rechazada' && solicitudIdFinal > 0) {
+        await connection.execute<ResultSetHeader>(
+          `UPDATE students SET beca_perdida = 1 WHERE id = ?`,
+          [userIdNum]
+        );
+
         await connection.execute<ResultSetHeader>(
           `
             INSERT INTO historial_aprobaciones (
@@ -841,7 +894,7 @@ export async function enviarSolicitud(formData: FormData) {
             userIdNum,
             periodoId,
             SISTEMA_ADMIN_ID,
-            numPromedio,
+            promedioTrimestral,
             trimestreSnapshot,
             puntajeCalculado || 0,
             nivelRiesgo || 'Bajo',
@@ -850,7 +903,7 @@ export async function enviarSolicitud(formData: FormData) {
             'Rechazada',
             observacionAutomatica || 'Rechazo automático por reglamento académico.',
             materiasJsonString,
-            numPromedio,
+            indiceGlobalOficial,
             randomUUID(),
             '127.0.0.1'
           ]
@@ -865,14 +918,15 @@ export async function enviarSolicitud(formData: FormData) {
       if (connection) connection.release();
     }
 
-    if (materiasArray.length > 0) {
+    // Solo recalcular desde solicitudes si el estudiante NO posee récord académico oficial
+    if (!tieneRecordOficial && materiasArray.length > 0) {
       await actualizarIndiceGlobal(userIdNum, materiasArray);
     }
 
     revalidatePath('/admin/solicitudes');
     revalidatePath('/admin/validarBeca');
     revalidatePath('/admin/estudio-socioeconomico');
-    revalidatePath('/admin/Historial-Aprobaciones');
+    revalidatePath('/admin/reportes');
     revalidatePath('/perfil');
 
     return { success: true };

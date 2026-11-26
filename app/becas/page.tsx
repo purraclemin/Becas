@@ -1,14 +1,11 @@
- 
 import { Footer } from "@/components/footer"
-import { ArrowRight, CheckCircle2 } from "lucide-react"
+import { ArrowRight, CheckCircle2, ShieldCheck } from "lucide-react"
 import Link from "next/link"
 import { BECAS_DATA, BECAS_STATS } from "@/lib/scholarships-data"
 
 export default function BecasPage() {
   return (
     <main className="min-h-screen">
-    
-      
       {/* Header con respiro suficiente respecto al Navbar fijo */}
       <section className="bg-[#1e3a5f] pt-28 pb-6 sm:pt-32 sm:pb-7 md:pt-36 md:pb-8">
         <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 xl:px-10">
@@ -37,7 +34,7 @@ export default function BecasPage() {
       <section className="bg-[#f0f4f8] py-8">
         <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 xl:px-10">
           <p className="mx-auto max-w-3xl text-center text-xs leading-relaxed text-[#6b7280] md:text-sm">
-            De conformidad con la Normativa de Becas vigente, la Universidad de Margarita ofrece subvenciones 
+            De conformidad con la Normativa de Becas vigente (octubre 2023), la Universidad de Margarita ofrece subvenciones
             totales o parciales sobre el valor de la matrícula para apoyar la formación de sus estudiantes regulares.
           </p>
         </div>
@@ -56,7 +53,7 @@ export default function BecasPage() {
                   {/* Info side */}
                   <div className="p-5 lg:col-span-2 lg:p-6">
                     <div className="flex items-center gap-3">
-                      <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${beca.color} text-[#ffffff] shadow-md`}>
+                      <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${beca.color} text-[#ffffff] shadow-md shrink-0`}>
                         <beca.icon className="h-5 w-5" />
                       </div>
                       <div>
@@ -87,13 +84,27 @@ export default function BecasPage() {
                     <beca.icon className="h-14 w-14 opacity-30" />
                     <div className="mt-3 text-2xl font-extrabold">{beca.coverage}</div>
                     <div className="text-xs opacity-80">de exoneración / beneficio</div>
-                    <Link
-                      href="/postulacion"
-                      className="mt-4 flex items-center gap-1.5 rounded-md bg-[#ffffff]/20 px-4 py-1.5 text-xs font-semibold backdrop-blur-sm transition-colors hover:bg-[#ffffff]/30"
-                    >
-                      Solicitar
-                      <ArrowRight className="h-3.5 w-3.5" />
-                    </Link>
+                    {beca.postulable ? (
+                      <Link
+                        href="/postulacion"
+                        className="mt-4 flex items-center gap-1.5 rounded-md bg-[#ffffff]/20 px-4 py-1.5 text-xs font-semibold backdrop-blur-sm transition-colors hover:bg-[#ffffff]/30"
+                      >
+                        {beca.ctaLabel}
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </Link>
+                    ) : (
+                      <div className="mt-4 flex flex-col items-center gap-1.5">
+                        <span className="inline-flex items-center gap-1.5 rounded-md bg-[#ffffff]/20 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider backdrop-blur-sm border border-white/25">
+                          <ShieldCheck className="h-3.5 w-3.5 text-[#d4a843]" />
+                          {beca.ctaLabel}
+                        </span>
+                        {beca.ctaNote && (
+                          <span className="text-[10px] opacity-85 max-w-[200px] leading-snug">
+                            {beca.ctaNote}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </article>

@@ -3,6 +3,8 @@
 import type { RowDataPacket } from 'mysql2/promise'
 import { db } from './db'
 import { getSession } from './ActionsSession'
+import { procesarTransicionMasivaDePeriodo } from './ActionsRenovacion'
+import { obtenerVariantesTipoBeca } from './RecordAcademicoUtils'
 import { aplicarFiltroEstudioAdmin } from '@/app/admin/validarBeca/lib/ValidarEstudioHecho'
 
 export interface FiltrosDB {
@@ -27,6 +29,10 @@ export interface FiltrosDB {
 
 interface PeriodoIdRow extends RowDataPacket {
   id: number;
+}
+
+interface PendientesTransicionRow extends RowDataPacket {
+  hay_pendientes: number;
 }
 
 interface TotalCountRow extends RowDataPacket {
@@ -154,7 +160,6 @@ export async function fetchSolicitudesDesdeDB(filtros: FiltrosDB = {}): Promise<
   limit: number;
 }> {
   try {
-    // Detección de autoridad en servidor: Secretaría General solo ve solicitudes 'En Revisión'
     const session = await getSession();
     const esSecretariaGeneral = Boolean(
       session.isLoggedIn &&
@@ -166,6 +171,46 @@ export async function fetchSolicitudesDesdeDB(filtros: FiltrosDB = {}): Promise<
       `SELECT id FROM periodos_academicos WHERE es_actual = 1 LIMIT 1`
     );
     const pId = Number(periodoRes?.[0]?.id || 0);
+
+    // Sincronización automática e idempotente de becados Aprobada y lista de espera al detectar cambio de periodo
+    if (pId > 0) {
+      const [pendientesRows] = await db.execute<PendientesTransicionRow[]>(
+        `
+        SELECT EXISTS (
+          SELECT 1
+          FROM solicitudes s
+          JOIN students st ON s.user_id = st.id
+          WHERE s.periodo_id < ?
+            AND IFNULL(st.beca_perdida, 0) = 0
+            AND NOT EXISTS (
+              SELECT 1 FROM solicitudes s_act
+              WHERE s_act.user_id = s.user_id AND s_act.periodo_id = ?
+            )
+            AND NOT EXISTS (
+              SELECT 1 FROM solicitudes s_rej
+              WHERE s_rej.user_id = s.user_id AND s_rej.estatus = 'Rechazada'
+            )
+            AND (
+              (s.estatus = 'Aprobada' AND IFNULL(st.semestre, 1) < 12)
+              OR (
+                s.estatus IN ('Pendiente', 'Convocado a Entrevista', 'En Revisión', 'Revisión Especial')
+                AND NOT EXISTS (
+                  SELECT 1 FROM historial_aprobaciones h_upd
+                  WHERE h_upd.solicitud_id = s.id
+                    AND h_upd.periodo_id = ?
+                    AND h_upd.admin_id = 0
+                )
+              )
+            )
+        ) AS hay_pendientes
+        `,
+        [pId, pId, pId]
+      );
+
+      if (Number(pendientesRows[0]?.hay_pendientes || 0) === 1) {
+        await procesarTransicionMasivaDePeriodo(pId);
+      }
+    }
 
     const [prevPeriodoRes] = await db.execute<PeriodoIdRow[]>(
       `
@@ -180,14 +225,20 @@ export async function fetchSolicitudesDesdeDB(filtros: FiltrosDB = {}): Promise<
     let whereClause = ` WHERE 1=1`;
     const params: Array<string | number> = [];
 
-    // --- FILTROS ESTÁNDAR Y DEL EMBUDO (Búsquedas insensibles a mayúsculas) ---
-    if (filtros.search) {
-      whereClause += ` AND (LOWER(st.nombre) LIKE ? OR LOWER(st.apellido) LIKE ? OR LOWER(st.cedula) LIKE ?)`;
-      const term = `%${filtros.search.trim().toLowerCase()}%`;
-      params.push(term, term, term);
+    // REGLA OPERATIVA DE BANDEJA VALIDAR BECAS:
+    // - Aprobada y Rechazada: SOLO del periodo actual (el histórico se audita en Recurrencia Trimestral).
+    // - Pendiente, Convocado a Entrevista, En Revisión, Revisión Especial: TODOS los periodos (lista de espera).
+    if (pId > 0) {
+      whereClause += ` AND (s.periodo_id = ? OR s.estatus NOT IN ('Aprobada', 'Rechazada'))`;
+      params.push(pId);
     }
 
-    // Bloqueo SQL estricto para Secretaría General
+    if (filtros.search) {
+      whereClause += ` AND (LOWER(st.nombre) LIKE ? OR LOWER(st.apellido) LIKE ? OR LOWER(CONCAT(st.nombre, ' ', st.apellido)) LIKE ? OR LOWER(st.cedula) LIKE ?)`;
+      const term = `%${filtros.search.trim().toLowerCase()}%`;
+      params.push(term, term, term, term);
+    }
+
     if (esSecretariaGeneral) {
       whereClause += ` AND s.estatus = 'En Revisión'`;
     } else if (filtros.status && filtros.status !== "Todas") {
@@ -211,8 +262,12 @@ export async function fetchSolicitudesDesdeDB(filtros: FiltrosDB = {}): Promise<
     }
 
     if (filtros.tipoBeca) {
-      whereClause += ` AND LOWER(TRIM(s.tipo_beca)) = ?`;
-      params.push(filtros.tipoBeca.trim().toLowerCase());
+      const variantes = obtenerVariantesTipoBeca(filtros.tipoBeca);
+      if (variantes.length > 0) {
+        const placeholders = variantes.map(() => '?').join(', ');
+        whereClause += ` AND LOWER(TRIM(s.tipo_beca)) IN (${placeholders})`;
+        params.push(...variantes);
+      }
     }
 
     if (filtros.es_renovacion === 'true' || filtros.vulnerabilidadMin || filtros.tendencia === 'descenso') {
@@ -269,11 +324,10 @@ export async function fetchSolicitudesDesdeDB(filtros: FiltrosDB = {}): Promise<
       )`;
     }
 
-    // --- APLICACIÓN DEL MÓDULO DE ESTUDIO (HECHO / PENDIENTE) ---
     const filtroEstudio = aplicarFiltroEstudioAdmin(filtros.estadoEstudio, pId);
     if (filtroEstudio.condition) {
       whereClause += filtroEstudio.condition;
-      params.push(...(filtroEstudio.param as Array<string | number>));
+      params.push(...filtroEstudio.param);
     }
 
     if (filtros.filtroPromedio && !filtros.promedioMin) {
@@ -282,12 +336,21 @@ export async function fetchSolicitudesDesdeDB(filtros: FiltrosDB = {}): Promise<
       else if (filtros.filtroPromedio === "10-15") whereClause += ` AND s.promedio_notas BETWEEN 10 AND 15.99`;
     }
 
-    // --- CONTEO Y CONSULTA PRINCIPAL ---
+    const joinEstudioMasReciente = `
+      LEFT JOIN estudios_socioeconomicos e
+        ON e.id = (
+          SELECT MAX(e_max.id)
+          FROM estudios_socioeconomicos e_max
+          WHERE e_max.student_id = st.id
+            AND e_max.tipo = 'administrador'
+        )
+    `;
+
     const countQuery = `
       SELECT COUNT(*) AS total 
       FROM solicitudes s
       JOIN students st ON s.user_id = st.id
-      LEFT JOIN estudios_socioeconomicos e ON st.id = e.student_id AND e.tipo = 'administrador' AND e.periodo_id = ${pId}
+      ${joinEstudioMasReciente}
       ${whereClause}
     `;
     const [countRows] = await db.execute<TotalCountRow[]>(countQuery, params);
@@ -339,11 +402,10 @@ export async function fetchSolicitudesDesdeDB(filtros: FiltrosDB = {}): Promise<
         ) AS promedio_historico
       FROM solicitudes s
       JOIN students st ON s.user_id = st.id
-      LEFT JOIN estudios_socioeconomicos e ON st.id = e.student_id AND e.tipo = 'administrador' AND e.periodo_id = ${pId}
+      ${joinEstudioMasReciente}
       ${whereClause}
     `;
 
-    // ORDENAMIENTO BASADO EN JERARQUÍA INSTITUCIONAL DE UNIMAR
     query += ` ORDER BY 
       CASE 
         WHEN s.estatus = 'Renovacion' OR s.estatus = 'Renovación' THEN 1
@@ -355,6 +417,7 @@ export async function fetchSolicitudesDesdeDB(filtros: FiltrosDB = {}): Promise<
         WHEN s.estatus = 'Rechazada' THEN 7
         ELSE 8 
       END ASC, 
+      s.periodo_id DESC,
       s.promedio_notas DESC, 
       s.id DESC`;
 

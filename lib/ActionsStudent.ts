@@ -4,8 +4,9 @@ import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise'
 import { db } from './db'
 import { obtenerOCrearPeriodoObjetivo } from './SolicitudAcademic'
 import { getModoPruebaStatus } from './ModoPrueba'
-import { registrarDecisionEnHistorial } from './ActionsEstatusBecaSQL'
 import { sincronizarYObtenerRecordAcademico } from './ActionsRecordAcademico'
+import { evaluarYRenovarEstudianteEnCambioPeriodo } from './ActionsRenovacion'
+import { esBecaExcelenciaAcademica } from './RecordAcademicoUtils'
 
 interface StudentRow extends RowDataPacket {
   id: number;
@@ -14,6 +15,8 @@ interface StudentRow extends RowDataPacket {
   semestre: number | null;
   ha_tenido_beca: number | null;
   beca_perdida: number | null;
+  beca_base_respaldo: string | null;
+  departamento_base_respaldo: string | null;
 }
 
 interface PeriodoActualRow extends RowDataPacket {
@@ -43,13 +46,11 @@ interface SolicitudRecienteRow extends RowDataPacket {
   nombre_periodo_solicitud: string | null;
 }
 
-interface SolicitudIdRow extends RowDataPacket {
+interface RechazoPrevioRow extends RowDataPacket {
   id: number;
+  observaciones_admin: string | null;
 }
 
-/**
- * Función auxiliar para calcular el nombre del periodo ANTERIOR
- */
 function obtenerNombrePeriodoAnterior(codigo: string): string {
   if (!codigo || !codigo.includes('-')) return "Periodo Anterior";
   const partes = codigo.split('-');
@@ -64,8 +65,10 @@ function obtenerNombrePeriodoAnterior(codigo: string): string {
 }
 
 /**
- * REESTRUCTURADO: Maneja el estado académico, sincroniza el récord oficial,
- * expone observacionesAdmin de la solicitud vigente y calcula el Índice Global.
+ * Maneja el estado académico del estudiante separando:
+ * - indiceGlobal (Índice Acumulado de toda la carrera)
+ * - promedioUltimoTrimestre (Promedio del trimestre inmediatamente anterior)
+ * - estatus vigente en el periodo actual (respetando rotación sin penalización de Excelencia Académica)
  */
 export async function getStudentAcademicStatus(userId: string | number, trimestreManual?: string) {
   try {
@@ -73,6 +76,10 @@ export async function getStudentAcademicStatus(userId: string | number, trimestr
     if (!Number.isInteger(idNum) || idNum <= 0) {
       return {
         estatus: 'ninguna',
+        becaPerdida: false,
+        becaBaseRespaldo: null,
+        indiceGlobal: '0.00',
+        promedioUltimoTrimestre: '0.00',
         observacionesAdmin: null,
         materias: [],
         materiasSugeridas: [],
@@ -80,21 +87,52 @@ export async function getStudentAcademicStatus(userId: string | number, trimestr
       };
     }
 
-    // 1. Sincronizar récord académico oficial (genera notas persistentes si aplica y actualiza indice_global)
-    const recordRes = await sincronizarYObtenerRecordAcademico(idNum);
+    const periodoActualId = Number(await obtenerOCrearPeriodoObjetivo());
+
+    // 1. Ejecutar transición automática de periodo si aplica
+    await evaluarYRenovarEstudianteEnCambioPeriodo(idNum, periodoActualId);
+
+    // 2. Obtener solicitud más reciente del estudiante
+    const [userRows] = await db.execute<SolicitudRecienteRow[]>(
+      `
+        SELECT sol.*, p.codigo AS codigo_periodo_solicitud, p.nombre AS nombre_periodo_solicitud
+        FROM solicitudes sol
+        LEFT JOIN periodos_academicos p ON sol.periodo_id = p.id
+        WHERE sol.user_id = ?
+        ORDER BY sol.periodo_id DESC, sol.fecha_registro DESC, sol.id DESC
+        LIMIT 1
+      `,
+      [idNum]
+    );
+    const s: Partial<SolicitudRecienteRow> = userRows[0] || {};
+
+    // 3. Sincronizar récord académico oficial
+    const recordRes = await sincronizarYObtenerRecordAcademico(idNum, undefined, s.tipo_beca);
     const expediente = recordRes.success ? recordRes.data : null;
 
-    const periodoActualId = await obtenerOCrearPeriodoObjetivo();
     const { activo } = await getModoPruebaStatus();
 
-    // 2. Datos maestros del estudiante
+    // 4. Datos maestros del estudiante (incluye respaldo de beca base)
     const [studentRows] = await db.execute<StudentRow[]>(
-      'SELECT id, indice_global, carrera, semestre, ha_tenido_beca, beca_perdida FROM students WHERE id = ?',
+      `
+        SELECT
+          id,
+          indice_global,
+          carrera,
+          semestre,
+          ha_tenido_beca,
+          IFNULL(beca_perdida, 0) AS beca_perdida,
+          beca_base_respaldo,
+          departamento_base_respaldo
+        FROM students
+        WHERE id = ?
+        LIMIT 1
+      `,
       [idNum]
     );
     const studentData = studentRows[0] || ({} as Partial<StudentRow>);
 
-    // 3. Datos del periodo actual del sistema
+    // 5. Datos del periodo actual del sistema
     const [periodoRows] = await db.execute<PeriodoActualRow[]>(
       'SELECT id, codigo, nombre, fecha_inicio, fecha_fin FROM periodos_academicos WHERE es_actual = 1 LIMIT 1'
     );
@@ -105,7 +143,27 @@ export async function getStudentAcademicStatus(userId: string | number, trimestr
       ? Number(expediente.indiceGlobal).toFixed(2)
       : Number(studentData.indice_global ?? 0).toFixed(2);
 
-    // 4. Trimestre de referencia para materias del último trimestre cursado
+    const promedioUltimoTrimestreCalculado = expediente
+      ? Number(expediente.promedioUltimoTrimestre).toFixed(2)
+      : Number(s.promedio_notas ?? 0).toFixed(2);
+
+    // 6. Verificar rechazo histórico definitivo (bloqueo permanente Art. 28)
+    const [rechazoRows] = await db.execute<RechazoPrevioRow[]>(
+      `SELECT id, observaciones_admin FROM solicitudes WHERE user_id = ? AND estatus = 'Rechazada' ORDER BY id DESC LIMIT 1`,
+      [idNum]
+    );
+
+    const becaPerdida =
+      Number(studentData.beca_perdida) === 1 || rechazoRows.length > 0;
+
+    if (becaPerdida && Number(studentData.beca_perdida) !== 1) {
+      await db.execute<ResultSetHeader>(
+        'UPDATE students SET beca_perdida = 1 WHERE id = ?',
+        [idNum]
+      );
+    }
+
+    // 7. Trimestre de referencia (semestre - 1)
     const trimestreSugerido = Math.max(1, semestreReal - 1);
     const trimestreABuscar = trimestreManual ? parseInt(trimestreManual, 10) : trimestreSugerido;
 
@@ -135,88 +193,6 @@ export async function getStudentAcademicStatus(userId: string | number, trimestr
       }));
     }
 
-    // 5. Obtener solicitud más reciente (para estatus actual y observaciones_admin)
-    const [userRows] = await db.execute<SolicitudRecienteRow[]>(
-      `
-        SELECT sol.*, p.codigo as codigo_periodo_solicitud, p.nombre as nombre_periodo_solicitud
-        FROM solicitudes sol
-        LEFT JOIN periodos_academicos p ON sol.periodo_id = p.id
-        WHERE sol.user_id = ?
-        ORDER BY sol.fecha_registro DESC LIMIT 1
-      `,
-      [idNum]
-    );
-
-    let s: Partial<SolicitudRecienteRow> = userRows[0] || {};
-
-    // 6. TRIGGER AUTOMÁTICO DE RENOVACIÓN
-    if (pAct && s.id && s.estatus === 'Aprobada' && Number(s.periodo_id) !== Number(periodoActualId)) {
-      const hoy = new Date();
-      const fechaInicioPeriodo = new Date(pAct.fecha_inicio);
-      const diffDaysAlInicio = Math.ceil(
-        (fechaInicioPeriodo.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24)
-      );
-
-      const ventanaAbierta = activo || (diffDaysAlInicio <= 7 && diffDaysAlInicio >= -15);
-
-      if (ventanaAbierta) {
-        const [checkRows] = await db.execute<SolicitudIdRow[]>(
-          'SELECT id FROM solicitudes WHERE user_id = ? AND periodo_id = ?',
-          [idNum, periodoActualId]
-        );
-
-        if (checkRows.length === 0) {
-          const estatusPrevio = s.estatus;
-
-          const [insertResult] = await db.execute<ResultSetHeader>(
-            `
-              INSERT INTO solicitudes (
-                user_id, periodo_id, email_institucional, tipo_beca,
-                promedio_notas, motivo_solicitud, materias_json,
-                estatus, foto_carnet, copia_cedula, fecha_registro, revisado_por
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, 'Renovacion', ?, ?, NOW(), 0)
-            `,
-            [
-              idNum,
-              periodoActualId,
-              s.email_institucional ?? null,
-              s.tipo_beca ?? null,
-              s.promedio_notas ?? indiceGlobalCalculado,
-              s.motivo_solicitud ?? null,
-              '[]',
-              s.foto_carnet ?? null,
-              s.copia_cedula ?? null,
-            ]
-          );
-
-          const nuevaSolicitudId = insertResult.insertId;
-
-          await registrarDecisionEnHistorial(
-            nuevaSolicitudId,
-            'Renovacion',
-            0,
-            "Sistema: Habilitación por ventana de tiempo.",
-            '127.0.0.1',
-            estatusPrevio || undefined
-          );
-
-          const [newRows] = await db.execute<SolicitudRecienteRow[]>(
-            `
-              SELECT sol.*, p.codigo as codigo_periodo_solicitud, p.nombre as nombre_periodo_solicitud
-              FROM solicitudes sol
-              LEFT JOIN periodos_academicos p ON sol.periodo_id = p.id
-              WHERE sol.id = ? AND sol.user_id = ? LIMIT 1
-            `,
-            [nuevaSolicitudId, idNum]
-          );
-
-          if (newRows.length > 0) s = newRows[0];
-        }
-      }
-    }
-
-    // Prioriza el snapshot oficial del último trimestre cursado; si el estudiante es de 1er trimestre
-    // o aún no tiene récord, usa las materias de la solicitud si existen.
     let materiasParaPerfil: unknown = expediente?.ultimoTrimestreSnapshot ?? [];
     if (!expediente?.ultimoTrimestreSnapshot && s.materias_json) {
       try {
@@ -226,15 +202,26 @@ export async function getStudentAcademicStatus(userId: string | number, trimestr
       }
     }
 
-    // 7. Estatus UI
+    // 8. Estatus UI final:
+    // - Si beca_perdida = 1 -> Rechazada irreversible.
+    // - Si su última solicitud fue Beca a la Excelencia de un periodo ANTERIOR (y no renovó ni volvió a beca base) -> 'ninguna' (habilitado sin sanción).
     let estatusFinalUI = s.estatus || 'ninguna';
-    if (studentData.beca_perdida === 1) {
+    const esExcelenciaDePeriodoPasado =
+      s.estatus === 'Aprobada' &&
+      esBecaExcelenciaAcademica(s.tipo_beca) &&
+      s.periodo_id !== undefined &&
+      s.periodo_id !== null &&
+      Number(s.periodo_id) !== Number(periodoActualId);
+
+    if (becaPerdida) {
       estatusFinalUI = 'Rechazada';
+    } else if (esExcelenciaDePeriodoPasado) {
+      estatusFinalUI = 'ninguna';
     } else if (s.periodo_id !== undefined && Number(s.periodo_id) === Number(periodoActualId)) {
       estatusFinalUI = s.estatus || 'ninguna';
     }
 
-    // 8. Validación de ventana de tiempo para Banner
+    // 9. Validación de ventana de tiempo
     let esPeriodoRenovacion = false;
     if (pAct) {
       const hoy = new Date();
@@ -251,17 +238,22 @@ export async function getStudentAcademicStatus(userId: string | number, trimestr
         ? obtenerNombrePeriodoAnterior(s.codigo_periodo_solicitud)
         : "";
 
-    const observacionesAdmin =
+    const observacionFuente =
       s.observaciones_admin && String(s.observaciones_admin).trim() !== ''
         ? String(s.observaciones_admin).trim()
-        : null;
+        : rechazoRows[0]?.observaciones_admin
+          ? String(rechazoRows[0].observaciones_admin).trim()
+          : null;
 
     return {
       indiceGlobal: indiceGlobalCalculado,
+      promedioUltimoTrimestre: promedioUltimoTrimestreCalculado,
       carrera: studentData.carrera || 'No Definida',
       semestre: semestreReal,
       estatus: estatusFinalUI,
-      observacionesAdmin,
+      becaPerdida,
+      becaBaseRespaldo: studentData.beca_base_respaldo ?? null,
+      observacionesAdmin: observacionFuente,
       esPeriodoRenovacion,
       periodoActual: pAct?.codigo || "S/N",
       periodoActualNombre: pAct?.nombre || "",
@@ -277,6 +269,10 @@ export async function getStudentAcademicStatus(userId: string | number, trimestr
     console.error("❌ Error en getStudentAcademicStatus:", error);
     return {
       estatus: 'ninguna',
+      becaPerdida: false,
+      becaBaseRespaldo: null,
+      indiceGlobal: '0.00',
+      promedioUltimoTrimestre: '0.00',
       observacionesAdmin: null,
       materias: [],
       materiasSugeridas: [],

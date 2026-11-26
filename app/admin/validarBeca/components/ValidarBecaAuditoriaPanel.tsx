@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react"
 import { Loader2 } from "lucide-react"
 import { ResultCard } from "@/components/admin/socioeconomico/ResultCard"
 import { buscarEstudianteConEstudio } from "@/lib/ActionsSocioeconomico"
-import { DiagnosticoBeca } from "@/lib/ActionsBecaValidators"
+import { obtenerReglaPorTipoBeca } from "@/lib/RecordAcademicoUtils"
 import type { ResultadoActualizacionEstatus } from "@/lib/ActionsEstatusBeca"
 
 import { ValidarBecaDecisionBox } from "./ValidarBecaDecisionBox"
@@ -13,7 +13,9 @@ import { ValidarBecaTrace } from "@/app/admin/validarBeca/components/ValidarBeca
 
 export interface SolicitudAuditoriaPanelData {
   id: number | string;
+  user_id?: number | string | null;
   cedula?: string | null;
+  tipo_beca?: string | null;
   periodo_id?: number | string | null;
   estatus?: string | null;
   observaciones_admin?: string | null;
@@ -32,6 +34,7 @@ interface ValidarBecaAuditoriaPanelProps {
     departamentoAsignado?: string
   ) => Promise<ResultadoActualizacionEstatus>;
   onClose: () => void;
+  onViewAcademic?: () => void;
   periodoActualId: number | null;
   esSecretariaGeneral?: boolean;
 }
@@ -40,6 +43,7 @@ export function ValidarBecaAuditoriaPanel({
   solicitud,
   onStatusChange,
   onClose,
+  onViewAcademic,
   periodoActualId,
   esSecretariaGeneral = false
 }: ValidarBecaAuditoriaPanelProps) {
@@ -56,9 +60,13 @@ export function ValidarBecaAuditoriaPanel({
 
   const [expedienteDetallado, setExpedienteDetallado] = useState<Record<string, unknown> | null>(null)
   const [loading, setLoading] = useState(true)
-  const [, setDiagnostico] = useState<DiagnosticoBeca | null>(null)
 
-  const esPeriodoActual = Number(solicitud.periodo_id) === Number(periodoActualId);
+  const periodoSolicitudNum = Number(solicitud.periodo_id || 0);
+  const periodoActualNum = Number(periodoActualId || 0);
+  const esPeriodoActual =
+    periodoActualNum <= 0 ||
+    periodoSolicitudNum <= 0 ||
+    periodoSolicitudNum === periodoActualNum;
 
   const solicitudParaHijos = {
     ...solicitud,
@@ -119,7 +127,11 @@ export function ValidarBecaAuditoriaPanel({
     cargarDetalleSocioeconomico();
   }, [solicitud]);
 
+  // Exención normativa: Excelencia Académica (automática) y Concurso Social no exigen baremo previo
+  const reglaModalidad = obtenerReglaPorTipoBeca(String(solicitud.tipo_beca || ""));
+  const requiereEstudioSocioeconomico = reglaModalidad?.requiereEstudioSocioeconomico ?? true;
   const tieneEstudioAdmin = Boolean(expedienteDetallado?.es_estudio_oficial);
+  const bloqueadoPorEstudio = requiereEstudioSocioeconomico && !tieneEstudioAdmin;
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center py-20 bg-white rounded-[2rem] border border-slate-200 shadow-xl">
@@ -149,13 +161,14 @@ export function ValidarBecaAuditoriaPanel({
           setDepartamentoAsignado={setDepartamentoAsignado}
           onStatusChange={onStatusChange}
           onClose={onClose}
-          bloqueadoPorEstudio={!tieneEstudioAdmin}
+          onViewAcademic={onViewAcademic}
+          bloqueadoPorEstudio={bloqueadoPorEstudio}
           esSecretariaGeneral={esSecretariaGeneral}
         />
 
         <ValidarBecaInfo
           solicitud={solicitudParaHijos}
-          sinEstudio={!tieneEstudioAdmin}
+          sinEstudio={bloqueadoPorEstudio}
         />
 
         <ValidarBecaTrace solicitud={solicitudParaHijos} />

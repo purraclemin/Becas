@@ -3,112 +3,119 @@
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
-import { 
-  Settings, BarChart3, Users, ClipboardCheck, 
-  LogOut, Clock, ClipboardList, Globe, ChevronLeft, ChevronRight, type LucideIcon 
+import {
+  Settings, BarChart3, ClipboardCheck,
+  LogOut, Clock, ClipboardList, Globe, ChevronLeft, ChevronRight, type LucideIcon
 } from "lucide-react"
 
 interface SidebarProps {
   onLogout: () => void
   isCollapsed: boolean
   onToggleCollapse: () => void
+  esSecretariaGeneral?: boolean
 }
 
 interface SidebarLink {
   href: string
   label: string
   icon: LucideIcon
+  soloCoordinacion?: boolean
 }
 
-export function AdminSidebar({ onLogout, isCollapsed, onToggleCollapse }: SidebarProps) {
+const ALL_LINKS: ReadonlyArray<SidebarLink> = [
+  { href: "/admin/dashboard", label: "Inicio", icon: Settings, soloCoordinacion: true },
+  { href: "/admin/actividad", label: "Actividad", icon: Clock, soloCoordinacion: true },
+  { href: "/admin/validarBeca", label: "Validar", icon: ClipboardCheck },
+  { href: "/admin/analiticas", label: "Analíticas", icon: BarChart3, soloCoordinacion: true },
+  { href: "/admin/estudio-socioeconomico", label: "Socioecon.", icon: ClipboardList, soloCoordinacion: true },
+  { href: "/admin/reportes", label: "Reportes", icon: ClipboardList },
+]
+
+export function AdminSidebar({
+  onLogout,
+  isCollapsed,
+  onToggleCollapse,
+  esSecretariaGeneral = false,
+}: SidebarProps) {
   const pathname = usePathname()
 
-  const links: SidebarLink[] = [
-    { href: "/admin/dashboard", label: "Inicio", icon: Settings },
-    { href: "/admin/actividad", label: "Actividad", icon: Clock },
-    { href: "/admin/validarBeca", label: "Validar", icon: ClipboardCheck },
-    { href: "/admin/analiticas", label: "Analíticas", icon: BarChart3 },
-    //{ href: "/admin/estudiantes", label: "Estudiantes", icon: Users },
-    { href: "/admin/estudio-socioeconomico", label: "Socioecon.", icon: ClipboardList },
-    { href: "/admin/reportes", label: "Reportes", icon: ClipboardList },
-  ]
+  const links = esSecretariaGeneral
+    ? ALL_LINKS.filter((item) => !item.soloCoordinacion)
+    : ALL_LINKS
 
   const handleLinkClick = (e: React.MouseEvent, href: string) => {
     if (pathname === href) {
-      e.preventDefault(); 
-      window.location.href = href; 
+      e.preventDefault()
+      window.location.href = href
     }
   }
 
   return (
     <>
-      {/* ASIDE ESCRITORIO (SIDEBAR CONTROLADA POR BOTÓN EN EL BORDE) */}
-      <aside className={`hidden lg:flex fixed top-0 left-0 z-[100] ${isCollapsed ? 'w-16' : 'w-48'} bg-[#1a2744] text-white flex-col shadow-2xl h-screen border-r border-[#1e3a5f]/50 transition-all duration-300 overflow-visible group`}>
-        
-        {/* BOTÓN FLOTANTE EN EL BORDE DERECHO (ZONA NOTORIA) */}
-        <button 
-          onClick={onToggleCollapse} 
+      {/* ASIDE ESCRITORIO */}
+      <aside className={`hidden lg:flex fixed top-0 left-0 z-[100] ${isCollapsed ? 'w-16' : 'w-48'} bg-[#1a2744] text-white flex-col shadow-2xl h-screen border-r border-[#1e3a5f]/50 transition-all duration-300 overflow-visible group print:hidden`}>
+        <button
+          type="button"
+          onClick={onToggleCollapse}
           title={isCollapsed ? "Expandir menú" : "Minimizar menú"}
-          className="absolute -right-3 top-20 z-[120] flex h-6 w-6 items-center justify-center rounded-full bg-[#152038] border border-[#d4a843]/80 text-[#d4a843] shadow-md hover:bg-[#1e3a5f] hover:text-white transition-all active:scale-95"
+          className="absolute -right-3 top-20 z-[120] flex h-6 w-6 items-center justify-center rounded-full bg-[#152038] border border-[#d4a843]/80 text-[#d4a843] shadow-md hover:bg-[#1e3a5f] hover:text-white transition-all active:scale-95 cursor-pointer"
         >
           {isCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
         </button>
 
-{/* HEADER ESCRITORIO */}
-<div className="h-24 flex items-center px-3 border-b border-[#1e3a5f]/50 shrink-0 bg-[#152038] overflow-hidden">
-  <div className={`flex flex-col gap-2 w-full items-center ${isCollapsed ? 'justify-center' : 'items-start pl-1'}`}>
-    
-    {/* Contenedor dinámico: Rectangular si está abierto, cuadrado si está colapsado */}
-    <div className={`relative flex items-center justify-center overflow-hidden transition-all ${
-      isCollapsed 
-        ? 'w-10 h-10' 
-        : 'w-36 h-12 sm:w-44 sm:h-14'
-    }`}>
-      <Image 
-        src={isCollapsed ? "/images/logounimarmini4.png" : "/images/logounimar4.png"}
-        alt="Logo UNIMAR"
-        width={isCollapsed ? 48 : 292} 
-        height={isCollapsed ? 48 : 100} 
-        priority
-        className="object-contain w-full h-full"
-      />
-    </div>
+        {/* HEADER ESCRITORIO */}
+        <div className="h-24 flex items-center px-3 border-b border-[#1e3a5f]/50 shrink-0 bg-[#152038] overflow-hidden">
+          <div className={`flex flex-col gap-2 w-full items-center ${isCollapsed ? 'justify-center' : 'items-start pl-1'}`}>
+            <div className={`relative flex items-center justify-center overflow-hidden transition-all ${
+              isCollapsed
+                ? 'w-10 h-10'
+                : 'w-36 h-12 sm:w-44 sm:h-14'
+            }`}>
+              <Image
+                src={isCollapsed ? "/images/logounimarmini4.png" : "/images/logounimar4.png"}
+                alt="Logo UNIMAR"
+                width={isCollapsed ? 48 : 292}
+                height={isCollapsed ? 48 : 100}
+                priority
+                className="object-contain w-full h-full"
+              />
+            </div>
 
-    {/* Bloque de texto inferior (Solo visible si NO está colapsado) */}
-    {!isCollapsed && (
-      <div className="leading-none whitespace-nowrap overflow-hidden pl-1">
-         <span className="text-[10px] text-[#8a9bbd] uppercase tracking-widest font-bold">Panel Admin</span>
-      </div>
-    )}
-
-  </div>
-</div>
-
-
+            {!isCollapsed && (
+              <div className="leading-none whitespace-nowrap overflow-hidden pl-1">
+                <span className="text-[10px] text-[#8a9bbd] uppercase tracking-widest font-bold">
+                  {esSecretariaGeneral ? "Secretaría Gral." : "Panel Admin"}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* CONTENEDOR DE NAVEGACIÓN ESCRITORIO */}
         <nav className="flex-1 p-2.5 overflow-y-auto custom-scrollbar flex flex-col justify-between">
           <div className="space-y-1">
             {links.map((link) => {
               const Icon = link.icon
-              const isActive = pathname === link.href
+              const isActive =
+                pathname === link.href ||
+                (link.href !== "/admin/dashboard" && pathname.startsWith(`${link.href}/`))
 
               return (
-                <Link 
+                <Link
                   key={link.href}
-                  href={link.href} 
-                  onClick={(e) => handleLinkClick(e, link.href)} 
+                  href={link.href}
+                  onClick={(e) => handleLinkClick(e, link.href)}
                   title={link.label}
                   className={`
                     flex items-center gap-3 px-3 py-2 rounded-lg text-[11px] font-bold tracking-wide transition-all
-                    ${isActive 
-                      ? "bg-[#d4a843] text-[#1a2744] shadow-md shadow-[#d4a843]/15 font-extrabold" 
+                    ${isActive
+                      ? "bg-[#d4a843] text-[#1a2744] shadow-md shadow-[#d4a843]/15 font-extrabold"
                       : "text-[#8a9bbd] hover:text-white hover:bg-white/5"
                     }
                     ${isCollapsed ? 'justify-center px-0' : ''}
                   `}
                 >
-                  <Icon className={`h-4 w-4 shrink-0 ${isActive ? "text-[#1a2744]" : "text-[#d4a843] hover:text-white"} transition-colors`} /> 
+                  <Icon className={`h-4 w-4 shrink-0 ${isActive ? "text-[#1a2744]" : "text-[#d4a843] hover:text-white"} transition-colors`} />
                   {!isCollapsed && (
                     <span className="truncate whitespace-nowrap">
                       {link.label}
@@ -119,10 +126,9 @@ export function AdminSidebar({ onLogout, isCollapsed, onToggleCollapse }: Sideba
             })}
           </div>
 
-          {/* ZONA INFERIOR: ENLACE AL PORTAL RAÍZ Y BOTÓN SALIR */}
           <div className="pt-4 border-t border-[#1e3a5f]/50 mb-2 space-y-1">
-            <Link 
-              href="/" 
+            <Link
+              href="/"
               title="Portal Web"
               className={`flex items-center gap-3 px-3 py-2 rounded-lg text-[11px] font-bold tracking-wide text-[#8a9bbd] hover:text-white hover:bg-white/5 transition-all ${isCollapsed ? 'justify-center px-0' : ''}`}
             >
@@ -134,12 +140,13 @@ export function AdminSidebar({ onLogout, isCollapsed, onToggleCollapse }: Sideba
               )}
             </Link>
 
-            <button 
-              onClick={onLogout} 
+            <button
+              type="button"
+              onClick={onLogout}
               title="Salir"
-              className={`flex items-center gap-3 text-rose-400 hover:text-rose-300 px-3 py-2 text-[10px] font-black uppercase hover:bg-rose-500/10 rounded-lg transition-all border border-transparent hover:border-rose-500/20 shadow-sm w-full ${isCollapsed ? 'justify-center px-0' : ''}`}
+              className={`flex items-center gap-3 text-rose-400 hover:text-rose-300 px-3 py-2 text-[10px] font-black uppercase hover:bg-rose-500/10 rounded-lg transition-all border border-transparent hover:border-rose-500/20 shadow-sm w-full cursor-pointer ${isCollapsed ? 'justify-center px-0' : ''}`}
             >
-              <LogOut className="h-4 w-4 shrink-0" /> 
+              <LogOut className="h-4 w-4 shrink-0" />
               {!isCollapsed && (
                 <span className="truncate whitespace-nowrap">
                   Salir
@@ -150,22 +157,24 @@ export function AdminSidebar({ onLogout, isCollapsed, onToggleCollapse }: Sideba
         </nav>
       </aside>
 
-      {/* BARRA DE NAVEGACIÓN INFERIOR MÓVIL Y TABLET (THUMB-FRIENDLY BOTTOM NAV) */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-[100] bg-[#1a2744] border-t border-[#1e3a5f] shadow-[0_-4px_20px_rgba(0,0,0,0.25)] px-2 py-1.5 flex items-center justify-around backdrop-blur-md">
-        <div className="flex items-center justify-between w-full overflow-x-auto no-scrollbar gap-1 py-0.5 px-1">
+      {/* BARRA DE NAVEGACIÓN INFERIOR MÓVIL Y TABLET */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-[100] bg-[#1a2744] border-t border-[#1e3a5f] shadow-[0_-4px_20px_rgba(0,0,0,0.25)] px-2 py-1.5 flex items-center justify-around backdrop-blur-md print:hidden">
+        <div className="flex items-center justify-around w-full overflow-x-auto no-scrollbar gap-1 py-0.5 px-1">
           {links.map((link) => {
             const Icon = link.icon
-            const isActive = pathname === link.href
+            const isActive =
+              pathname === link.href ||
+              (link.href !== "/admin/dashboard" && pathname.startsWith(`${link.href}/`))
 
             return (
-              <Link 
+              <Link
                 key={link.href}
                 href={link.href}
                 onClick={(e) => handleLinkClick(e, link.href)}
                 className={`
                   flex flex-col items-center justify-center min-w-[52px] py-1.5 px-1 rounded-xl transition-all relative group
-                  ${isActive 
-                    ? "text-[#d4a843] bg-white/10 shadow-sm font-black scale-105" 
+                  ${isActive
+                    ? "text-[#d4a843] bg-white/10 shadow-sm font-black scale-105"
                     : "text-[#8a9bbd] hover:text-white hover:bg-white/5"
                   }
                 `}
@@ -180,9 +189,8 @@ export function AdminSidebar({ onLogout, isCollapsed, onToggleCollapse }: Sideba
               </Link>
             )
           })}
-          
-          {/* Enlace al Portal Raíz Móvil */}
-          <Link 
+
+          <Link
             href="/"
             className="flex flex-col items-center justify-center min-w-[52px] py-1.5 px-1 rounded-xl transition-all text-[#8a9bbd] hover:text-white hover:bg-white/5"
           >
@@ -192,8 +200,8 @@ export function AdminSidebar({ onLogout, isCollapsed, onToggleCollapse }: Sideba
             </span>
           </Link>
 
-          {/* Botón Salir Móvil Integrado */}
-          <button 
+          <button
+            type="button"
             onClick={onLogout}
             className="flex flex-col items-center justify-center min-w-[52px] py-1.5 px-1 rounded-xl transition-all text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
           >

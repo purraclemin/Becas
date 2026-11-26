@@ -11,6 +11,7 @@ import {
   RotateCcw,
   CalendarDays,
   MessageSquareText,
+  Lock,
   type LucideIcon
 } from "lucide-react"
 
@@ -45,15 +46,21 @@ interface ProfileStatusProps {
   materias?: unknown;
   motivoRechazo?: string;
   observacionesAdmin?: string | null;
+  becaPerdida?: boolean;
 }
 
 /**
  * COMPONENTE: ESTATUS VISUAL DEL PERFIL
- * Muestra el estatus de la solicitud, detecta si fue rechazada por materias
- * y despliega las instrucciones de citación cuando el estudiante está convocado.
+ * Muestra el estatus de la solicitud, despliega instrucciones de citación,
+ * detalla la renovación automática aprobada y refleja la inhabilitación permanente por rechazo.
  */
-export function ProfileStatus({ estatus, materias, motivoRechazo, observacionesAdmin }: ProfileStatusProps) {
-  // Normalización para evitar errores por tildes o mayúsculas
+export function ProfileStatus({
+  estatus,
+  materias,
+  motivoRechazo,
+  observacionesAdmin,
+  becaPerdida = false
+}: ProfileStatusProps) {
   const s =
     estatus
       ?.toLowerCase()
@@ -61,7 +68,6 @@ export function ProfileStatus({ estatus, materias, motivoRechazo, observacionesA
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "") || 'ninguna';
 
-  // Extracción robusta de materias para verificar si hay notas < 10
   let listaMaterias: MateriaEvaluacionItem[] = [];
   try {
     let parsed: unknown = materias;
@@ -80,19 +86,19 @@ export function ProfileStatus({ estatus, materias, motivoRechazo, observacionesA
     listaMaterias = [];
   }
 
-  // Detecta si tiene materias reprobadas (nota < 10)
   const tieneReprobadas = listaMaterias.some((m) => Number(m.nota) < 10);
 
-  // Mensaje inteligente para cuando está rechazada
+  const observacionLimpia =
+    observacionesAdmin && observacionesAdmin.trim() !== '' ? observacionesAdmin.trim() : null;
+
   const mensajeRechazo =
     motivoRechazo && motivoRechazo.trim() !== ''
       ? motivoRechazo.trim()
-      : tieneReprobadas || s.includes('materia')
-        ? "Solicitud rechazada: se detectó al menos una unidad curricular reprobada (calificación inferior a 10 puntos), requisito indispensable para optar al beneficio."
-        : "Tu solicitud ha sido declinada. Dirígete a Bienestar Estudiantil para conocer los detalles.";
-
-  const instruccionesCitacion =
-    observacionesAdmin && observacionesAdmin.trim() !== '' ? observacionesAdmin.trim() : null;
+      : observacionLimpia
+        ? observacionLimpia
+        : tieneReprobadas || s.includes('materia')
+          ? "Solicitud rechazada: se detectó al menos una unidad curricular reprobada (calificación inferior a 10 puntos). Por reglamento institucional, no podrá optar nuevamente por becas."
+          : "Tu solicitud ha sido rechazada de forma definitiva. Por reglamento institucional, no podrás optar nuevamente a becas ni ayudas económicas.";
 
   const config: Record<StatusKey, StatusVisualConfig> = {
     aprobada: {
@@ -178,6 +184,7 @@ export function ProfileStatus({ estatus, materias, motivoRechazo, observacionesA
   };
 
   const resolveKey = (): StatusKey => {
+    if (becaPerdida) return 'rechazada';
     if (s.includes('aprob') || s.includes('aprov') || s === 'becado') return 'aprobada';
     if (s.includes('convocad')) return 'convocado';
     if (s.includes('pendiente')) return 'pendiente';
@@ -208,18 +215,27 @@ export function ProfileStatus({ estatus, materias, motivoRechazo, observacionesA
             {c.label}
           </span>
         </div>
-        <p className="mt-4 text-[11px] md:text-xs font-semibold text-gray-600 leading-relaxed italic border-t border-black/5 pt-4">
+        <p className="mt-4 text-[11px] md:text-xs font-semibold text-gray-600 leading-relaxed italic border-t border-black/5 pt-4 whitespace-pre-line break-words">
           {c.msg}
         </p>
 
-        {key === 'convocado' && instruccionesCitacion && (
+        {key === 'rechazada' && (
+          <div className="mt-4 p-3 rounded-xl bg-white/80 border border-red-200 flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-red-700">
+            <Lock className="h-3.5 w-3.5 shrink-0" />
+            <span>Inhabilitación Definitiva: Sin opción a futuras becas</span>
+          </div>
+        )}
+
+
+
+        {key === 'convocado' && observacionLimpia && (
           <div className="mt-4 p-3.5 rounded-xl bg-white/85 border border-orange-200 space-y-1.5">
             <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-[#1e3a5f]">
               <MessageSquareText className="h-3.5 w-3.5 text-[#d4a843] shrink-0" />
               <span>Instrucciones de Citación</span>
             </div>
             <p className="text-xs font-semibold text-slate-700 leading-relaxed whitespace-pre-line break-words">
-              {instruccionesCitacion}
+              {observacionLimpia}
             </p>
           </div>
         )}

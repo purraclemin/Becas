@@ -238,20 +238,7 @@ export function ValidarBecaFilters({
             </div>
           </div>
 
-          {!esSecretariaGeneral && (
-            <div className="hidden xl:flex items-center justify-center shrink-0">
-              <button
-                type="button"
-                onClick={onOpenAptoIA}
-                className="flex items-center gap-1.5 px-3.5 py-2 bg-[#1e3a5f] hover:bg-[#162c4a] text-white border border-[#d4a843]/60 rounded-xl shadow-sm hover:shadow-md text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer group"
-                title="Selección Inteligente por IA (Aptos)"
-              >
-                <Shield className="h-3.5 w-3.5 text-[#d4a843] group-hover:scale-110 transition-transform" />
-                <span className="text-[#d4a843]">Aptos</span>
-              </button>
-            </div>
-          )}
-
+          
           <div className="w-full xl:w-auto flex justify-center xl:justify-end">
             <ControlesPaginacion
               paginaActual={paginaActual}

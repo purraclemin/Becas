@@ -23,6 +23,7 @@ interface ValidarBecaViewAuditoriaProps {
     departamentoAsignado?: string
   ) => Promise<ResultadoActualizacionEstatus>;
   onClose: () => void;
+  onViewAcademic?: () => void;
   periodoActualId: number | null;
   esSecretariaGeneral?: boolean;
 }
@@ -31,6 +32,7 @@ export function ValidarBecaViewAuditoria({
   selectedSolicitud,
   onStatusChange,
   onClose,
+  onViewAcademic,
   periodoActualId,
   esSecretariaGeneral = false
 }: ValidarBecaViewAuditoriaProps) {
@@ -62,6 +64,7 @@ export function ValidarBecaViewAuditoria({
     ? { ...selectedSolicitud, estatus: estatusActual }
     : {
         id: 0,
+        user_id: null,
         cedula: "",
         periodo_id: periodoActualId,
         estatus: estatusActual,
@@ -112,6 +115,7 @@ export function ValidarBecaViewAuditoria({
         solicitud={solicitudSegura}
         onStatusChange={handleStatusChangeLocal}
         onClose={onClose}
+        onViewAcademic={onViewAcademic}
         periodoActualId={periodoActualId}
         esSecretariaGeneral={esSecretariaGeneral}
       />

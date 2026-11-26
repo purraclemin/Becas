@@ -6,6 +6,7 @@ import { cookies } from 'next/headers'
 import nodemailer from 'nodemailer'
 import { registrarDecisionEnHistorial } from './ActionsEstatusBecaSQL'
 import { validarCuposYRequisitos } from './ActionsBecaValidators'
+import { obtenerOCrearPeriodoObjetivo } from './SolicitudAcademic'
 import { db } from './db'
 
 const ESTATUS_VALIDOS = ['Pendiente', 'Convocado a Entrevista', 'En Revisión', 'Aprobada', 'Rechazada'];
@@ -30,8 +31,10 @@ interface ActorUsuarioRow extends RowDataPacket {
 }
 
 interface SolicitudEstadoRow extends RowDataPacket {
+  user_id: number;
   estatus: string;
   periodo_id: number;
+  beca_perdida: number;
 }
 
 interface EstudianteCorreoRow extends RowDataPacket {
@@ -84,8 +87,8 @@ function crearTransporterSMTP(): {
 
 /**
  * Acción del Servidor: Orquestador para la actualización de estatus de becas.
- * Aplica segregación estricta de funciones entre Coordinación (gestión/auditoría)
- * y Secretaría General (dictamen final de Aprobación / Rechazo sobre expedientes 'En Revisión').
+ * Permite gestionar y dictaminar solicitudes en curso sin importar su periodo de origen,
+ * evaluando cupos contra el periodo vigente actual y sincronizando la lista de espera.
  */
 export async function actualizarEstatusBeca(
   id: number,
@@ -133,17 +136,28 @@ export async function actualizarEstatusBeca(
     const observacionesLimpias =
       observaciones && observaciones.trim() !== '' ? observaciones.trim() : null;
 
-    // 3. CONSULTA DEL ESTADO ACTUAL Y REGLAS DE SEGREGACIÓN POR ROL
-    const [solRows] = await db.execute<SolicitudEstadoRow[]>(
-      'SELECT estatus, periodo_id FROM solicitudes WHERE id = ? LIMIT 1',
-      [Number(id)]
-    );
+    // 3. CONSULTA DEL ESTADO ACTUAL Y PERIODO VIGENTE
+    const [solRowsResult, periodoActualRaw] = await Promise.all([
+      db.execute<SolicitudEstadoRow[]>(
+        `
+        SELECT s.user_id, s.estatus, s.periodo_id, IFNULL(st.beca_perdida, 0) AS beca_perdida
+        FROM solicitudes s
+        JOIN students st ON s.user_id = st.id
+        WHERE s.id = ?
+        LIMIT 1
+        `,
+        [Number(id)]
+      ),
+      obtenerOCrearPeriodoObjetivo(),
+    ]);
 
+    const [solRows] = solRowsResult;
     if (solRows.length === 0) {
       return { error: "La solicitud indicada no existe en el sistema." };
     }
 
     const sol = solRows[0];
+    const periodoActualId = Number(periodoActualRaw) || Number(sol.periodo_id);
 
     if (esCoordinacion) {
       const esSoloReasignacionDepto =
@@ -176,12 +190,26 @@ export async function actualizarEstatusBeca(
       }
     }
 
-    // 4. LÓGICA DE CUPOS Y REGLAMENTO (Solo cuando Secretaría General aprueba)
+    // 4. BLOQUEO DEFINITIVO POR RECHAZO PREVIO Y VALIDACIÓN DE CUPOS EN EL PERIODO VIGENTE
     if (nuevoEstatus === 'Aprobada') {
       const yaEstabaAprobada = sol.estatus === 'Aprobada';
 
       if (!yaEstabaAprobada) {
-        const diagnostico = await validarCuposYRequisitos(Number(id), Number(sol.periodo_id));
+        if (Number(sol.beca_perdida) === 1) {
+          return {
+            error:
+              "El estudiante posee un rechazo definitivo previo (beca perdida) y no puede optar nuevamente por ninguna beca o ayuda económica.",
+          };
+        }
+
+        // Siempre valida contra el periodo actual donde se están habilitando los cupos
+        const diagnostico = await validarCuposYRequisitos(Number(id), periodoActualId);
+
+        if (diagnostico.codigo === 'BECA_PERDIDA') {
+          return {
+            error: diagnostico.mensaje,
+          };
+        }
 
         const esRenovacion = sol.estatus === 'Renovacion';
         const saltarValidacionCupo = esRenovacion && diagnostico.codigo === 'CUPO_EXCEDIDO';
@@ -196,7 +224,7 @@ export async function actualizarEstatusBeca(
       }
     }
 
-    // 5. DELEGACIÓN TRANSACCIONAL
+    // 5. DELEGACIÓN TRANSACCIONAL (promueve solicitudes en cola al periodo vigente si aplica)
     const resultado = await registrarDecisionEnHistorial(
       Number(id),
       nuevoEstatus,
@@ -204,7 +232,8 @@ export async function actualizarEstatusBeca(
       observacionesLimpias,
       '127.0.0.1',
       undefined,
-      departamentoAsignado
+      departamentoAsignado,
+      periodoActualId
     );
 
     // 6. NOTIFICACIÓN OMNICANAL SI ES CONVOCATORIA A ENTREVISTA
@@ -305,11 +334,12 @@ export async function actualizarEstatusBeca(
       }
     }
 
-    // 7. FINALIZACIÓN Y REVALIDACIÓN DE CACHÉ (Admin + Portal Estudiante)
+    // 7. FINALIZACIÓN Y REVALIDACIÓN DE CACHÉ (Admin + Reportes + Portal Estudiante)
     if (resultado.success) {
       revalidatePath('/admin/solicitudes');
       revalidatePath('/admin/dashboard');
       revalidatePath('/admin/analiticas');
+      revalidatePath('/admin/reportes');
       revalidatePath('/admin/socioeconomico');
       revalidatePath('/admin/validarBeca');
       revalidatePath('/perfil');

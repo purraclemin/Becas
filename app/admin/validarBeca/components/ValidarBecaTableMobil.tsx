@@ -25,16 +25,11 @@ export function ValidarBecaCardItem({
   onView,
   onViewHistorial,
   onStatusChange,
-  periodoActualId,
   esSecretariaGeneral = false
 }: ValidarBecaCardItemProps) {
   const [isConfirming, setIsConfirming] = useState(false)
   const [pendingAction, setPendingAction] = useState<string | null>(null)
   const risk = getRiskDetails(s.puntaje ?? 0)
-
-  const valPeriodoSolicitud = s.periodo_id ? Number(s.periodo_id) : 0;
-  const valPeriodoActual = periodoActualId ? Number(periodoActualId) : 0;
-  const esPeriodoActual = valPeriodoActual === 0 || valPeriodoSolicitud === valPeriodoActual;
 
   const fechaEnvio = formatearFechaEnvio(s);
 
@@ -153,23 +148,19 @@ export function ValidarBecaCardItem({
             <option value="" disabled>{esSecretariaGeneral ? "Dictaminar..." : "Gestionar..."}</option>
             <option value="ver_detalles">👁️ Ver Expediente</option>
             <option value="ver_historial">📋 Historial Académico</option>
-            {esPeriodoActual ? (
-              esSecretariaGeneral ? (
-                s.estatus === 'En Revisión' && (
-                  <>
-                    <option value="Aprobada">✅ Aprobar</option>
-                    <option value="Rechazada">❌ Rechazar</option>
-                  </>
-                )
-              ) : (
-                s.estatus !== 'En Revisión' &&
-                s.estatus !== 'Aprobada' &&
-                s.estatus !== 'Rechazada' && (
-                  <option value="En Revisión">⏳ Enviar a Revisión</option>
-                )
+            {esSecretariaGeneral ? (
+              s.estatus === 'En Revisión' && (
+                <>
+                  <option value="Aprobada">✅ Aprobar</option>
+                  <option value="Rechazada">❌ Rechazar</option>
+                </>
               )
             ) : (
-              <option value="" disabled>🔒 Registro Histórico</option>
+              s.estatus !== 'En Revisión' &&
+              s.estatus !== 'Aprobada' &&
+              s.estatus !== 'Rechazada' && (
+                <option value="En Revisión">⏳ Enviar a Revisión</option>
+              )
             )}
           </select>
         )}

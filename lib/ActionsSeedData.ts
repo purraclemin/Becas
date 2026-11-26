@@ -1,21 +1,40 @@
 'use server'
 
-import { db } from './db'
+import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise'
 import bcrypt from 'bcryptjs'
+import { db } from './db'
+import { MODALIDADES_BECA_OFICIALES } from './RecordAcademicoUtils'
+
+interface PeriodoActualRow extends RowDataPacket {
+  id: number;
+}
+
+interface CarreraRow extends RowDataPacket {
+  id: number;
+  nombre: string;
+}
+
+interface MateriaPensumSeedRow extends RowDataPacket {
+  codigo_materia: string;
+  nombre_materia: string;
+  unidades_credito: number;
+}
+
+interface UserIdSeedRow extends RowDataPacket {
+  id: number;
+}
 
 /**
- * 🚀 SEEDER DE DATOS: Genera 100 estudiantes con datos demográficos completos (género, fecha de nacimiento),
- * solicitudes con tipos de beca variados, materias dinámicas desde el pensum en JSON, 
- * y registros completos en estudios socioeconómicos de prueba.
+ * SEEDER DE DATOS: Genera 100 estudiantes con las 10 denominaciones oficiales
+ * de la Normativa UNIMAR 2023, materias desde pensum y estudios socioeconómicos.
  */
-export async function seedDatabase() {
+export async function seedDatabase(): Promise<{ success: boolean; message?: string; error?: string }> {
   const connection = await db.getConnection();
-  
+
   try {
     await connection.beginTransaction();
 
-    // 🟢 1. Obtener dinámicamente el periodo académico activo actual
-    const [periodoRes]: any = await connection.execute(
+    const [periodoRes] = await connection.execute<PeriodoActualRow[]>(
       `SELECT id FROM periodos_academicos WHERE es_actual = 1 LIMIT 1`
     );
     const periodoId = periodoRes?.[0]?.id;
@@ -24,74 +43,53 @@ export async function seedDatabase() {
       throw new Error("No se encontró ningún periodo académico activo (es_actual = 1) en la base de datos.");
     }
 
-    // 🟢 2. Cargar el mapeo de carreras desde la base de datos (id <-> nombre)
-    const [carrerasDB]: any = await connection.execute(`SELECT id, nombre FROM carreras`);
-    const carrerasMap = new Map(carrerasDB.map((c: any) => [c.nombre, c.id]));
+    const [carrerasDB] = await connection.execute<CarreraRow[]>(`SELECT id, nombre FROM carreras`);
+    const carrerasMap = new Map<string, number>(carrerasDB.map((c) => [c.nombre, c.id]));
 
     const municipios = [
-      "Arismendi", "Antolín del Campo", "Díaz", "García", "Gómez", 
+      "Arismendi", "Antolín del Campo", "Díaz", "García", "Gómez",
       "Maneiro", "Marcano", "Mariño", "Península de Macanao", "Tubores", "Villalba"
     ];
 
-    const carrerasNombres = Array.from(carrerasMap.keys() as Iterable<string>);
-
-    // Listado completo de tipos de becas y ayudas de acuerdo al sistema
-    const tiposBeca = [
-      "BECA SOCIAL", 
-      "BECA APRENDIZAJE", 
-      "BECA POR DISCAPACIDAD", 
-      "BECA A LA EXCELENCIA", 
-      "AYUDA ECONÓMICA GENERAL", 
-      "AYUDA ECONÓMICA FAMILIAR", 
-      "AYUDA ECONÓMICA PARA TRABAJADORES", 
-      "AYUda ECONÓMICA PARA HIJOS DE TRABAJADORES", 
-      "AYUDA ECONÓMICA PARA ESTUDIANTES PREPARADORES", 
-      "AYUDA ECONÓMICA POR ACTIVIDADES EXTRACURRICULARES"
-    ];
-
+    const carrerasNombres = Array.from(carrerasMap.keys());
+    const tiposBeca = [...MODALIDADES_BECA_OFICIALES];
     const estatusPosibles = ["Pendiente", "En Revisión", "Aprobada", "Rechazada"];
     const sexosPosibles = ["M", "F"];
     const passwordHash = await bcrypt.hash("estudiante123", 10);
-
-    console.log(`⏳ Iniciando inserción de 100 registros completos en el periodo ID: ${periodoId}...`);
 
     for (let i = 1; i <= 100; i++) {
       const cedula = (30000000 + i).toString();
       const email = `test_user${i}@unimar.edu.ve`;
       const nombre = `Estudiante${i}`;
       const apellido = `Prueba${i}`;
-      const semestreNum = Math.floor(Math.random() * 12) + 1; // Equivale al trimestre / semestre
+      const semestreNum = Math.floor(Math.random() * 12) + 1;
       const carreraNombre = carrerasNombres[Math.floor(Math.random() * carrerasNombres.length)];
-      const carreraId = carrerasMap.get(carreraNombre);
+      const carreraId = carrerasMap.get(carreraNombre) ?? 1;
       const tipoBecaActual = tiposBeca[Math.floor(Math.random() * tiposBeca.length)];
-      
-      // Datos demográficos nuevos solicitados
+
       const sexoAleatorio = sexosPosibles[Math.floor(Math.random() * sexosPosibles.length)];
-      // Generar una fecha de nacimiento aleatoria coherente con estudiantes universitarios (entre 18 y 25 años aprox)
       const anioNacimiento = 2026 - (Math.floor(Math.random() * 8) + 18);
       const mesNacimiento = String(Math.floor(Math.random() * 12) + 1).padStart(2, '0');
       const diaNacimiento = String(Math.floor(Math.random() * 28) + 1).padStart(2, '0');
       const fechaNacimiento = `${anioNacimiento}-${mesNacimiento}-${diaNacimiento}`;
 
-      // 1. Insertar en tabla USERS
-      const [userRes]: any = await connection.execute(
+      const [userRes] = await connection.execute<ResultSetHeader>(
         `INSERT INTO users (email, password, role) VALUES (?, ?, 'estudiante')`,
         [email, passwordHash]
       );
       const userId = userRes.insertId;
 
-      // 2. Insertar en tabla STUDENTS (incluyendo sexo y fecha_nacimiento)
-      await connection.execute(
+      await connection.execute<ResultSetHeader>(
         `INSERT INTO students (id, nombre, apellido, cedula, sexo, fecha_nacimiento, telefono, carrera, semestre, municipio_residencia, email) 
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
-          userId, 
-          nombre, 
-          apellido, 
-          cedula, 
+          userId,
+          nombre,
+          apellido,
+          cedula,
           sexoAleatorio,
           fechaNacimiento,
-          "04120000000", 
+          "04120000000",
           carreraNombre,
           semestreNum,
           municipios[Math.floor(Math.random() * municipios.length)],
@@ -99,15 +97,13 @@ export async function seedDatabase() {
         ]
       );
 
-      // 3. Consultar materias del pensum según la carrera y el trimestre actual para construir el JSON
-      const [materiasPensum]: any = await connection.execute(
+      const [materiasPensum] = await connection.execute<MateriaPensumSeedRow[]>(
         `SELECT codigo_materia, nombre_materia, unidades_credito FROM pensum_materias WHERE carrera_id = ? AND trimestre_ubicacion = ?`,
         [carreraId, semestreNum]
       );
 
       let sumaNotas = 0;
-      const materiasFormateadas = materiasPensum.map((mat: any) => {
-        // Generar una nota aleatoria realista entre 10 y 20
+      const materiasFormateadas = materiasPensum.map((mat) => {
         const notaAleatoria = parseFloat((Math.random() * (20 - 10) + 10).toFixed(2));
         sumaNotas += notaAleatoria;
         return {
@@ -118,9 +114,8 @@ export async function seedDatabase() {
         };
       });
 
-      // Calcular promedio dinámico basado en las materias del pensum, o fallback aleatorio si estuviera vacío
-      const promedio = materiasFormateadas.length > 0 
-        ? (sumaNotas / materiasFormateadas.length).toFixed(2) 
+      const promedio = materiasFormateadas.length > 0
+        ? (sumaNotas / materiasFormateadas.length).toFixed(2)
         : (Math.random() * (20 - 10) + 10).toFixed(2);
 
       const materiasJsonString = JSON.stringify({
@@ -131,30 +126,51 @@ export async function seedDatabase() {
 
       const estatus = estatusPosibles[Math.floor(Math.random() * estatusPosibles.length)];
 
-      // 4. Definición y asignación dinámica de documentos según el tipo de beca seleccionada
-      let fotoCarnet = `/uploads/mock_foto_carnet_${i}.png`;
-      let copiaCedula = `/uploads/mock_cedula_${i}.png`;
-      let constanciaResidencia = (tipoBecaActual.includes("SOCIAL") || tipoBecaActual.includes("APRENDIZAJE") || tipoBecaActual.includes("DISCAPACIDAD")) ? `/uploads/mock_residencia_${i}.pdf` : null;
-      let declaracionManutencion = (tipoBecaActual.includes("SOCIAL") || tipoBecaActual.includes("APRENDIZAJE") || tipoBecaActual.includes("DISCAPACIDAD")) ? `/uploads/mock_manutencion_${i}.pdf` : null;
-      let informeMedico = tipoBecaActual.includes("DISCAPACIDAD") ? `/uploads/mock_informe_medico_${i}.pdf` : null;
-      let carnetDiscapacidad = tipoBecaActual.includes("DISCAPACIDAD") ? `/uploads/mock_carnet_disc_${i}.png` : null;
-      let documentosFiliacion = tipoBecaActual.includes("FAMILIAR") || tipoBecaActual.includes("HIJOS DE TRABAJADORES") ? `/uploads/mock_filiacion_${i}.pdf` : null;
-      let constanciaClub = tipoBecaActual.includes("EXTRACURRICULARES") ? `/uploads/mock_club_${i}.pdf` : null;
-      let constanciaNotas = (tipoBecaActual.includes("APRENDIZAJE") || tipoBecaActual.includes("EXCELENCIA")) ? `/uploads/mock_constancia_notas_${i}.pdf` : null;
-      let notasCertificadas = (semestreNum === 1 && (tipoBecaActual.includes("SOCIAL") || tipoBecaActual.includes("DISCAPACIDAD"))) ? `/uploads/mock_notas_certificadas_${i}.pdf` : null;
+      const fotoCarnet = `/uploads/mock_foto_carnet_${i}.png`;
+      const copiaCedula = `/uploads/mock_cedula_${i}.png`;
+      const constanciaResidencia =
+        tipoBecaActual === "BECA SOCIAL APRENDIZAJE" ||
+        tipoBecaActual === "BECA APRENDIZAJE" ||
+        tipoBecaActual === "BECA POR DISCAPACIDAD"
+          ? `/uploads/mock_residencia_${i}.pdf`
+          : null;
+      const declaracionManutencion = constanciaResidencia
+        ? `/uploads/mock_manutencion_${i}.pdf`
+        : null;
+      const informeMedico =
+        tipoBecaActual === "BECA POR DISCAPACIDAD" ? `/uploads/mock_informe_medico_${i}.pdf` : null;
+      const carnetDiscapacidad =
+        tipoBecaActual === "BECA POR DISCAPACIDAD" ? `/uploads/mock_carnet_disc_${i}.png` : null;
+      const documentosFiliacion =
+        tipoBecaActual === "AYUDA ECONÓMICA PARA ESTUDIANTES CON FAMILIARES" ||
+        tipoBecaActual === "AYUDA ECONÓMICA PARA HIJOS DE TRABAJADORES"
+          ? `/uploads/mock_filiacion_${i}.pdf`
+          : null;
+      const constanciaClub =
+        tipoBecaActual === "AYUDA ECONÓMICA POR ACTIVIDADES DEPORTIVAS, CULTURALES Y ORFEÓN"
+          ? `/uploads/mock_club_${i}.pdf`
+          : null;
+      const constanciaNotas =
+        tipoBecaActual === "BECA APRENDIZAJE" || tipoBecaActual === "BECA A LA EXCELENCIA ACADÉMICA"
+          ? `/uploads/mock_constancia_notas_${i}.pdf`
+          : null;
+      const notasCertificadas =
+        semestreNum === 1 &&
+        (tipoBecaActual === "BECA SOCIAL APRENDIZAJE" || tipoBecaActual === "BECA POR DISCAPACIDAD")
+          ? `/uploads/mock_notas_certificadas_${i}.pdf`
+          : null;
 
-      // 5. Insertar en tabla SOLICITUDES (incluyendo materias_json y documentos)[cite: 2]
-      await connection.execute(
+      await connection.execute<ResultSetHeader>(
         `INSERT INTO solicitudes (
            user_id, periodo_id, email_institucional, tipo_beca, promedio_notas, motivo_solicitud, materias_json, estatus,
            foto_carnet, copia_cedula, constancia_residencia, declaracion_manutencion, informe_medico,
            constancia_club, constancia_notas, notas_certificadas, carnet_discapacidad, documentos_filiacion
          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
-          userId, 
-          periodoId, 
-          email, 
-          tipoBecaActual, 
+          userId,
+          periodoId,
+          email,
+          tipoBecaActual,
           promedio,
           "Solicitud generada automáticamente para pruebas de carga y rendimiento del sistema.",
           materiasJsonString,
@@ -172,8 +188,7 @@ export async function seedDatabase() {
         ]
       );
 
-      // 6. Insertar en tabla ESTUDIOS_SOCIOECONOMICOS con todos los campos requeridos por el esquema[cite: 2]
-      await connection.execute(
+      await connection.execute<ResultSetHeader>(
         `INSERT INTO estudios_socioeconomicos (
            student_id, periodo_id, tipo, socio_lugar_nac, socio_nacionalidad, socio_estado_civil,
            socio_telf_hab, direccion_completa, socio_trabajo_empresa, socio_trabajo_cargo,
@@ -192,63 +207,64 @@ export async function seedDatabase() {
     }
 
     await connection.commit();
-    return { success: true, message: `100 estudiantes con datos demográficos completos, solicitudes y estudios socioeconómicos creados exitosamente en el periodo actual (ID: ${periodoId}).` };
-
-  } catch (error: any) {
+    return {
+      success: true,
+      message: `100 estudiantes con modalidades oficiales UNIMAR 2023 creados exitosamente en el periodo actual (ID: ${periodoId}).`
+    };
+  } catch (error: unknown) {
     await connection.rollback();
+    const message = error instanceof Error ? error.message : "Error desconocido en Seeding.";
     console.error("❌ Error en Seeding:", error);
-    return { success: false, error: error.message };
+    return { success: false, error: message };
   } finally {
     connection.release();
   }
 }
 
 /**
- * 🧹 LIMPIEZA DE DATOS: Borra los estudiantes, estudios socioeconómicos y solicitudes de prueba.
- * Excluye explícitamente los IDs 10 y 12 para proteger registros manuales.
+ * LIMPIEZA DE DATOS: Borra los estudiantes, estudios socioeconómicos y solicitudes de prueba.
  */
-export async function cleanSeedData() {
+export async function cleanSeedData(): Promise<{ success: boolean; message?: string; error?: string }> {
   const connection = await db.getConnection();
-  
+
   try {
     await connection.beginTransaction();
 
-    console.log("⏳ Iniciando limpieza de datos de prueba...");
-
-    // 1. Identificar IDs de usuarios de prueba (test_user%) excluyendo IDs manuales (10 y 12)
-    const [rows]: any = await connection.execute(
+    const [rows] = await connection.execute<UserIdSeedRow[]>(
       `SELECT id FROM users 
        WHERE email LIKE 'test_user%' 
        AND id NOT IN (10, 12)`
     );
 
-    const idsToDelete = rows.map((r: any) => r.id);
+    const idsToDelete = rows.map((r) => r.id);
 
     if (idsToDelete.length === 0) {
+      await connection.commit();
       return { success: true, message: "No se encontraron registros de prueba para eliminar." };
     }
 
     const placeholders = idsToDelete.map(() => '?').join(',');
 
-    // 2. Borrar primero los estudios socioeconómicos asociados estrictamente a estos IDs de prueba
-    await connection.execute(
+    await connection.execute<ResultSetHeader>(
       `DELETE FROM estudios_socioeconomicos WHERE student_id IN (${placeholders})`,
       idsToDelete
     );
 
-    // 3. Borrar de la tabla USERS (por cascada eliminará students y solicitudes de prueba)
-    await connection.execute(
+    await connection.execute<ResultSetHeader>(
       `DELETE FROM users WHERE id IN (${placeholders})`,
       idsToDelete
     );
 
     await connection.commit();
-    return { success: true, message: `${idsToDelete.length} registros de prueba y sus estudios socioeconómicos fueron eliminados correctamente (IDs 10 y 12 protegidos).` };
-
-  } catch (error: any) {
+    return {
+      success: true,
+      message: `${idsToDelete.length} registros de prueba y sus estudios socioeconómicos fueron eliminados correctamente.`
+    };
+  } catch (error: unknown) {
     await connection.rollback();
+    const message = error instanceof Error ? error.message : "Error desconocido en Limpieza.";
     console.error("❌ Error en Limpieza:", error);
-    return { success: false, error: error.message };
+    return { success: false, error: message };
   } finally {
     connection.release();
   }

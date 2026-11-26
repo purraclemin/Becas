@@ -27,20 +27,31 @@ interface AcademicViewProps {
   dataHistorial: HistorialAcademicoData | null;
   loadingHistorial: boolean;
   onClose: () => void;
+  backLabel?: string;
 }
 
-export function ValidarBecaViewAcademic({ selectedSolicitud, dataHistorial, loadingHistorial, onClose }: AcademicViewProps) {
+export function ValidarBecaViewAcademic({
+  selectedSolicitud,
+  dataHistorial,
+  loadingHistorial,
+  onClose,
+  backLabel = "Cerrar Expediente"
+}: AcademicViewProps) {
   return (
     <div className="animate-in fade-in duration-500 max-w-7xl mx-auto px-4 py-8">
       <div className="mb-8 flex items-center justify-between bg-white p-5 rounded-[2rem] border border-slate-200 shadow-sm">
-        <button onClick={onClose} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-[#1a2744] transition-all group">
-          <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" /> Cerrar Expediente
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-[#1a2744] transition-all group cursor-pointer"
+        >
+          <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" /> {backLabel}
         </button>
         <div className="flex items-center gap-3">
-           <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
-           <span className="text-[10px] font-black uppercase tracking-widest text-[#1a2744]">
-             Expediente Académico: {selectedSolicitud?.nombre || ""} {selectedSolicitud?.apellido || ""}
-           </span>
+          <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+          <span className="text-[10px] font-black uppercase tracking-widest text-[#1a2744]">
+            Expediente Académico: {selectedSolicitud?.nombre || ""} {selectedSolicitud?.apellido || ""}
+          </span>
         </div>
       </div>
       {loadingHistorial ? (
@@ -49,9 +60,9 @@ export function ValidarBecaViewAcademic({ selectedSolicitud, dataHistorial, load
           <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Consultando MariaDB...</p>
         </div>
       ) : dataHistorial && Array.isArray(dataHistorial.data) && dataHistorial.data.length > 0 ? (
-        <StudentAcademicHistory 
-          historial={dataHistorial.data} 
-          stats={dataHistorial.stats || { promedioHistorico: "0.00", totalPeriodos: 0, totalMaterias: 0 }} 
+        <StudentAcademicHistory
+          historial={dataHistorial.data}
+          stats={dataHistorial.stats || { promedioHistorico: "0.00", totalPeriodos: 0, totalMaterias: 0 }}
         />
       ) : (
         <div className="text-center py-24 bg-white rounded-[2rem] border border-slate-200 shadow-sm">

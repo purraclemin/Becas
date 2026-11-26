@@ -89,15 +89,8 @@ export default function AdminDashboard() {
       <div className="flex justify-start">
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 animate-in fade-in slide-in-from-bottom-2 duration-500 w-full">
           <StatCard label="Total" value={total} icon={FileText} color="bg-[#1e3a5f]" onClick={() => irAStatus('Todas')} />
-          
-          <StatCard 
-            label="Renovación" 
-            value={cantRenovaciones} 
-            icon={RefreshCw} 
-            color="bg-indigo-600" 
-            onClick={() => irAStatus('Renovación')} 
-          />
-
+         
+          <StatCard label="Pendientes" value={cantPendientes} icon={Clock} color="bg-[#d4a843]" onClick={() => irAStatus('Pendiente')} />
           <StatCard 
             label="Convocado a entrevista" 
             value={cantRevisionEspecial} 
@@ -106,7 +99,7 @@ export default function AdminDashboard() {
             onClick={() => irAStatus('Convocado a entrevista')} 
           />
 
-          <StatCard label="Pendientes" value={cantPendientes} icon={Clock} color="bg-[#d4a843]" onClick={() => irAStatus('Pendiente')} />
+         
           <StatCard label="En Revisión" value={cantEnRevision} icon={Clock} color="bg-blue-600" onClick={() => irAStatus('En Revisión')} />
           <StatCard label="Aprobadas" value={cantAprobadas} icon={CheckCircle2} color="bg-emerald-600" onClick={() => irAStatus('Aprobada')} />
           <StatCard label="Rechazadas" value={cantRechazadas} icon={XCircle} color="bg-rose-600" onClick={() => irAStatus('Rechazada')} />

@@ -2,6 +2,7 @@
 
 import React from "react"
 import { ArrowDown10, MapPin, GraduationCap, Hash, History, TrendingDown } from "lucide-react"
+import { MODALIDADES_BECA_OFICIALES } from "@/lib/RecordAcademicoUtils"
 
 interface OpcionesFiltrosProps {
   filters: {
@@ -63,11 +64,10 @@ export function OpcionesFiltros({
               >
                 <option value="">Todos</option>
                 <option value="Pendiente">Pendiente</option>
-                <option value="En Revisión">Revisión</option>
                 <option value="Convocado a Entrevista">Convocado a Entrevista</option>
-                <option value="Renovacion">Renovacion</option>
-                <option value="Aprobada">Aprobada</option>
-                <option value="Rechazada">Rechazada</option>
+                <option value="En Revisión">En Revisión</option>
+                <option value="Aprobada">Aprobada (Periodo Actual)</option>
+                <option value="Rechazada">Rechazada (Periodo Actual)</option>
               </select>
             )}
             <ArrowDown10 className={iconClass} />
@@ -127,7 +127,7 @@ export function OpcionesFiltros({
           </div>
         </div>
 
-        {/* Tipo de Beca */}
+        {/* Tipo de Beca (10 Denominaciones Oficiales UNIMAR 2023) */}
         <div className="flex flex-col gap-1">
           <div className="flex items-center justify-between gap-1">
             <label htmlFor="filtro-tipoBeca" className={labelClass}>Tipo de Beca</label>
@@ -138,18 +138,19 @@ export function OpcionesFiltros({
             )}
           </div>
           <div className="relative">
-            <select id="filtro-tipoBeca" name="tipoBeca" value={filters.tipoBeca} onChange={handleInputChange} className={`${selectClass} ${filters.es_renovacion === 'true' ? activeFilterClass : ''}`}>
+            <select
+              id="filtro-tipoBeca"
+              name="tipoBeca"
+              value={filters.tipoBeca}
+              onChange={handleInputChange}
+              className={`${selectClass} ${filters.es_renovacion === 'true' ? activeFilterClass : ''}`}
+            >
               <option value="">Todos</option>
-              <option value="BECA SOCIAL">BECA SOCIAL</option>
-              <option value="BECA APRENDIZAJE">BECA APRENDIZAJE</option>
-              <option value="BECA POR DISCAPACIDAD">BECA POR DISCAPACIDAD</option>
-              <option value="BECA A LA EXCELENCIA">BECA A LA EXCELENCIA</option>
-              <option value="AYUDA ECONÓMICA GENERAL">AYUDA ECONÓMICA GENERAL</option>
-              <option value="AYUDA ECONÓMICA FAMILIAR BECAS">AYUDA ECONÓMICA FAMILIAR</option>
-              <option value="AYUDA ECONÓMICA PARA TRABAJADORES">AYUDA ECONÓMICA PARA TRABAJADORES</option>
-              <option value="AYUDA ECONÓMICA PARA HIJOS DE TRABAJADORES">AYUDA ECONÓMICA PARA HIJOS DE TRABAJADORES</option>
-              <option value="AYUDA ECONÓMICA PARA ESTUDIANTES PREPARADORESL">AYUDA ECONÓMICA PARA ESTUDIANTES PREPARADORES</option>
-              <option value="AYUDA ECONÓMICA POR ACTIVIDADES EXTRACURRICULARES">AYUDA ECONÓMICA POR ACTIVIDADES EXTRACURRICULARES</option>
+              {MODALIDADES_BECA_OFICIALES.map((modalidad) => (
+                <option key={modalidad} value={modalidad}>
+                  {modalidad}
+                </option>
+              ))}
             </select>
           </div>
         </div>

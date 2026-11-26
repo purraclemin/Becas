@@ -17,9 +17,17 @@ interface SnapshotSolicitudRow extends RowDataPacket {
   nivel_riesgo: string | null;
 }
 
+interface SolicitudExistenteRow extends RowDataPacket {
+  id: number;
+}
+
 /**
  * Registra cada cambio de estatus en el historial, capturando una "fotografía" académica.
- * Sincronizado para persistir de forma transaccional observaciones_admin y departamento_asignado.
+ * Permite gestionar y dictaminar solicitudes provenientes de periodos anteriores:
+ * - Toma siempre el último baremo administrativo del estudiante.
+ * - Si la solicitud venía en cola de un periodo previo y no existe otra solicitud del mismo
+ *   estudiante en el periodo vigente, la sincroniza al periodo vigente para que consuma
+ *   correctamente el cupo actual.
  */
 export async function registrarDecisionEnHistorial(
   solicitudId: number,
@@ -28,14 +36,15 @@ export async function registrarDecisionEnHistorial(
   observaciones: string | null,
   ip: string = '127.0.0.1',
   estatusPrevioForzado?: string,
-  departamentoAsignado?: string
+  departamentoAsignado?: string,
+  periodoActualId?: number
 ): Promise<{ success: boolean; token: string }> {
   let connection;
   try {
     connection = await db.getConnection();
     await connection.beginTransaction();
 
-    // 1. OBTENER SNAPSHOT ACADÉMICO COMPLETO (acotado al periodo de la solicitud)
+    // 1. OBTENER SNAPSHOT ACADÉMICO COMPLETO (con el estudio administrativo más reciente del estudiante)
     const [dataRows] = await connection.execute<SnapshotSolicitudRow[]>(
       `
       SELECT 
@@ -52,9 +61,12 @@ export async function registrarDecisionEnHistorial(
       FROM solicitudes s
       JOIN students st ON s.user_id = st.id
       LEFT JOIN estudios_socioeconomicos e 
-        ON st.id = e.student_id 
-        AND e.tipo = 'administrador' 
-        AND e.periodo_id = s.periodo_id
+        ON e.id = (
+          SELECT MAX(e_max.id)
+          FROM estudios_socioeconomicos e_max
+          WHERE e_max.student_id = st.id
+            AND e_max.tipo = 'administrador'
+        )
       WHERE s.id = ?
       LIMIT 1
       `,
@@ -75,7 +87,35 @@ export async function registrarDecisionEnHistorial(
         ? snapshot.materias_json
         : JSON.stringify(snapshot.materias_json || []);
 
-    // 2. INSERTAR EN HISTORIAL
+    // 2. DETERMINAR PERIODO EFECTIVO (promover solicitud en cola al periodo vigente si no colisiona)
+    let periodoEfectivo = Number(snapshot.periodo_id);
+    let promoverAPeriodoActual = false;
+
+    if (
+      periodoActualId &&
+      Number(periodoActualId) > 0 &&
+      Number(snapshot.periodo_id) !== Number(periodoActualId) &&
+      estatusPrevioReal !== 'Aprobada'
+    ) {
+      const [otraEnPeriodoActual] = await connection.execute<SolicitudExistenteRow[]>(
+        `
+        SELECT id
+        FROM solicitudes
+        WHERE user_id = ?
+          AND periodo_id = ?
+          AND id != ?
+        LIMIT 1
+        `,
+        [snapshot.estudiante_id, Number(periodoActualId), Number(solicitudId)]
+      );
+
+      if (otraEnPeriodoActual.length === 0) {
+        periodoEfectivo = Number(periodoActualId);
+        promoverAPeriodoActual = true;
+      }
+    }
+
+    // 3. INSERTAR EN HISTORIAL
     await connection.execute<ResultSetHeader>(
       `
       INSERT INTO historial_aprobaciones (
@@ -101,7 +141,7 @@ export async function registrarDecisionEnHistorial(
       [
         Number(solicitudId),
         snapshot.estudiante_id,
-        snapshot.periodo_id,
+        periodoEfectivo,
         responsableReal,
         snapshot.promedio_notas,
         snapshot.semestre,
@@ -118,12 +158,11 @@ export async function registrarDecisionEnHistorial(
       ]
     );
 
-    // 3. LÓGICA DE NEGOCIO PARA EL DEPARTAMENTO ASIGNADO:
-    // Si el estatus es Aprobada o Convocado a Entrevista, guardamos el departamento. Si no, se limpia a NULL.
+    // 4. LÓGICA DE NEGOCIO PARA EL DEPARTAMENTO ASIGNADO:
     const debeGuardarDept = ['Aprobada', 'Convocado a Entrevista'].includes(nuevoEstatus);
     const deptFinal = debeGuardarDept ? (departamentoAsignado || null) : null;
 
-    // 4. ACTUALIZAR ESTATUS, OBSERVACIONES Y DEPARTAMENTO EN TABLA SOLICITUDES
+    // 5. ACTUALIZAR ESTATUS, OBSERVACIONES, DEPARTAMENTO Y PERIODO EFECTIVO EN TABLA SOLICITUDES
     let updateSolicitud =
       'UPDATE solicitudes SET estatus = ?, revisado_por = ?, observaciones_admin = ?, departamento_asignado = ?';
     const paramsSolicitud: Array<string | number | null> = [
@@ -132,6 +171,11 @@ export async function registrarDecisionEnHistorial(
       observacionesLimpias,
       deptFinal,
     ];
+
+    if (promoverAPeriodoActual) {
+      updateSolicitud += ', periodo_id = ?';
+      paramsSolicitud.push(periodoEfectivo);
+    }
 
     if (nuevoEstatus === 'Aprobada' || nuevoEstatus === 'Rechazada') {
       updateSolicitud += ', fecha_decision = NOW()';
@@ -144,10 +188,15 @@ export async function registrarDecisionEnHistorial(
 
     await connection.execute<ResultSetHeader>(updateSolicitud, paramsSolicitud);
 
-    // 5. ACTUALIZAR PROGRESIÓN ACADÉMICA (Hito de Beca)
+    // 6. ACTUALIZAR PROGRESIÓN ACADÉMICA Y BLOQUEO PERMANENTE POR RECHAZO
     if (nuevoEstatus === 'Aprobada') {
       await connection.execute<ResultSetHeader>(
         'UPDATE students SET ha_tenido_beca = 1 WHERE id = ?',
+        [snapshot.estudiante_id]
+      );
+    } else if (nuevoEstatus === 'Rechazada') {
+      await connection.execute<ResultSetHeader>(
+        'UPDATE students SET beca_perdida = 1 WHERE id = ?',
         [snapshot.estudiante_id]
       );
     }

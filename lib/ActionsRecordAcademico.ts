@@ -9,6 +9,7 @@ import {
   construirUltimoTrimestreSnapshot,
   evaluarElegibilidadAcademica,
   generarNotasAleatoriasPorPerfil,
+  obtenerPromedioMinimoPorTipoBeca,
   type IExpedienteAcademicoOficial,
   type IMateriaPensumBase,
   type IRegistroRecordAcademico,
@@ -392,12 +393,14 @@ export async function asegurarDatosSocioeconomicosSimulados(
 /**
  * Sincroniza de forma idempotente el récord académico oficial del estudiante:
  * - Semestre 1: queda habilitado sin materias precargadas.
- * - Semestre > 1: genera y persiste una sola vez las notas aleatorias de los
- *   trimestres cursados (1 hasta semestre - 1) y sincroniza students.indice_global.
+ * - Semestre > 1: genera y persiste automáticamente las notas faltantes de los
+ *   trimestres cursados (1 hasta semestre - 1), mantiene students.indice_global
+ *   fiel al acumulado real y expone por separado promedioUltimoTrimestre.
  */
 export async function sincronizarYObtenerRecordAcademico(
   studentIdInput: number | string,
-  perfilForzado?: PerfilAcademicoAleatorio
+  perfilForzado?: PerfilAcademicoAleatorio,
+  tipoBecaObjetivo?: string | null
 ): Promise<IResultadoRecordAcademico> {
   noStore();
   const studentId = Number(studentIdInput);
@@ -413,7 +416,6 @@ export async function sincronizarYObtenerRecordAcademico(
   try {
     await asegurarDatosSocioeconomicosSimulados(studentId);
 
-    // 1. Obtener ficha del estudiante y cruzar su carrera de forma insensible a mayúsculas
     const studentRows = await queryFresh<StudentCarreraRow[]>(
       `
         SELECT
@@ -443,10 +445,18 @@ export async function sincronizarYObtenerRecordAcademico(
     const semestreActual = Number(student.semestre);
     const carreraId = Number(student.carrera_id);
     const indiceGuardado = Number(student.indice_global);
+    const promedioMinimoObjetivo = obtenerPromedioMinimoPorTipoBeca(
+      tipoBecaObjetivo,
+      "ingreso",
+      semestreActual
+    );
 
-    // 2. Regla de 1er Trimestre (nuevo ingreso): habilitado sin materias precargadas
     if (semestreActual <= 1) {
-      const evaluacion = evaluarElegibilidadAcademica(semestreActual, []);
+      const evaluacion = evaluarElegibilidadAcademica(
+        semestreActual,
+        [],
+        tipoBecaObjetivo
+      );
       return {
         success: true,
         data: {
@@ -454,6 +464,8 @@ export async function sincronizarYObtenerRecordAcademico(
           carrera: String(student.carrera),
           semestreActual,
           indiceGlobal: 0,
+          promedioUltimoTrimestre: 0,
+          trimestreUltimoCursado: 0,
           recienGenerado: false,
           evaluacion,
           recordCompleto: [],
@@ -463,11 +475,9 @@ export async function sincronizarYObtenerRecordAcademico(
       };
     }
 
-    // 3. Consultar materias ya persistidas en record_academico
     let recordCompleto = await consultarRecordPersistido(studentId);
     let recienGenerado = false;
 
-    // 4. Obtener pensum cursado (< semestreActual) deduplicado con GROUP BY estricto
     if (carreraId > 0) {
       const pensumRows = await queryFresh<PensumMateriaRow[]>(
         `
@@ -509,11 +519,11 @@ export async function sincronizarYObtenerRecordAcademico(
           unidades_credito: Number(p.unidades_credito),
         }));
 
-      // 5. Generar e insertar notas aleatorias solo para materias aún no persistidas
       if (materiasFaltantes.length > 0) {
         const materiasGeneradas = generarNotasAleatoriasPorPerfil(
           materiasFaltantes,
-          perfilForzado
+          perfilForzado,
+          promedioMinimoObjetivo
         );
 
         const placeholders: string[] = [];
@@ -554,10 +564,10 @@ export async function sincronizarYObtenerRecordAcademico(
       }
     }
 
-    // 6. Evaluar elegibilidad reglamentaria y sincronizar students.indice_global
     const evaluacion = evaluarElegibilidadAcademica(
       semestreActual,
-      recordCompleto
+      recordCompleto,
+      tipoBecaObjetivo
     );
 
     if (
@@ -587,6 +597,8 @@ export async function sincronizarYObtenerRecordAcademico(
         carrera: String(student.carrera),
         semestreActual,
         indiceGlobal: evaluacion.promedioGlobal,
+        promedioUltimoTrimestre: evaluacion.promedioTrimestreAnterior,
+        trimestreUltimoCursado: evaluacion.trimestreAuditado,
         recienGenerado,
         evaluacion,
         recordCompleto,
@@ -604,20 +616,12 @@ export async function sincronizarYObtenerRecordAcademico(
   }
 }
 
-/**
- * Obtiene el expediente sincronizado del estudiante para el flujo de postulación
- * (materias del último trimestre cursado y evaluación completa de toda la carrera).
- */
 export async function obtenerRecordParaPostulacion(
   studentIdInput: number | string
 ): Promise<IResultadoRecordAcademico> {
   return await sincronizarYObtenerRecordAcademico(studentIdInput);
 }
 
-/**
- * Utilidad opcional de soporte/pruebas para regenerar el récord de un estudiante
- * con un perfil específico (APTO, PROMEDIO_BAJO o CON_REPROBADA).
- */
 export async function regenerarRecordAcademicoConPerfil(
   studentIdInput: number | string,
   perfil: PerfilAcademicoAleatorio

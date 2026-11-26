@@ -1,4 +1,4 @@
-import { ArrowRight } from "lucide-react"
+import { ArrowRight, ShieldCheck } from "lucide-react"
 import Link from "next/link"
 import { BECAS_DATA } from "@/lib/scholarships-data"
 
@@ -8,7 +8,7 @@ export function ScholarshipsSection() {
   return (
     <section id="becas" className="bg-[#f8fafc] py-6 sm:py-8 w-full">
       <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 xl:px-10">
-        
+
         {/* Encabezado Principal */}
         <div className="mb-6 flex flex-col md:flex-row md:items-end md:justify-between border-b border-slate-200 pb-3">
           <div>
@@ -19,15 +19,15 @@ export function ScholarshipsSection() {
               Modalidades Principales de Becas
             </h2>
           </div>
-          <Link 
-            href="/becas" 
+          <Link
+            href="/becas"
             className="mt-3 md:mt-0 inline-flex items-center gap-1.5 text-sm font-semibold text-[#1e3a5f] transition-colors hover:text-[#d4a843]"
           >
             Ver todas las modalidades y ayudas <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
 
-        {/* Grid de 4 Becas Principales (Tarjetas compactas) */}
+        {/* Grid de 4 Becas Principales */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {featuredBecas.map((beca) => {
             const Icon = beca.icon
@@ -37,11 +37,11 @@ export function ScholarshipsSection() {
                 className="group relative flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#1e3a5f]/20 hover:shadow-lg"
               >
                 <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#1e3a5f]/5 text-[#1e3a5f] transition-colors group-hover:bg-[#1e3a5f] group-hover:text-white">
+                  <div className="flex items-center justify-between mb-3 gap-2">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#1e3a5f]/5 text-[#1e3a5f] transition-colors group-hover:bg-[#1e3a5f] group-hover:text-white shrink-0">
                       <Icon className="h-5 w-5" />
                     </div>
-                    <span className="rounded-full bg-[#d4a843]/15 px-2.5 py-0.5 text-[11px] font-bold text-[#1e3a5f]">
+                    <span className="rounded-full bg-[#d4a843]/15 px-2.5 py-0.5 text-[10px] font-bold text-[#1e3a5f] text-right">
                       {beca.badge}
                     </span>
                   </div>
@@ -49,19 +49,29 @@ export function ScholarshipsSection() {
                   <h3 className="text-base font-bold text-[#1e3a5f] font-serif mb-1.5 leading-snug">
                     {beca.title}
                   </h3>
-                  
+
                   <p className="text-xs leading-relaxed text-slate-600 font-normal line-clamp-3">
                     {beca.description}
                   </p>
                 </div>
 
                 <div className="mt-4 pt-3 border-t border-slate-100">
-                  <Link
-                    href="/postulacion"
-                    className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-[#1e3a5f] transition-colors group-hover:text-[#d4a843]"
-                  >
-                    Postularme <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-1" />
-                  </Link>
+                  {beca.postulable ? (
+                    <Link
+                      href="/postulacion"
+                      className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-[#1e3a5f] transition-colors group-hover:text-[#d4a843]"
+                    >
+                      Postularme <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-1" />
+                    </Link>
+                  ) : (
+                    <Link
+                      href="/becas"
+                      className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500 transition-colors group-hover:text-[#1e3a5f]"
+                    >
+                      <ShieldCheck className="h-3.5 w-3.5 text-[#d4a843]" />
+                      {beca.ctaLabel}
+                    </Link>
+                  )}
                 </div>
               </div>
             )

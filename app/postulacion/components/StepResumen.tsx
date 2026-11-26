@@ -74,11 +74,13 @@ const contarIntegrantesNucleo = (jsonStr: string | undefined): number => {
 export function StepResumen({
   user,
   promedio,
+  indiceGlobal,
   trimestre,
   tipoBeca
 }: {
   user: PostulacionUser;
   promedio: string;
+  indiceGlobal?: string;
   trimestre: string;
   tipoBeca?: string;
 }) {
@@ -136,9 +138,21 @@ export function StepResumen({
     user?.salud_condicion_especial === "Si" ||
     (!!user?.salud_enfermedad_desc && user.salud_enfermedad_desc.trim().toUpperCase() !== "NO");
 
+  const semestreNum = Number(user?.semestre ?? trimestre ?? 1) || 1;
+  const esNuevoIngreso = semestreNum <= 1;
   const trimestreVisual = user?.semestre
     ? `N° ${user.semestre}`
     : (trimestre ? `N° ${trimestre}` : "—");
+
+  const promedioTrimVal = parseFloat(promedio || "0");
+  const promedioTrimDisplay = esNuevoIngreso
+    ? "Nuevo Ingreso"
+    : (Number.isFinite(promedioTrimVal) ? promedioTrimVal.toFixed(2) : "0.00");
+
+  const globalVal = parseFloat(indiceGlobal || String(user?.indice_global ?? "0"));
+  const indiceGlobalDisplay = esNuevoIngreso
+    ? "Nuevo Ingreso"
+    : (Number.isFinite(globalVal) ? globalVal.toFixed(2) : "0.00");
 
   const totalIntegrantes = useMemo(
     () => contarIntegrantesNucleo(user?.familia_nucleo_json),
@@ -159,7 +173,13 @@ export function StepResumen({
       items: [
         { label: "Trimestre", value: trimestreVisual },
         { label: "Tipo de Beca", value: tipoBeca || user?.tipo_beca || "No especificada", highlight: true },
-        { label: "Índice Global", value: promedio || "0.00", highlight: true },
+        {
+          label: "Prom. Trim. Anterior",
+          value: promedioTrimDisplay,
+          highlight: true,
+          tone: !esNuevoIngreso && promedioTrimVal < 16 ? "danger" : "success"
+        },
+        { label: "Índice Global", value: indiceGlobalDisplay },
         { label: "Carrera", value: user?.carrera || "No especificada" },
         { label: "Modalidad", value: formatearModalidad(user?.socio_modalidad) },
       ]
@@ -235,8 +255,6 @@ export function StepResumen({
 
   return (
     <div className="flex flex-col gap-2.5 animate-in fade-in duration-500 pb-12 lg:pb-0">
-
-      {/* Banner de Verificación Compacto */}
       <div className="bg-white p-3 lg:p-2.5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3 shrink-0">
         <div className="h-9 w-9 lg:h-8 lg:w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0 border border-emerald-200">
           <CheckCircle2 className="h-4 w-4 text-emerald-600" />
@@ -251,7 +269,6 @@ export function StepResumen({
         </div>
       </div>
 
-      {/* Grid de Auditoría */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 lg:gap-2">
         {secciones.map((sec) => (
           <div key={sec.titulo} className={cn("p-3 lg:p-2.5 rounded-xl border border-slate-200 flex flex-col gap-2 shadow-sm", sec.bg)}>
@@ -285,7 +302,6 @@ export function StepResumen({
           </div>
         ))}
 
-        {/* Justificación y Observaciones */}
         <div className="col-span-full grid grid-cols-1 md:grid-cols-2 gap-2">
           <div className="bg-white p-3 lg:p-2.5 rounded-xl border border-slate-200 shadow-sm space-y-1.5">
             <div className="flex items-center gap-1.5">
@@ -315,7 +331,6 @@ export function StepResumen({
         </div>
       </div>
 
-      {/* Footer Compacto */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 shrink-0">
         <div className="p-3 lg:p-2.5 rounded-xl border border-slate-200 bg-white flex items-center gap-2.5 shadow-sm">
           <FileCheck className="h-4 w-4 text-emerald-500 shrink-0" />

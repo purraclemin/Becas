@@ -3,6 +3,7 @@ import { getSession } from "@/lib/ActionsSession"
 import { getStudentAcademicStatus } from "@/lib/ActionsStudent"
 import { getStudentHistory } from "@/lib/ActionsHistoryMaterias"
 import { sincronizarYObtenerRecordAcademico } from "@/lib/ActionsRecordAcademico"
+import { evaluarYRenovarEstudianteEnCambioPeriodo } from "@/lib/ActionsRenovacion"
 import { Button } from "@/components/ui/button"
 import { AlertCircle, ArrowLeft, LayoutDashboard, History, CalendarDays, MessageSquareText } from "lucide-react"
 import { ProfileIdentity } from "./components/ProfileIdentity"
@@ -14,7 +15,7 @@ import { HistoryTimeline } from "./components/HistoryTimeline"
 import { AlertaConvocatoria } from "./components/AlertaConvocatoria"
 import type { IEvaluacionAcademica } from "@/lib/RecordAcademicoUtils"
 
-// CRÍTICO: Fuerza a Next.js a no cachear esta página para ver cambios de estatus e instrucciones al instante
+// CRÍTICO: Fuerza a Next.js a no cachear esta página para ver cambios de periodo y estatus al instante
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
@@ -24,12 +25,14 @@ interface PerfilSession {
   id?: number | string;
   nombre?: string;
   email?: string;
+  becaPerdida?: boolean;
   observacionesAdmin?: string | null;
   [key: string]: unknown;
 }
 
 interface PerfilStatusData {
   estatus?: string;
+  becaPerdida?: boolean;
   observacionesAdmin?: string | null;
   materias?: unknown;
   periodoActual?: string;
@@ -70,8 +73,9 @@ export default async function PerfilPage(props: { searchParams: Promise<{ view?:
 
   const studentIdNum = Number(sessionUser.id ?? 0);
 
-  // Sincronización única previa para evitar condiciones de carrera / deadlocks en record_academico
+  // 1. Transición automática de periodo + sincronización única previa al Promise.all
   if (sessionUser.role === 'estudiante' && Number.isInteger(studentIdNum) && studentIdNum > 0) {
+    await evaluarYRenovarEstudianteEnCambioPeriodo(studentIdNum);
     await sincronizarYObtenerRecordAcademico(studentIdNum);
   }
 
@@ -83,11 +87,13 @@ export default async function PerfilPage(props: { searchParams: Promise<{ view?:
   const statusData = statusDataRaw as PerfilStatusData;
   const currentView = searchParams.view || 'status';
 
+  const becaPerdidaFinal = Boolean(statusData.becaPerdida || sessionUser.becaPerdida);
   const observacionesAdminFinal =
     statusData.observacionesAdmin ?? sessionUser.observacionesAdmin ?? null;
 
   const academicStatus = {
-    estatus: statusData.estatus || 'ninguna',
+    estatus: becaPerdidaFinal ? 'Rechazada' : (statusData.estatus || 'ninguna'),
+    becaPerdida: becaPerdidaFinal,
     observacionesAdmin: observacionesAdminFinal,
     materias: statusData.materias,
     periodoActual: statusData.periodoActual || "Sin Periodo Activo",
@@ -184,7 +190,9 @@ export default async function PerfilPage(props: { searchParams: Promise<{ view?:
             <ProfileStatus
               estatus={user.estatus}
               materias={user.materias}
+              motivoRechazo={user.estatus === 'Rechazada' ? (user.observacionesAdmin ?? undefined) : undefined}
               observacionesAdmin={user.observacionesAdmin}
+              becaPerdida={user.becaPerdida}
             />
           </div>
 
@@ -211,25 +219,13 @@ export default async function PerfilPage(props: { searchParams: Promise<{ view?:
 
             {currentView === 'status' ? (
               <div className="space-y-6 animate-in fade-in duration-500">
-                {tieneRestriccionAcademica && evaluacion?.motivoRechazo && (
-                  <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-start gap-3 shadow-sm">
-                    <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-                    <div className="space-y-1">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-amber-800">
-                        Aviso de Condición Académica
-                      </p>
-                      <p className="text-xs font-medium text-amber-900 leading-relaxed">
-                        {evaluacion.motivoRechazo}
-                      </p>
-                    </div>
-                  </div>
-                )}
+                
 
                 {esUltimoTrimestre && <FinalistBanner />}
 
-                {user.estatus === 'ninguna' && <ActionBanner />}
+                {!user.becaPerdida && user.estatus === 'ninguna' && <ActionBanner />}
 
-                {user.estatus === 'Renovacion' && (
+                {!user.becaPerdida && user.estatus === 'Renovacion' && (
                   <RenovationBanner
                     materias={user.materias as unknown[]}
                     materiasSugeridas={statusData.materiasSugeridas}

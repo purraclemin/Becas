@@ -1,15 +1,49 @@
 "use client"
 
 import React from "react"
-import Link from "next/link" // Importamos Link para la navegación
-import { 
-  FileSpreadsheet, CalendarDays, CheckCircle2, XCircle, 
-  UserCog, History, GraduationCap, Award 
+import Link from "next/link"
+import {
+  FileSpreadsheet,
+  CalendarDays,
+  CheckCircle2,
+  XCircle,
+  UserCog,
+  History,
+  GraduationCap,
+  Award,
+  FileSearch,
+  Building2,
+  type LucideIcon
 } from "lucide-react"
 
 import { PageHeader } from "@/components/admin/PageHeader"
 
-const reportes = [
+interface ReporteCardConfig {
+  titulo: string
+  descripcion: string
+  icon: LucideIcon
+  color: string
+  link: string
+  badge?: string
+}
+
+const reportes: ReadonlyArray<ReporteCardConfig> = [
+  {
+    titulo: "Expedientes En Revisión",
+    descripcion: "Listado con ambos baremos (Estudiante/Admin), PDF, Excel y envío directo a Secretaría General.",
+    icon: FileSearch,
+    color: "bg-[#1e3a5f]",
+    link: "/admin/reportes/en-revision",
+    badge: "Secretaría Gral."
+  },
+  {
+    titulo: "Becarios por Departamento",
+    descripcion: "Distribución desplegable de beneficiarios asignados por cada dependencia universitaria.",
+    icon: Building2,
+    color: "bg-[#d4a843]",
+    link: "/admin/reportes/departamentos",
+    badge: "Por Área"
+  },
   {
     titulo: "Solicitudes por Fecha",
     descripcion: "Listado completo basado en la fecha de ingreso de la solicitud.",
@@ -22,8 +56,7 @@ const reportes = [
     descripcion: "Fecha exacta del estudio socioeconómico y cambios de estatus.",
     icon: History,
     color: "bg-indigo-500",
-    // ACTUALIZADO: Apunta a tu nueva página modular
-    link: "/admin/Historial-Aprobaciones" 
+    link: "/admin/reportes/Historial-Aprobaciones"
   },
   {
     titulo: "Becas Aprobadas",
@@ -48,7 +81,7 @@ const reportes = [
   },
   {
     titulo: "Recurrencia Trimestral",
-    descripcion: "Contador de beneficios recibidos por cada alumno.",
+    descripcion: "Contador de beneficios recibidos por cada alumno y estado final.",
     icon: FileSpreadsheet,
     color: "bg-amber-500",
     link: "/admin/reportes/recurrencia"
@@ -72,41 +105,47 @@ const reportes = [
 export default function ReportesPage() {
   return (
     <div className="space-y-4">
-      
-      <PageHeader 
-        titulo="Centro de Reportes" 
+      <PageHeader
+        titulo="Centro de Reportes"
         subtitulo="Generación y Exportación de Datos Operativos"
         mostrarExportar={false}
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-10">
-        {reportes.map((rep, idx) => (
-          /* Envolvemos todo en un Link para que sea clicable */
-          <Link key={idx} href={rep.link}>
-            <div className="group bg-white p-4 rounded-xl shadow-sm border border-slate-200 hover:shadow-md hover:border-blue-200 transition-all cursor-pointer flex flex-col h-full">
-              <div className="flex items-start justify-between mb-3">
-                <div className={`p-2.5 rounded-lg ${rep.color} text-white shadow-sm group-hover:scale-105 transition-transform duration-300`}>
-                  <rep.icon className="h-4 w-4" />
+        {reportes.map((rep) => {
+          const Icono = rep.icon
+          return (
+            <Link key={rep.link} href={rep.link}>
+              <div className="group bg-white p-4 rounded-xl shadow-sm border border-slate-200 hover:shadow-md hover:border-[#1e3a5f]/40 transition-all cursor-pointer flex flex-col h-full">
+                <div className="flex items-start justify-between mb-3 gap-2">
+                  <div className={`p-2.5 rounded-lg ${rep.color} text-white shadow-sm group-hover:scale-105 transition-transform duration-300`}>
+                    <Icono className="h-4 w-4" />
+                  </div>
+                  {rep.badge && (
+                    <span className="px-2 py-0.5 rounded-full bg-amber-50 border border-[#d4a843]/40 text-[8px] font-black uppercase tracking-wider text-[#1e3a5f]">
+                      {rep.badge}
+                    </span>
+                  )}
+                </div>
+
+                <h3 className="font-black text-[#1a2744] text-[11px] uppercase tracking-wide mb-1.5 group-hover:text-[#1e3a5f] transition-colors">
+                  {rep.titulo}
+                </h3>
+
+                <p className="text-slate-500 text-[10px] leading-snug flex-1 font-medium">
+                  {rep.descripcion}
+                </p>
+
+                <div className="mt-3 pt-3 border-t border-slate-50 flex items-center justify-between">
+                  <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest group-hover:text-[#1e3a5f] transition-colors">
+                    Generar Reporte
+                  </span>
+                  <FileSpreadsheet className="h-3.5 w-3.5 text-slate-300 group-hover:text-[#d4a843] transition-colors" />
                 </div>
               </div>
-              
-              <h3 className="font-black text-[#1a2744] text-[11px] uppercase tracking-wide mb-1.5 group-hover:text-blue-700 transition-colors">
-                {rep.titulo}
-              </h3>
-              
-              <p className="text-slate-500 text-[10px] leading-snug flex-1 font-medium">
-                {rep.descripcion}
-              </p>
-
-              <div className="mt-3 pt-3 border-t border-slate-50 flex items-center justify-between">
-                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest group-hover:text-blue-600 transition-colors">
-                  Generar Reporte
-                </span>
-                <FileSpreadsheet className="h-3.5 w-3.5 text-slate-300 group-hover:text-blue-500 transition-colors" />
-              </div>
-            </div>
-          </Link>
-        ))}
+            </Link>
+          )
+        })}
       </div>
 
       <div className="text-center py-4 border-t border-slate-100">

@@ -15,7 +15,6 @@ import {
 import { PostulacionContainer } from "./components/PostulacionContainer"
 import type { MateriaPensum, PostulacionUser } from "./types"
 
-// Configuración de SSR para garantizar datos frescos de la DB
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
@@ -32,7 +31,6 @@ interface EstudioSocioeconomicoRow extends RowDataPacket {
   socio_fecha_unimar?: string | Date | null;
   socio_otros_estudios?: string | null;
   socio_modalidad?: string | null;
-  // Área Familiar
   padre_nombre?: string | null;
   padre_edad?: string | number | null;
   padre_ocupacion?: string | null;
@@ -54,7 +52,6 @@ interface EstudioSocioeconomicoRow extends RowDataPacket {
   familia_problema_sn?: string | null;
   familia_problema_desc?: string | null;
   organizacion_activa?: string | null;
-  // Situación Laboral
   situacion_laboral_jefe?: string | null;
   posee_empleo_aspirante?: string | null;
   socio_trabajo_empresa?: string | null;
@@ -63,7 +60,6 @@ interface EstudioSocioeconomicoRow extends RowDataPacket {
   socio_trabajo_telefono?: string | null;
   socio_condicion_laboral_tipo?: string | null;
   socio_condicion_laboral_desc?: string | null;
-  // Área Económica
   monto_ingreso_sueldo?: string | number | null;
   rango_ingreso_familiar?: string | null;
   monto_ingreso_familiar?: string | number | null;
@@ -79,7 +75,6 @@ interface EstudioSocioeconomicoRow extends RowDataPacket {
   monto_egreso_suntuarios?: string | number | null;
   monto_egreso_estudios?: string | number | null;
   monto_egreso_recreacion?: string | number | null;
-  // Vivienda, Servicios y Equipamiento
   vivienda_tipo?: string | null;
   vivienda_estatus?: string | null;
   serv_agua?: string | null;
@@ -100,7 +95,6 @@ interface EstudioSocioeconomicoRow extends RowDataPacket {
   equip_sonido?: string | null;
   equip_computadora?: string | null;
   equip_celular?: string | null;
-  // Salud y Observaciones
   salud_condicion_especial?: string | null;
   salud_enfermedad_desc?: string | null;
   salud_tratamiento?: string | null;
@@ -145,7 +139,6 @@ const serializarEncuestaPrevia = (
     socio_fecha_unimar: fechaUnimar ?? undefined,
     socio_otros_estudios: row.socio_otros_estudios ?? undefined,
     socio_modalidad: row.socio_modalidad ?? undefined,
-    // Área Familiar
     padre_nombre: row.padre_nombre ?? undefined,
     padre_edad: row.padre_edad ?? undefined,
     padre_ocupacion: row.padre_ocupacion ?? undefined,
@@ -167,7 +160,6 @@ const serializarEncuestaPrevia = (
     familia_problema_sn: row.familia_problema_sn ?? undefined,
     familia_problema_desc: row.familia_problema_desc ?? undefined,
     organizacion_activa: row.organizacion_activa ?? undefined,
-    // Situación Laboral
     posee_empleo_aspirante: row.posee_empleo_aspirante ?? row.situacion_laboral_jefe ?? undefined,
     socio_trabajo_empresa: row.socio_trabajo_empresa ?? undefined,
     socio_trabajo_cargo: row.socio_trabajo_cargo ?? undefined,
@@ -175,7 +167,6 @@ const serializarEncuestaPrevia = (
     socio_trabajo_telefono: row.socio_trabajo_telefono ?? undefined,
     socio_condicion_laboral_tipo: row.socio_condicion_laboral_tipo ?? undefined,
     socio_condicion_laboral_desc: row.socio_condicion_laboral_desc ?? undefined,
-    // Área Económica
     monto_ingreso_sueldo: row.monto_ingreso_sueldo ?? undefined,
     rango_ingreso_familiar: row.rango_ingreso_familiar ?? undefined,
     monto_ingreso_familiar: row.monto_ingreso_familiar ?? undefined,
@@ -191,7 +182,6 @@ const serializarEncuestaPrevia = (
     monto_egreso_suntuarios: row.monto_egreso_suntuarios ?? undefined,
     monto_egreso_estudios: row.monto_egreso_estudios ?? undefined,
     monto_egreso_recreacion: row.monto_egreso_recreacion ?? undefined,
-    // Vivienda, Servicios y Equipamiento
     vivienda_tipo: row.vivienda_tipo ?? undefined,
     vivienda_estatus: row.vivienda_estatus ?? undefined,
     serv_agua: row.serv_agua ?? undefined,
@@ -212,7 +202,6 @@ const serializarEncuestaPrevia = (
     equip_sonido: row.equip_sonido ?? undefined,
     equip_computadora: row.equip_computadora ?? undefined,
     equip_celular: row.equip_celular ?? undefined,
-    // Salud y Observaciones
     salud_condicion_especial: row.salud_condicion_especial ?? undefined,
     salud_enfermedad_desc: row.salud_enfermedad_desc ?? undefined,
     salud_tratamiento: row.salud_tratamiento ?? undefined,
@@ -227,7 +216,7 @@ export default async function PostulacionPage(props: {
   const userSession = await getSession();
   const searchParams = await props.searchParams;
 
-  // 1. VALIDACIÓN DE SESIÓN (Protección de Ruta)
+  // 1. VALIDACIÓN DE SESIÓN
   if (!userSession?.isLoggedIn || !userSession.id) {
     return (
       <div className="w-full min-h-screen flex items-center justify-center bg-[#f8fafc] px-4">
@@ -236,7 +225,6 @@ export default async function PostulacionPage(props: {
     );
   }
 
-  // Convertimos y validamos el ID de la sesión para cumplir con getStudentById
   const userId = Number(userSession.id);
   if (!Number.isInteger(userId) || userId <= 0) {
     return (
@@ -246,7 +234,7 @@ export default async function PostulacionPage(props: {
     );
   }
 
-  // Asegurar datos simulados persistidos de encuesta y récord académico oficial
+  // Asegurar datos simulados y récord académico oficial sincronizado
   await asegurarDatosSocioeconomicosSimulados(userId);
   const recordRes = await obtenerRecordParaPostulacion(userId);
   const expediente = recordRes.success ? recordRes.data : null;
@@ -277,7 +265,7 @@ export default async function PostulacionPage(props: {
       ? trimestreQuery
       : trimestreSugerido;
 
-  // 3. CONSULTA FRESCA DE ENCUESTA PREVIA / SIMULADA PERSISTIDA (Tipado estricto mysql2/promise)
+  // 3. CONSULTA FRESCA DE ENCUESTA PREVIA
   const encuestaRows = await queryFresh<EstudioSocioeconomicoRow[]>(
     `SELECT * FROM estudios_socioeconomicos 
      WHERE student_id = ? AND tipo = 'estudiante' 
@@ -286,17 +274,15 @@ export default async function PostulacionPage(props: {
   );
 
   const encuestaPrevia = serializarEncuestaPrevia(encuestaRows[0]);
-
-  // 4. FORMATEO SEGURO DE FECHA DE NACIMIENTO
   const fechaNacimientoFormateada = formatearFechaISO(studentRaw.fecha_nacimiento);
 
-  // 5. OBTENCIÓN DE ESTATUS
+  // 4. OBTENCIÓN DE ESTATUS ACTUAL
+  // Permite postularse a estudiantes sin proceso activo en curso (incluyendo ex-becarios de Excelencia sin sanción)
   const academicStatus = await getStudentAcademicStatus(userId, trimestreFinal);
   const estatusUI = academicStatus.estatus;
-  const yaPoseeBeneficio = studentRaw.ha_tenido_beca === 1;
-  const tieneVeto = studentRaw.beca_perdida === 1;
+  const tieneVeto = studentRaw.beca_perdida === 1 || academicStatus.becaPerdida;
 
-  if (yaPoseeBeneficio || tieneVeto || (estatusUI !== "ninguna" && estatusUI !== "Renovacion")) {
+  if (tieneVeto || (estatusUI !== "ninguna" && estatusUI !== "Renovacion")) {
     const observacionSolicitud = extraerObservacionSolicitud(academicStatus.lastSolicitud);
     const studentStatusData: StatusStudentData = {
       ...studentRaw,
@@ -311,17 +297,30 @@ export default async function PostulacionPage(props: {
     );
   }
 
-  const indiceOficial = expediente
+  // Separación estricta de índices:
+  // - promedioTrimestreOficial: promedio del trimestre inmediatamente anterior (semestre - 1), usado en /postulacion
+  // - indiceGlobalOficial: índice acumulado de toda la carrera (referencia informativa)
+  const indiceGlobalOficial = expediente
     ? Number(expediente.indiceGlobal).toFixed(2)
     : Number(academicStatus.indiceGlobal || studentRaw.indice_global || 0).toFixed(2);
+
+  const promedioTrimestreOficial = expediente
+    ? Number(expediente.promedioUltimoTrimestre).toFixed(2)
+    : Number(academicStatus.promedioUltimoTrimestre || 0).toFixed(2);
+
+  const trimestreUltimoCursado =
+    expediente?.trimestreUltimoCursado ??
+    (nivelRealEstudiante > 1 ? Math.max(1, nivelRealEstudiante - 1) : 0);
 
   const enrichedUser: PostulacionUser = {
     ...studentRaw,
     ...encuestaPrevia,
     fecha_nacimiento: fechaNacimientoFormateada,
     semestre: nivelRealEstudiante,
-    indice_global: indiceOficial,
-    promedio_notas: indiceOficial,
+    indice_global: indiceGlobalOficial,
+    promedio_trimestre: promedioTrimestreOficial,
+    promedio_notas: promedioTrimestreOficial,
+    trimestre_ultimo_cursado: trimestreUltimoCursado,
   };
 
   const trimestreNumFinal = Number(trimestreFinal);
@@ -336,7 +335,9 @@ export default async function PostulacionPage(props: {
       materiasTrimestre.length > 0
         ? materiasTrimestre
         : expediente.recordCompleto.filter(
-            (m) => m.trimestre_cursado === (expediente.ultimoTrimestreSnapshot?.trimestre ?? trimestreNumFinal)
+            (m) =>
+              m.trimestre_cursado ===
+              (expediente.ultimoTrimestreSnapshot?.trimestre ?? trimestreNumFinal)
           );
 
     materiasDelPensum = fuente.map((m) => ({

@@ -25,6 +25,7 @@ interface StudentSessionRow extends RowDataPacket {
   cedula: string;
   email: string | null;
   indice_global: number | string | null;
+  beca_perdida: number;
 }
 
 interface LatestSolicitudRow extends RowDataPacket {
@@ -33,17 +34,20 @@ interface LatestSolicitudRow extends RowDataPacket {
   observaciones_admin: string | null;
 }
 
+interface RechazoPrevioRow extends RowDataPacket {
+  id: number;
+  observaciones_admin: string | null;
+}
+
 export async function getSession() {
-  noStore(); // Evita caché para datos de sesión
+  noStore();
 
   const cookieStore = await cookies();
   const sessionToken = cookieStore.get('session_token')?.value;
 
-  // 1. Verificación básica de existencia
   if (!sessionToken) return { isLoggedIn: false as const };
 
   try {
-    // 2. Extracción y Validación Numérica de Identidad
     const matchId = sessionToken.match(/(\d+)$/);
     const userId = matchId ? parseInt(matchId[1], 10) : NaN;
 
@@ -51,7 +55,6 @@ export async function getSession() {
       return { isLoggedIn: false as const };
     }
 
-    // 3. Validación real en la DB (Verificar existencia, correo y ROL legítimo)
     const accountRows = await queryFresh<AccountRoleRow[]>(
       'SELECT id, email, role FROM users WHERE id = ? LIMIT 1',
       [userId]
@@ -67,7 +70,6 @@ export async function getSession() {
     const esSecretariaGeneral =
       realRole === 'secretaria' || emailNormalizado === EMAIL_SECRETARIA_GENERAL;
 
-    // 4. Recuperación de Datos según el Rol Oficial
     if (realRole === 'estudiante' && !esSecretariaGeneral) {
       const userRows = await queryFresh<StudentSessionRow[]>(
         `
@@ -79,7 +81,8 @@ export async function getSession() {
             st.semestre,
             st.cedula,
             st.email,
-            IFNULL(st.indice_global, 0.00) AS indice_global
+            IFNULL(st.indice_global, 0.00) AS indice_global,
+            IFNULL(st.beca_perdida, 0) AS beca_perdida
           FROM students st
           WHERE st.id = ?
           LIMIT 1
@@ -87,7 +90,6 @@ export async function getSession() {
         [userId]
       );
 
-      // Si el usuario existe en 'users' pero no tiene perfil en 'students'
       if (userRows.length === 0) {
         return {
           isLoggedIn: true as const,
@@ -102,22 +104,34 @@ export async function getSession() {
 
       const s = userRows[0];
 
-      // Consulta aislada de la última solicitud para no invalidar la sesión ante fallos secundarios
       let estatusReciente = 'ninguna';
       let materiasArray: unknown = [];
       let observacionesAdmin: string | null = null;
+      let becaPerdida = Number(s.beca_perdida) === 1;
 
       try {
-        const solRows = await queryFresh<LatestSolicitudRow[]>(
-          `
-            SELECT estatus AS estatus_reciente, materias_json, observaciones_admin
-            FROM solicitudes
-            WHERE user_id = ?
-            ORDER BY fecha_registro DESC
-            LIMIT 1
-          `,
-          [userId]
-        );
+        const [solRows, rechazoRows] = await Promise.all([
+          queryFresh<LatestSolicitudRow[]>(
+            `
+              SELECT estatus AS estatus_reciente, materias_json, observaciones_admin
+              FROM solicitudes
+              WHERE user_id = ?
+              ORDER BY periodo_id DESC, fecha_registro DESC, id DESC
+              LIMIT 1
+            `,
+            [userId]
+          ),
+          queryFresh<RechazoPrevioRow[]>(
+            `
+              SELECT id, observaciones_admin
+              FROM solicitudes
+              WHERE user_id = ? AND estatus = 'Rechazada'
+              ORDER BY id DESC
+              LIMIT 1
+            `,
+            [userId]
+          ),
+        ]);
 
         if (solRows.length > 0) {
           estatusReciente = solRows[0].estatus_reciente || 'ninguna';
@@ -128,11 +142,18 @@ export async function getSession() {
             materiasArray = JSON.parse(solRows[0].materias_json);
           }
         }
+
+        if (becaPerdida || rechazoRows.length > 0) {
+          becaPerdida = true;
+          estatusReciente = 'Rechazada';
+          if (!observacionesAdmin && rechazoRows[0]?.observaciones_admin) {
+            observacionesAdmin = String(rechazoRows[0].observaciones_admin).trim();
+          }
+        }
       } catch (solError) {
         console.error('⚠️ Advertencia leyendo solicitud reciente en sesión:', solError);
       }
 
-      // 5. Retorno de Objeto de Sesión Limpio (Estudiante)
       return {
         isLoggedIn: true as const,
         id: userId,
@@ -141,26 +162,23 @@ export async function getSession() {
         perfilAutoridad: 'estudiante' as const,
         esSecretariaGeneral: false,
 
-        // Datos de Identidad
         nombre: `${s.nombre} ${s.apellido}`,
         cedula: s.cedula,
         email: s.email ?? '',
 
-        // Datos Académicos Básicos
         carrera: s.carrera,
         trimestre: Number(s.semestre),
         semestre: Number(s.semestre),
         indiceGlobal: Number(s.indice_global ?? 0),
 
-        // Estado Actual
         estatus: estatusReciente,
         estatusBeca: estatusReciente,
+        becaPerdida,
         observacionesAdmin,
         materias: materiasArray,
       };
     }
 
-    // Caso Autoridades Institucionales (Coordinación o Secretaría General)
     const perfilAutoridad: PerfilAutoridad = esSecretariaGeneral
       ? 'secretaria_general'
       : 'coordinacion';

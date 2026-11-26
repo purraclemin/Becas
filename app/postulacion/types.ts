@@ -35,6 +35,8 @@ export interface PostulacionUser {
   carrera?: string;
   semestre?: number;
   indice_global?: number | string;
+  promedio_trimestre?: number | string;
+  trimestre_ultimo_cursado?: number;
   email?: string | null;
   correo?: string | null;
   email_institucional?: string | null;

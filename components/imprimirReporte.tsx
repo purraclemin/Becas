@@ -1,20 +1,20 @@
 import React from "react"
 
-interface PrintReportLayoutProps {
+interface PrintReportLayoutProps<T extends object = Record<string, unknown>> {
   titulo: string
   subtitulo?: string
   columnas: string[]
-  datos: Array<Record<string, any>>
-  renderFila: (item: Record<string, any>, index: number) => React.ReactNode
+  datos: T[]
+  renderFila: (item: T, index: number) => React.ReactNode
 }
 
-export const PrintReportLayout = ({
+export function PrintReportLayout<T extends object = Record<string, unknown>>({
   titulo,
   subtitulo,
   columnas,
   datos,
   renderFila
-}: PrintReportLayoutProps) => {
+}: PrintReportLayoutProps<T>) {
   return (
     <div id="print-section" className="hidden print:block w-full bg-white text-slate-900 p-0 m-0">
       {/* Encabezado Oficial Institucional Unimar */}

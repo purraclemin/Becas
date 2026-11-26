@@ -4,16 +4,13 @@ import React from "react"
 import { User, Mail } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-// 1. Hook de Lógica Central y Tipos
 import { usePostulacionForm, TOTAL_PASOS } from "../hooks/usePostulacionForm"
 import type { MateriaPensum, PostulacionUser } from "../types"
 
-// 2. Componentes UI Modulares
 import { PostulacionSidebar, PASOS } from "./PostulacionSidebar"
 import { PostulacionHeader } from "./PostulacionHeader"
 import { PostulacionFooter } from "./PostulacionFooter"
 
-// 3. Componentes de Pasos (Steps)
 import { StepDetalles } from "./StepDetalles"
 import { StepEncuesta } from "./StepEncuesta"
 import { StepArchivos } from "./StepArchivos"
@@ -26,23 +23,6 @@ interface PostulacionContainerProps {
   periodoIngreso?: string;
 }
 
-const resolverIndiceGlobal = (
-  user: PostulacionUser,
-  promedioFallback: string
-): string => {
-  const candidato =
-    user.indice_global ??
-    user.promedio_notas ??
-    promedioFallback ??
-    "0.00";
-  const numero = Number(candidato);
-  if (Number.isFinite(numero) && numero > 0) {
-    return numero.toFixed(2);
-  }
-  const fallbackNum = Number(promedioFallback);
-  return Number.isFinite(fallbackNum) ? fallbackNum.toFixed(2) : "0.00";
-};
-
 export function PostulacionContainer({
   user,
   materiasDelPensum = [],
@@ -50,11 +30,10 @@ export function PostulacionContainer({
   periodoIngreso
 }: PostulacionContainerProps) {
 
-  // Orquestación: Conectamos la interfaz con la lógica de negocio
   const formHook = usePostulacionForm({ user, trimestreActual });
   const {
     formRef,
-    pasoActual, isPending, promedio, detallesValidos, encuestaValida, archivosValidos,
+    pasoActual, isPending, promedio, indiceGlobal, detallesValidos, encuestaValida, archivosValidos,
     tipoBecaSeleccionada, formData, activeEncuestaTab, progreso,
     setDetallesValidos, setEncuestaValida, setArchivosValidos, setTipoBecaSeleccionada, setActiveEncuestaTab,
     setPersonalValido, setUniValido, setFamiliaValido, setLaboralValido, setIngresosValido, setHogarValido, setSaludValido,
@@ -62,24 +41,35 @@ export function PostulacionContainer({
   } = formHook;
 
   const tituloPaso = PASOS.find(p => p.id === pasoActual)?.titulo || "Postulación";
-  const indiceGlobalDisplay = resolverIndiceGlobal(user, promedio);
-  const trimestreOculto = String(user?.semestre ?? trimestreActual ?? "1");
+  const semestreNum = Number(user?.semestre ?? trimestreActual ?? 1) || 1;
+  const esNuevoIngreso = semestreNum <= 1;
+  const trimestreOculto = String(semestreNum);
+  const trimestreAuditado =
+    user?.trimestre_ultimo_cursado && user.trimestre_ultimo_cursado > 0
+      ? user.trimestre_ultimo_cursado
+      : Math.max(1, semestreNum - 1);
+
+  const etiquetaPromedioHeader = esNuevoIngreso
+    ? "Nuevo Ingreso"
+    : `Prom. Trim. ${trimestreAuditado}`;
 
   return (
     <div className="flex flex-col lg:flex-row w-full flex-1 lg:h-screen lg:overflow-hidden bg-white selection:bg-[#d4a843]/30">
 
-      {/* 1. SIDEBAR (Navegación Lateral/Superior) */}
+      {/* 1. SIDEBAR */}
       <PostulacionSidebar pasoActual={pasoActual} progreso={progreso} />
 
-      {/* 2. ÁREA DE TRABAJO PRINCIPAL (Viewport fijo en PC para mantener el footer siempre visible) */}
+      {/* 2. ÁREA DE TRABAJO PRINCIPAL */}
       <section className="flex-1 flex flex-col min-w-0 lg:min-h-0 lg:h-full bg-[#f8fafc] relative">
 
-        {/* Cabecera del Formulario (Índice Global del Estudiante) */}
+        {/* Cabecera del Formulario (Promedio del Trimestre Anterior como indicador principal) */}
         <PostulacionHeader
           tituloPaso={tituloPaso}
           periodoIngreso={periodoIngreso}
-          promedio={indiceGlobalDisplay}
-          etiquetaPromedio="Índice Global"
+          promedio={promedio}
+          indiceGlobal={indiceGlobal}
+          etiquetaPromedio={etiquetaPromedioHeader}
+          esNuevoIngreso={esNuevoIngreso}
         />
 
         {/* Barra de Información del Estudiante */}
@@ -108,7 +98,6 @@ export function PostulacionContainer({
           onSubmit={(e) => e.preventDefault()}
           className="flex-1 flex flex-col min-h-0 bg-white lg:overflow-hidden"
         >
-          {/* Datos académicos internos preservados en inputs ocultos (gestionados en /perfil) */}
           <input type="hidden" name="trimestre_seleccionado" value={trimestreOculto} />
           {materiasDelPensum.map((materia, idx) => {
             const materiaConNota = materia as MateriaPensum & { nota?: number | string };
@@ -135,6 +124,7 @@ export function PostulacionContainer({
                 onTipoBecaChange={setTipoBecaSeleccionada}
                 tipoBecaSeleccionada={tipoBecaSeleccionada}
                 promedio={promedio}
+                indiceGlobal={indiceGlobal}
                 onValidationChange={setDetallesValidos}
               />
             </div>
@@ -169,6 +159,7 @@ export function PostulacionContainer({
               <StepResumen
                 user={formData}
                 promedio={promedio}
+                indiceGlobal={indiceGlobal}
                 trimestre={trimestreActual}
                 tipoBeca={tipoBecaSeleccionada}
               />
@@ -176,7 +167,7 @@ export function PostulacionContainer({
           </div>
         </form>
 
-        {/* 4. FOOTER SIEMPRE VISIBLE EN PANTALLA */}
+        {/* 4. FOOTER */}
         <PostulacionFooter
           pasoActual={pasoActual}
           totalPasos={TOTAL_PASOS}

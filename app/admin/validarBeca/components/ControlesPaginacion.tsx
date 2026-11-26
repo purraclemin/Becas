@@ -47,21 +47,6 @@ export function ControlesPaginacion({
         </select>
       </div>
 
-      {/* 🟢 BOTÓN ESCUDO IA "APTOS" MÓVIL: Ubicado exactamente en el medio (visible solo en móvil/tablet con xl:hidden) */}
-      {onOpenAptoIA && (
-        <div className="flex xl:hidden items-center">
-          <button 
-            type="button"
-            onClick={onOpenAptoIA}
-            className="flex items-center gap-1.5 px-3 h-9 bg-[#1e3a5f] hover:bg-[#162c4a] text-white border border-[#d4a843]/60 rounded-xl shadow-sm text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer group"
-            title="Selección Inteligente por IA (Aptos)"
-          >
-            <Shield className="h-3.5 w-3.5 text-[#d4a843] group-hover:scale-110 transition-transform" />
-            <span className="text-[#d4a843]">Aptos</span>
-          </button>
-        </div>
-      )}
-
       {/* Controles de avance y retroceso de páginas */}
       {!loading && hasData && (
         <div className="flex items-center bg-slate-50 rounded-xl border border-slate-200 p-0.5 h-9">
