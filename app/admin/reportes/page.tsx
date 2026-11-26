@@ -52,7 +52,7 @@ const reportes: ReadonlyArray<ReporteCardConfig> = [
     link: "/admin/reportes/solicitudes-fecha"
   },
   {
-    titulo: "Bitácora de Revisiones",
+    titulo: "Historial de Decisiones",
     descripcion: "Fecha exacta del estudio socioeconómico y cambios de estatus.",
     icon: History,
     color: "bg-indigo-500",
