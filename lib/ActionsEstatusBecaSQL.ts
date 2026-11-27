@@ -177,7 +177,11 @@ export async function registrarDecisionEnHistorial(
       paramsSolicitud.push(periodoEfectivo);
     }
 
-    if (nuevoEstatus === 'Aprobada' || nuevoEstatus === 'Rechazada') {
+    if (
+      nuevoEstatus === 'Aprobada' ||
+      nuevoEstatus === 'Rechazada' ||
+      nuevoEstatus === 'Finalizada'
+    ) {
       updateSolicitud += ', fecha_decision = NOW()';
     } else if (nuevoEstatus === 'En Revisión') {
       updateSolicitud += ', fecha_revision = NOW()';
@@ -188,7 +192,7 @@ export async function registrarDecisionEnHistorial(
 
     await connection.execute<ResultSetHeader>(updateSolicitud, paramsSolicitud);
 
-    // 6. ACTUALIZAR PROGRESIÓN ACADÉMICA Y BLOQUEO PERMANENTE POR RECHAZO
+    // 6. ACTUALIZAR PROGRESIÓN ACADÉMICA Y BLOQUEO PERMANENTE POR RECHAZO (Finalizada NO veta)
     if (nuevoEstatus === 'Aprobada') {
       await connection.execute<ResultSetHeader>(
         'UPDATE students SET ha_tenido_beca = 1 WHERE id = ?',

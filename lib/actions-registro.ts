@@ -11,8 +11,8 @@ import {
   academicStepSchema,
   securityStepSchema,
 } from '../components/registro/validations'
+import { sincronizarYObtenerRecordAcademico } from './ActionsRecordAcademico'
 
-// Configuración del transporter de Nodemailer (Gmail gratuito)
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
@@ -42,10 +42,10 @@ export async function checkExistence(cedula: string, email: string) {
     );
 
     if (emailRows.length > 0) {
-      return { 
-        exists: true, 
+      return {
+        exists: true,
         field: 'email',
-        error: "Este correo electrónico ya está registrado." 
+        error: "Este correo electrónico ya está registrado.",
       };
     }
 
@@ -55,10 +55,10 @@ export async function checkExistence(cedula: string, email: string) {
     );
 
     if (cedulaRows.length > 0) {
-      return { 
-        exists: true, 
+      return {
+        exists: true,
         field: 'cedula',
-        error: "Esta cédula ya está registrada en el sistema." 
+        error: "Esta cédula ya está registrada en el sistema.",
       };
     }
 
@@ -80,10 +80,8 @@ export async function sendVerificationCode(email: string) {
       return { success: false, error: "Correo institucional inválido" };
     }
 
-    // Generar código aleatorio de 6 dígitos
     const codigo = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // Guardar o actualizar usando DATE_ADD(NOW(), INTERVAL 15 MINUTE) para sincronizar reloj con MySQL
     await db.execute<ResultSetHeader>(
       `INSERT INTO email_verifications (email, codigo, verified, expires_at) 
        VALUES (?, ?, 0, DATE_ADD(NOW(), INTERVAL 15 MINUTE)) 
@@ -91,7 +89,6 @@ export async function sendVerificationCode(email: string) {
       [normalizedEmail, codigo, codigo]
     );
 
-    // Enviar correo electrónico
     try {
       await transporter.sendMail({
         from: `"Sistema de Becas UNIMAR" <${process.env.SMTP_USER}>`,
@@ -129,7 +126,6 @@ export async function verifyEmailCode(email: string, codigo: string) {
     const normalizedEmail = email.trim().toLowerCase();
     const cleanCode = codigo.trim();
 
-    // 1. Validar si se está usando el Código Maestro de Bypass (Modo Beta)
     if (validateMasterOtp(cleanCode)) {
       await db.execute<ResultSetHeader>(
         `INSERT INTO email_verifications (email, codigo, verified, expires_at) 
@@ -140,7 +136,6 @@ export async function verifyEmailCode(email: string, codigo: string) {
       return { success: true };
     }
 
-    // 2. Validación tradicional contra la base de datos (insensible a mayúsculas en email)
     const [rows] = await db.execute<RowDataPacket[]>(
       `SELECT id FROM email_verifications 
        WHERE LOWER(email) = ? AND codigo = ? AND expires_at > NOW() LIMIT 1`,
@@ -151,7 +146,6 @@ export async function verifyEmailCode(email: string, codigo: string) {
       return { success: false, error: "Código incorrecto o expirado" };
     }
 
-    // Marcar como verificado
     await db.execute<ResultSetHeader>(
       `UPDATE email_verifications SET verified = 1 WHERE LOWER(email) = ?`,
       [normalizedEmail]
@@ -164,8 +158,11 @@ export async function verifyEmailCode(email: string, codigo: string) {
   }
 }
 
+/**
+ * Registra al estudiante y sincroniza automáticamente su récord académico oficial
+ * e índice global al instante (sin esperar a que abra su Perfil o Kardex).
+ */
 export async function register(formData: FormData) {
-  // 1. EXTRACCIÓN Y NORMALIZACIÓN DE DATOS
   const rawPayload = {
     nombre: (formData.get('nombre') as string)?.trim() || "",
     apellido: (formData.get('apellido') as string)?.trim() || "",
@@ -182,7 +179,6 @@ export async function register(formData: FormData) {
     aceptaTerminos: true as const,
   };
 
-  // 2. VALIDACIÓN ESTRICTA CON ZOD EN SERVIDOR
   const personalCheck = personalStepSchema.safeParse(rawPayload);
   if (!personalCheck.success) {
     return { error: personalCheck.error.issues[0]?.message || "Datos personales inválidos." };
@@ -199,11 +195,11 @@ export async function register(formData: FormData) {
   }
 
   let connection;
+  let userId = 0;
 
   try {
     connection = await db.getConnection();
 
-    // 3. VERIFICAR EN BD QUE EL CORREO FUE VALIDADO POR OTP (Salvo bypass activo)
     if (!isBypassOtpEnabled()) {
       const [verifRows] = await connection.execute<RowDataPacket[]>(
         `SELECT id FROM email_verifications WHERE LOWER(email) = ? AND verified = 1 LIMIT 1`,
@@ -218,74 +214,78 @@ export async function register(formData: FormData) {
 
     const hashedPassword = await bcrypt.hash(rawPayload.password, 10);
 
-    // 4. Crear el usuario en la tabla de autenticación (users)
     const [userResult] = await connection.execute<ResultSetHeader>(
       'INSERT INTO users (email, password, role) VALUES (?, ?, ?)',
       [rawPayload.email, hashedPassword, 'estudiante']
     );
 
-    const userId = userResult.insertId;
+    userId = Number(userResult.insertId);
 
-    // 5. Crear el expediente en la tabla students
     await connection.execute<ResultSetHeader>(
       `INSERT INTO students (
         id, nombre, apellido, cedula, sexo, fecha_nacimiento, 
         telefono, carrera, semestre, email, municipio_residencia, indice_global
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        userId, 
-        rawPayload.nombre, 
-        rawPayload.apellido, 
-        rawPayload.cedula, 
-        rawPayload.sexo || null, 
-        rawPayload.fecha_nacimiento || null, 
-        rawPayload.telefono, 
-        rawPayload.carrera, 
-        rawPayload.semestre, 
-        rawPayload.email, 
-        rawPayload.municipio, 
-        0.00
+        userId,
+        rawPayload.nombre,
+        rawPayload.apellido,
+        rawPayload.cedula,
+        rawPayload.sexo || null,
+        rawPayload.fecha_nacimiento || null,
+        rawPayload.telefono,
+        rawPayload.carrera,
+        Number(rawPayload.semestre),
+        rawPayload.email,
+        rawPayload.municipio,
+        0.0,
       ]
     );
 
-    // 6. Limpiar el registro de verificación de la tabla temporal tras registro exitoso
     await connection.execute<ResultSetHeader>(
       'DELETE FROM email_verifications WHERE LOWER(email) = ?',
       [rawPayload.email]
     );
 
     await connection.commit();
-
-    // 7. Crear Cookies de sesión
-    const cookieStore = await cookies();
-    const sessionToken = `active_session_${userId}`;
-    
-    cookieStore.set('session_token', sessionToken, { 
-      httpOnly: true, 
-      secure: process.env.NODE_ENV === 'production',
-      path: '/',
-      maxAge: 60 * 60 * 24 
-    });
-
-    cookieStore.set('user_role', 'estudiante', { 
-      httpOnly: true, 
-      secure: process.env.NODE_ENV === 'production',
-      path: '/',
-      maxAge: 60 * 60 * 24 
-    });
-
-    return { success: true };
-
   } catch (e: unknown) {
     if (connection) await connection.rollback();
-    
+
     if (isDatabaseError(e) && e.code === 'ER_DUP_ENTRY') {
       return { error: 'Error: El usuario o la cédula ya existen.' };
     }
-    
+
     console.error("❌ Error crítico en registro:", e);
     return { error: 'Error interno del servidor. No se pudo completar el registro.' };
   } finally {
     if (connection) connection.release();
   }
+
+  // Generación automática e inmediata del récord académico e índice global desde el nacimiento del estudiante
+  if (userId > 0) {
+    try {
+      await sincronizarYObtenerRecordAcademico(userId);
+    } catch (syncError) {
+      console.error("⚠️ Advertencia sincronizando récord académico inicial en registro:", syncError);
+    }
+  }
+
+  const cookieStore = await cookies();
+  const sessionToken = `active_session_${userId}`;
+
+  cookieStore.set('session_token', sessionToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    maxAge: 60 * 60 * 24,
+  });
+
+  cookieStore.set('user_role', 'estudiante', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    maxAge: 60 * 60 * 24,
+  });
+
+  return { success: true };
 }

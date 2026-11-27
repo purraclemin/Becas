@@ -7,6 +7,7 @@ import {
   ShieldAlert, CreditCard, Phone, Trophy
 } from "lucide-react"
 import { normalizarTipoBecaOficial, esBecaExcelenciaAcademica } from "@/lib/RecordAcademicoUtils"
+import { esEgresadoPorSemestre } from "@/app/admin/validarBeca/lib/ValidarBecaUtils"
 
 export interface SolicitudAuditoria {
   cedula?: string | null;
@@ -55,6 +56,8 @@ export function ValidarBecaInfo({ solicitud, sinEstudio }: ValidarBecaInfoProps)
     () => esBecaExcelenciaAcademica(solicitud.tipo_beca),
     [solicitud.tipo_beca]
   );
+
+  const esEgresado = esEgresadoPorSemestre(solicitud.semestre ?? solicitud.trimestre);
 
   const documentos = useMemo(() => {
     const esPrimerTrimestre = Number(solicitud.semestre || solicitud.trimestre) === 1;
@@ -159,13 +162,23 @@ export function ValidarBecaInfo({ solicitud, sinEstudio }: ValidarBecaInfoProps)
             </div>
           </div>
 
-          {/* Separación explícita: Trimestre, Promedio Trimestral e Índice Global */}
+          {/* Separación explícita: Trimestre (o Egresado), Promedio Trimestral e Índice Global */}
           <div className="grid grid-cols-3 gap-2">
-            <div className="flex items-center gap-2 p-2.5 bg-slate-50/70 rounded-xl border border-slate-100">
+            <div className={`flex items-center gap-2 p-2.5 rounded-xl border ${esEgresado ? 'bg-teal-50/70 border-teal-200' : 'bg-slate-50/70 border-slate-100'}`}>
               <Hash className="h-3.5 w-3.5 text-[#d4a843] shrink-0" />
               <div className="min-w-0">
-                <p className="text-[7px] font-black text-slate-400 uppercase tracking-wider">Trim.</p>
-                <p className="text-xs font-bold text-[#1e3a5f]">{String(solicitud.semestre || solicitud.trimestre || "0")}°</p>
+                <p className="text-[7px] font-black text-slate-400 uppercase tracking-wider">
+                  {esEgresado ? "Nivel" : "Trim."}
+                </p>
+                {esEgresado ? (
+                  <p className="text-[10px] font-black text-teal-800 uppercase truncate">
+                    Egresado
+                  </p>
+                ) : (
+                  <p className="text-xs font-bold text-[#1e3a5f]">
+                    {String(solicitud.semestre || solicitud.trimestre || "0")}°
+                  </p>
+                )}
               </div>
             </div>
             <div className={`flex items-center gap-2 p-2.5 rounded-xl border ${!esExcelencia ? 'bg-blue-50/60 border-blue-200/70' : 'bg-slate-50/70 border-slate-100'}`}>

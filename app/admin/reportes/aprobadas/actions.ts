@@ -2,7 +2,8 @@
 
 import type { RowDataPacket } from "mysql2/promise"
 import { queryFresh } from "@/lib/db"
-import { normalizarTipoBecaOficial } from "@/lib/RecordAcademicoUtils"
+import { ejecutarRotacionExcelenciaEnPeriodo } from "@/lib/ActionsGestionEspecial"
+import { SISTEMA_ADMIN_ID, normalizarTipoBecaOficial } from "@/lib/RecordAcademicoUtils"
 
 interface ReporteAprobadaSQLRow extends RowDataPacket {
   solicitud_id: number
@@ -71,13 +72,15 @@ function serializarFechaISO(valor: Date | string | null | undefined): string {
 
 /**
  * Consulta TODAS las becas aprobadas desde la fuente oficial (`solicitudes`)
- * complementada con `LEFT JOIN` a periodos, estudios socioeconómicos e historial.
- * Evita pérdida de registros sin traza previa en historial y evita duplicados.
+ * garantizando primero la sincronización automática de la Nómina de Excelencia.
  */
 export async function obtenerReporteAprobadas(
   filtros: FiltrosReporteAprobadas = {}
 ): Promise<RespuestaReporteAprobadas> {
   try {
+    // Fast-path idempotente: sincroniza la Nómina Automática de Excelencia antes de listar aprobadas
+    await ejecutarRotacionExcelenciaEnPeriodo(undefined, SISTEMA_ADMIN_ID)
+
     const fechaEfectivaExpr = `COALESCE(
       s.fecha_decision,
       (

@@ -68,6 +68,7 @@ export function OpcionesFiltros({
                 <option value="En Revisión">En Revisión</option>
                 <option value="Aprobada">Aprobada (Periodo Actual)</option>
                 <option value="Rechazada">Rechazada (Periodo Actual)</option>
+                <option value="Finalizada">Finalizada (Periodo Actual)</option>
               </select>
             )}
             <ArrowDown10 className={iconClass} />
@@ -122,6 +123,7 @@ export function OpcionesFiltros({
             <select id="filtro-trimestre" name="trimestre" value={filters.trimestre} onChange={handleInputChange} className={selectClass}>
               <option value="">Todos</option>
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(t => (<option key={t} value={t}>{t}° Trimestre</option>))}
+              <option value="13">Egresado</option>
             </select>
             <Hash className={iconClass} />
           </div>

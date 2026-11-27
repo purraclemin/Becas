@@ -26,6 +26,16 @@ const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024; // 2 MB
 const IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/jpg", "image/png"]);
 const DOC_MIME_TYPES = new Set(["application/pdf", "image/jpeg", "image/jpg", "image/png"]);
 const REGEX_NOTA_DECIMAL = /^\d{1,2}(\.\d{1,2})?$/;
+const SEMESTRE_EGRESADO = 13;
+const OBSERVACION_EGRESADO = "Acabó su periodo académico";
+
+const ESTATUS_BLOQUEADOS_REENVIO = new Set([
+  "Pendiente",
+  "Convocado a Entrevista",
+  "En Revisión",
+  "Revisión Especial",
+  "Aprobada",
+]);
 
 type DocumentoColumna =
   | "foto_carnet"
@@ -244,7 +254,9 @@ const construirObservacionRechazo = (
 
 /**
  * Procesa el envío de la solicitud estudiantil (8 modalidades postulables):
+ * - Bloquea egresados (semestre >= 13) y vetados (Art. 28).
  * - Bloquea BECA A LA EXCELENCIA ACADÉMICA (automática) y BECA SOCIAL APRENDIZAJE (concurso anual).
+ * - Permite reutilizar limpiamente una fila en estatus 'Finalizada' del periodo vigente (ex-Excelencia sin sanción).
  * - Guarda en solicitudes.promedio_notas el PROMEDIO DEL TRIMESTRE ANTERIOR (semestre - 1).
  * - Evalúa elegibilidad con promedio trimestral >= 16.00 y cero materias reprobadas (< 10) en el trimestre anterior.
  * - Preserva intacto students.indice_global desde record_academico (sin sobreescribirlo desde solicitudes).
@@ -289,7 +301,7 @@ export async function enviarSolicitud(formData: FormData) {
       return { error: "Identificador de estudiante inválido." };
     }
 
-    // 2. VERIFICACIÓN DE VETO Y SEMESTRE REAL DEL ESTUDIANTE
+    // 2. VERIFICACIÓN DE VETO, EGRESO Y SEMESTRE REAL DEL ESTUDIANTE
     const [statusRows] = await db.execute<StudentStatusRow[]>(
       'SELECT IFNULL(beca_perdida, 0) AS beca_perdida, semestre FROM students WHERE id = ?',
       [userIdNum]
@@ -302,6 +314,12 @@ export async function enviarSolicitud(formData: FormData) {
     }
 
     const semestreEstudiante = Number(statusRows[0].semestre || trimestreNum || 1);
+
+    if (semestreEstudiante >= SEMESTRE_EGRESADO) {
+      return {
+        error: `${OBSERVACION_EGRESADO}. Has culminado tus 12 trimestres y no es posible registrar nuevas postulaciones.`,
+      };
+    }
 
     const reglaModalidad = obtenerReglaPorTipoBeca(tipo_beca);
     if (reglaModalidad && semestreEstudiante < reglaModalidad.trimestreMinimo) {
@@ -518,7 +536,7 @@ export async function enviarSolicitud(formData: FormData) {
       }
     }
 
-    // 6. SINCRONIZACIÓN DE PERIODO
+    // 6. SINCRONIZACIÓN DE PERIODO Y VALIDACIÓN DE SOLICITUD PREVIA EN EL PERIODO VIGENTE
     const periodoId = await obtenerOCrearPeriodoObjetivo();
 
     const [prevSolicitudRows] = await db.execute<SolicitudExistenteRow[]>(
@@ -526,6 +544,16 @@ export async function enviarSolicitud(formData: FormData) {
       [userIdNum, periodoId]
     );
     const solicitudPrevia = prevSolicitudRows[0] ?? null;
+
+    if (solicitudPrevia) {
+      const estatusPrevio = String(solicitudPrevia.estatus || "").trim();
+      if (estatusPrevio === "Rechazada") {
+        return { error: "Solicitud Denegada (Art. 28): Posee un rechazo o suspensión definitiva previa." };
+      }
+      if (ESTATUS_BLOQUEADOS_REENVIO.has(estatusPrevio)) {
+        return { error: `Ya posee una solicitud activa en estatus "${estatusPrevio}" para el periodo vigente.` };
+      }
+    }
 
     const docsRequeridos = obtenerDocumentosRequeridos(tipo_beca, semestreEstudiante);
     for (const docKey of docsRequeridos) {
@@ -684,13 +712,20 @@ export async function enviarSolicitud(formData: FormData) {
       if (solicitudExistente.length > 0) {
         const existente = solicitudExistente[0];
         solicitudIdFinal = Number(existente.id);
-        estatusPrevioHistorial = String(existente.estatus || 'Pendiente');
+        estatusPrevioHistorial = String(existente.estatus || 'Finalizada');
+
+        const revisadoPorUpdate = estatusFinal === 'Rechazada' ? SISTEMA_ADMIN_ID : null;
 
         await connection.execute<ResultSetHeader>(
           `
             UPDATE solicitudes SET 
               email_institucional = ?, tipo_beca = ?, promedio_notas = ?, 
               motivo_solicitud = ?, materias_json = ?, estatus = ?, observaciones_admin = ?,
+              departamento_asignado = NULL,
+              fecha_convocatoria = NULL,
+              fecha_revision = NULL,
+              fecha_decision = CASE WHEN ? = 'Rechazada' THEN NOW() ELSE NULL END,
+              revisado_por = ?,
               foto_carnet = ?, copia_cedula = ?, 
               constancia_residencia = ?, declaracion_manutencion = ?, informe_medico = ?, 
               partida_nacimiento = ?, constancia_club = ?, constancia_notas = ?, 
@@ -706,6 +741,8 @@ export async function enviarSolicitud(formData: FormData) {
             materiasJsonString,
             estatusFinal,
             observacionAutomatica,
+            estatusFinal,
+            revisadoPorUpdate,
             rutaFoto || existente.foto_carnet,
             rutaCedula || existente.copia_cedula,
             rutaConstanciaResidencia || existente.constancia_residencia,

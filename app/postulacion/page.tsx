@@ -18,6 +18,9 @@ import type { MateriaPensum, PostulacionUser } from "./types"
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+const SEMESTRE_EGRESADO = 13;
+const OBSERVACION_EGRESADO = "Acabó su periodo académico";
+
 interface EstudioSocioeconomicoRow extends RowDataPacket {
   socio_estado_civil?: string | null;
   socio_nacionalidad?: string | null;
@@ -258,7 +261,7 @@ export default async function PostulacionPage(props: {
   }
 
   const nivelRealEstudiante = studentRaw.semestre || 1;
-  const trimestreSugerido = Math.max(1, nivelRealEstudiante - 1).toString();
+  const trimestreSugerido = Math.min(12, Math.max(1, nivelRealEstudiante - 1)).toString();
   const trimestreQuery = searchParams.trimestre?.trim();
   const trimestreFinal =
     trimestreQuery && /^\d+$/.test(trimestreQuery) && Number(trimestreQuery) > 0
@@ -277,13 +280,23 @@ export default async function PostulacionPage(props: {
   const fechaNacimientoFormateada = formatearFechaISO(studentRaw.fecha_nacimiento);
 
   // 4. OBTENCIÓN DE ESTATUS ACTUAL
-  // Permite postularse a estudiantes sin proceso activo en curso (incluyendo ex-becarios de Excelencia sin sanción)
+  // Bloquea egresados (semestre >= 13) y vetados (Art. 28);
+  // permite postularse a estudiantes en 'ninguna', 'Renovacion' o 'Finalizada' sin sanción (semestre <= 12).
   const academicStatus = await getStudentAcademicStatus(userId, trimestreFinal);
   const estatusUI = academicStatus.estatus;
   const tieneVeto = studentRaw.beca_perdida === 1 || academicStatus.becaPerdida;
+  const esEgresado = nivelRealEstudiante >= SEMESTRE_EGRESADO || Boolean(academicStatus.esEgresado);
 
-  if (tieneVeto || (estatusUI !== "ninguna" && estatusUI !== "Renovacion")) {
-    const observacionSolicitud = extraerObservacionSolicitud(academicStatus.lastSolicitud);
+  const puedePostular =
+    !tieneVeto &&
+    !esEgresado &&
+    (estatusUI === "ninguna" || estatusUI === "Renovacion" || estatusUI === "Finalizada");
+
+  if (!puedePostular) {
+    const observacionSolicitud =
+      extraerObservacionSolicitud(academicStatus.lastSolicitud) ||
+      (esEgresado ? OBSERVACION_EGRESADO : null);
+
     const studentStatusData: StatusStudentData = {
       ...studentRaw,
       fecha_nacimiento: fechaNacimientoFormateada,
@@ -292,7 +305,10 @@ export default async function PostulacionPage(props: {
 
     return (
       <div className="w-full min-h-screen flex items-center justify-center bg-[#f8fafc] px-4 py-12">
-        <StatusCard estatus={estatusUI} studentRaw={studentStatusData} />
+        <StatusCard
+          estatus={esEgresado ? "Finalizada" : estatusUI}
+          studentRaw={studentStatusData}
+        />
       </div>
     );
   }

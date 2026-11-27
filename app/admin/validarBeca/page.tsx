@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback, use } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
+import { Loader2 } from "lucide-react"
 import { obtenerTodasLasSolicitudes } from "@/lib/ActionsTodasSolicitudes"
 import { actualizarEstatusBeca, type ResultadoActualizacionEstatus } from "@/lib/ActionsEstatusBeca"
 import { obtenerOCrearPeriodoObjetivo } from "@/lib/SolicitudAcademic"
@@ -58,8 +59,14 @@ export default function ValidarBecaPage({ searchParams }: ValidarBecaPageProps) 
   const urlSearchParams = useSearchParams();
   const router = useRouter();
 
+  const cedulaTarget = urlSearchParams.get('abrirAuditoria') || initialFilters?.abrirAuditoria;
+  const origenTarget = urlSearchParams.get('origen') || initialFilters?.origen;
+
   const [solicitudes, setSolicitudes] = useState<SolicitudItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [abriendoAuditoriaDirecta, setAbriendoAuditoriaDirecta] = useState<boolean>(
+    Boolean(cedulaTarget)
+  );
   const [periodoActualId, setPeriodoActualId] = useState<number | null>(null);
   const [esSecretariaGeneral, setEsSecretariaGeneral] = useState(false);
   const [rolCargado, setRolCargado] = useState(false);
@@ -139,12 +146,10 @@ export default function ValidarBecaPage({ searchParams }: ValidarBecaPageProps) 
           getSession(),
         ]);
 
-        const idFinal =
-          resPeriodo && typeof resPeriodo === 'object'
-            ? ((resPeriodo as Record<string, unknown>).id ||
-                (resPeriodo as Record<string, unknown>).periodo_id)
-            : resPeriodo;
-        if (idFinal) setPeriodoActualId(Number(idFinal));
+        const idFinal = Number(resPeriodo);
+        if (Number.isFinite(idFinal) && idFinal > 0) {
+          setPeriodoActualId(idFinal);
+        }
 
         const esSec = Boolean(
           session.isLoggedIn &&
@@ -165,21 +170,37 @@ export default function ValidarBecaPage({ searchParams }: ValidarBecaPageProps) 
     inicializarContexto();
   }, []);
 
-  const cedulaTarget = urlSearchParams.get('abrirAuditoria') || initialFilters?.abrirAuditoria;
-
   useEffect(() => {
-    if (!rolCargado || !cedulaTarget || auditoriaAbiertaRef.current === cedulaTarget) return;
+    if (!cedulaTarget) {
+      setAbriendoAuditoriaDirecta(false);
+      return;
+    }
+
+    if (!rolCargado || auditoriaAbiertaRef.current === cedulaTarget) return;
 
     const abrirExpedienteDirecto = async () => {
       auditoriaAbiertaRef.current = cedulaTarget;
+      setAbriendoAuditoriaDirecta(true);
       setLoading(true);
       try {
-        const res = (await obtenerTodasLasSolicitudes({
-          search: cedulaTarget.trim(),
+        const cedulaLimpia = cedulaTarget.trim();
+        let res = (await obtenerTodasLasSolicitudes({
+          cedulaExacta: cedulaLimpia,
+          incluirHistorico: !esSecretariaGeneral,
           status: esSecretariaGeneral ? 'En Revisión' : undefined,
           page: 1,
           limit: 1
         })) as RespuestaSolicitudes;
+
+        if (!res?.data || res.data.length === 0) {
+          res = (await obtenerTodasLasSolicitudes({
+            search: cedulaLimpia,
+            incluirHistorico: !esSecretariaGeneral,
+            status: esSecretariaGeneral ? 'En Revisión' : undefined,
+            page: 1,
+            limit: 1
+          })) as RespuestaSolicitudes;
+        }
 
         if (res && res.data && res.data.length > 0) {
           setSelectedSolicitud(res.data[0] as SolicitudAuditoriaView);
@@ -189,10 +210,11 @@ export default function ValidarBecaPage({ searchParams }: ValidarBecaPageProps) 
         console.error("Error abriendo expediente automático:", error);
       } finally {
         setLoading(false);
+        setAbriendoAuditoriaDirecta(false);
       }
     };
 
-    abrirExpedienteDirecto();
+    void abrirExpedienteDirecto();
   }, [cedulaTarget, rolCargado, esSecretariaGeneral]);
 
   const cargarDatos = useCallback(async (actualFiltros: FiltrosValidacionState, pagina: number) => {
@@ -230,13 +252,13 @@ export default function ValidarBecaPage({ searchParams }: ValidarBecaPageProps) 
   }, [cargarDatos, filtros, paginaActual]);
 
   useEffect(() => {
-    if (!rolCargado || viewMode !== 'list') return;
+    if (!rolCargado || viewMode !== 'list' || abriendoAuditoriaDirecta) return;
     const timeout = setTimeout(() => {
       cargarDatos(filtros, paginaActual);
       isFirstRender.current = false;
     }, isFirstRender.current ? 50 : 0);
     return () => clearTimeout(timeout);
-  }, [filtros, paginaActual, cargarDatos, viewMode, rolCargado]);
+  }, [filtros, paginaActual, cargarDatos, viewMode, rolCargado, abriendoAuditoriaDirecta]);
 
   const handleOpenAcademicHistory = useCallback(
     async (solicitudTarget: SolicitudItem | SolicitudAuditoriaView, origen: 'list' | 'auditoria') => {
@@ -393,6 +415,10 @@ export default function ValidarBecaPage({ searchParams }: ValidarBecaPageProps) 
   };
 
   const handleCloseSubViews = () => {
+    if (origenTarget === 'estudiantes') {
+      router.push('/admin/estudiantes');
+      return;
+    }
     setViewMode('list');
     setAcademicReturnView('list');
     if (cedulaTarget) {
@@ -415,6 +441,15 @@ export default function ValidarBecaPage({ searchParams }: ValidarBecaPageProps) 
     nombre: selectedSolicitud.nombre || undefined,
     apellido: selectedSolicitud.apellido || undefined
   } : null;
+
+  if (abriendoAuditoriaDirecta) return (
+    <div className="flex flex-col items-center justify-center py-32 bg-[#f8fafc] min-h-[60vh]">
+      <Loader2 className="h-9 w-9 animate-spin text-[#d4a843] mb-3" />
+      <p className="text-[10px] font-black uppercase tracking-widest text-[#1e3a5f]">
+        Abriendo Expediente de Auditoría...
+      </p>
+    </div>
+  );
 
   if (viewMode === 'academic') return (
     <ValidarBecaViewAcademic

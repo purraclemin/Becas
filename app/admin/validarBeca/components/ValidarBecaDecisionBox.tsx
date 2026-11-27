@@ -6,7 +6,7 @@ import {
   ShieldCheck, MessageSquare, ShieldAlert,
   CheckCircle2, Loader2, Lock, ArrowRight,
   ClipboardEdit, Building2, CalendarDays, MailCheck, AlertTriangle, Send, XCircle, History,
-  GraduationCap
+  GraduationCap, Archive
 } from "lucide-react"
 import { validarCuposYRequisitos, DiagnosticoBeca } from "@/lib/ActionsBecaValidators"
 import { DEPARTAMENTOS_UNIMAR_OFICIALES } from "@/lib/RecordAcademicoUtils"
@@ -93,7 +93,8 @@ export function ValidarBecaDecisionBox({
   const esAprobadoOReprobado =
     estatusNormalizado.includes("aprob") ||
     estatusNormalizado.includes("rechaz") ||
-    estatusNormalizado.includes("reprob");
+    estatusNormalizado.includes("reprob") ||
+    estatusNormalizado.includes("finaliz");
 
   const periodoSolicitudNum = Number(solicitud.periodo_id || 0);
   const periodoActualNum = Number(periodoActualId || 0);
@@ -533,6 +534,34 @@ export function ValidarBecaDecisionBox({
                 <p className="text-[10px] font-bold text-white/90 leading-snug">
                   Esta solicitud fue rechazada de forma definitiva y se encuentra cerrada en auditoría.
                 </p>
+              </div>
+            ) : estatusActual === 'Finalizada' ? (
+              <div className="space-y-3 animate-in fade-in duration-300">
+                <div className="p-4 bg-teal-500/10 border border-teal-400/30 rounded-xl border-l-4 border-l-teal-400 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <Archive className="h-3.5 w-3.5 text-teal-300 shrink-0" />
+                    <p className="text-[9px] font-black text-teal-300 uppercase tracking-widest">
+                      Expediente Cerrado — Finalizada
+                    </p>
+                  </div>
+                  <p className="text-[10px] font-bold text-white/90 leading-snug">
+                    Este beneficio culminó sin sanción disciplinaria ni académica (no aplica bloqueo Art. 28) y se encuentra cerrado en auditoría.
+                  </p>
+                </div>
+
+                {instruccionesGuardadas && (
+                  <div className="p-3 bg-white/5 border border-white/10 rounded-xl space-y-1">
+                    <div className="flex items-center gap-1.5">
+                      <MessageSquare className="h-3 w-3 text-[#d4a843]" />
+                      <span className="text-[8px] font-black text-[#d4a843] uppercase tracking-widest">
+                        Motivo de Finalización
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-white/90 font-medium leading-relaxed whitespace-pre-line break-words">
+                      {instruccionesGuardadas}
+                    </p>
+                  </div>
+                )}
               </div>
             ) : estatusActual === 'Aprobada' ? (
               <div className="space-y-3">

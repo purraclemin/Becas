@@ -8,6 +8,9 @@ import { sincronizarYObtenerRecordAcademico } from './ActionsRecordAcademico'
 import { evaluarYRenovarEstudianteEnCambioPeriodo } from './ActionsRenovacion'
 import { esBecaExcelenciaAcademica } from './RecordAcademicoUtils'
 
+const SEMESTRE_EGRESADO = 13
+const OBSERVACION_EGRESADO = 'Acabó su periodo académico'
+
 interface StudentRow extends RowDataPacket {
   id: number;
   indice_global: number | string | null;
@@ -68,7 +71,7 @@ function obtenerNombrePeriodoAnterior(codigo: string): string {
  * Maneja el estado académico del estudiante separando:
  * - indiceGlobal (Índice Acumulado de toda la carrera)
  * - promedioUltimoTrimestre (Promedio del trimestre inmediatamente anterior)
- * - estatus vigente en el periodo actual (respetando rotación sin penalización de Excelencia Académica)
+ * - estatus vigente en el periodo actual (distinguiendo Finalizada por egreso vs. rotación de Excelencia sin sanción)
  */
 export async function getStudentAcademicStatus(userId: string | number, trimestreManual?: string) {
   try {
@@ -77,6 +80,8 @@ export async function getStudentAcademicStatus(userId: string | number, trimestr
       return {
         estatus: 'ninguna',
         becaPerdida: false,
+        esEgresado: false,
+        puedePostular: false,
         becaBaseRespaldo: null,
         indiceGlobal: '0.00',
         promedioUltimoTrimestre: '0.00',
@@ -139,6 +144,8 @@ export async function getStudentAcademicStatus(userId: string | number, trimestr
     const pAct = periodoRows[0];
 
     const semestreReal = Number(studentData.semestre ?? 0);
+    const esEgresado = semestreReal >= SEMESTRE_EGRESADO;
+
     const indiceGlobalCalculado = expediente
       ? Number(expediente.indiceGlobal).toFixed(2)
       : Number(studentData.indice_global ?? 0).toFixed(2);
@@ -147,9 +154,16 @@ export async function getStudentAcademicStatus(userId: string | number, trimestr
       ? Number(expediente.promedioUltimoTrimestre).toFixed(2)
       : Number(s.promedio_notas ?? 0).toFixed(2);
 
-    // 6. Verificar rechazo histórico definitivo (bloqueo permanente Art. 28)
+    // 6. Verificar rechazo histórico definitivo (bloqueo permanente Art. 28 — nunca aplica a 'Finalizada')
     const [rechazoRows] = await db.execute<RechazoPrevioRow[]>(
-      `SELECT id, observaciones_admin FROM solicitudes WHERE user_id = ? AND estatus = 'Rechazada' ORDER BY id DESC LIMIT 1`,
+      `
+        SELECT id, observaciones_admin
+        FROM solicitudes
+        WHERE user_id = ?
+          AND LOWER(TRIM(estatus)) IN ('rechazada', 'rechazado')
+        ORDER BY id DESC
+        LIMIT 1
+      `,
       [idNum]
     );
 
@@ -163,9 +177,11 @@ export async function getStudentAcademicStatus(userId: string | number, trimestr
       );
     }
 
-    // 7. Trimestre de referencia (semestre - 1)
-    const trimestreSugerido = Math.max(1, semestreReal - 1);
-    const trimestreABuscar = trimestreManual ? parseInt(trimestreManual, 10) : trimestreSugerido;
+    // 7. Trimestre de referencia (acotado al máximo real de 12 trimestres)
+    const trimestreSugerido = Math.min(12, Math.max(1, semestreReal - 1));
+    const trimestreABuscar = trimestreManual
+      ? Math.min(12, Math.max(1, parseInt(trimestreManual, 10) || trimestreSugerido))
+      : trimestreSugerido;
 
     let materiasSugeridas: Array<{
       codigo_materia: string;
@@ -203,8 +219,10 @@ export async function getStudentAcademicStatus(userId: string | number, trimestr
     }
 
     // 8. Estatus UI final:
-    // - Si beca_perdida = 1 -> Rechazada irreversible.
-    // - Si su última solicitud fue Beca a la Excelencia de un periodo ANTERIOR (y no renovó ni volvió a beca base) -> 'ninguna' (habilitado sin sanción).
+    // - Si beca_perdida = 1 -> 'Rechazada' irreversible.
+    // - Si estatus = 'Finalizada' -> conserva 'Finalizada' (egresado queda bloqueado para postular;
+    //   ex-titular de Excelencia sin sanción con semestre <= 12 queda habilitado para volver a postular).
+    // - Si su última solicitud fue Beca a la Excelencia de un periodo anterior sin cerrar -> 'Finalizada'.
     let estatusFinalUI = s.estatus || 'ninguna';
     const esExcelenciaDePeriodoPasado =
       s.estatus === 'Aprobada' &&
@@ -216,10 +234,15 @@ export async function getStudentAcademicStatus(userId: string | number, trimestr
     if (becaPerdida) {
       estatusFinalUI = 'Rechazada';
     } else if (esExcelenciaDePeriodoPasado) {
-      estatusFinalUI = 'ninguna';
+      estatusFinalUI = 'Finalizada';
     } else if (s.periodo_id !== undefined && Number(s.periodo_id) === Number(periodoActualId)) {
       estatusFinalUI = s.estatus || 'ninguna';
     }
+
+    const puedePostular =
+      !becaPerdida &&
+      !esEgresado &&
+      (estatusFinalUI === 'ninguna' || estatusFinalUI === 'Finalizada');
 
     // 9. Validación de ventana de tiempo
     let esPeriodoRenovacion = false;
@@ -238,18 +261,24 @@ export async function getStudentAcademicStatus(userId: string | number, trimestr
         ? obtenerNombrePeriodoAnterior(s.codigo_periodo_solicitud)
         : "";
 
-    const observacionFuente =
+    let observacionFuente =
       s.observaciones_admin && String(s.observaciones_admin).trim() !== ''
         ? String(s.observaciones_admin).trim()
         : rechazoRows[0]?.observaciones_admin
           ? String(rechazoRows[0].observaciones_admin).trim()
           : null;
 
+    if (!observacionFuente && esEgresado && estatusFinalUI === 'Finalizada') {
+      observacionFuente = OBSERVACION_EGRESADO;
+    }
+
     return {
       indiceGlobal: indiceGlobalCalculado,
       promedioUltimoTrimestre: promedioUltimoTrimestreCalculado,
       carrera: studentData.carrera || 'No Definida',
       semestre: semestreReal,
+      esEgresado,
+      puedePostular,
       estatus: estatusFinalUI,
       becaPerdida,
       becaBaseRespaldo: studentData.beca_base_respaldo ?? null,
@@ -270,6 +299,8 @@ export async function getStudentAcademicStatus(userId: string | number, trimestr
     return {
       estatus: 'ninguna',
       becaPerdida: false,
+      esEgresado: false,
+      puedePostular: false,
       becaBaseRespaldo: null,
       indiceGlobal: '0.00',
       promedioUltimoTrimestre: '0.00',

@@ -2,7 +2,12 @@
 
 import React, { useState } from "react"
 import { Check, Undo2, MapPin, Calendar } from "lucide-react"
-import { getBadgeColor, getRiskDetails, getAvgStyle } from "@/app/admin/validarBeca/lib/ValidarBecaUtils"
+import {
+  getBadgeColor,
+  getRiskDetails,
+  getAvgStyle,
+  esEgresadoPorSemestre
+} from "@/app/admin/validarBeca/lib/ValidarBecaUtils"
 import { SolicitudItem, formatearFechaEnvio } from "@/app/admin/validarBeca/lib/ProcesadorDatosValidarBeca"
 import type { ResultadoActualizacionEstatus } from "@/lib/ActionsEstatusBeca"
 
@@ -20,6 +25,11 @@ interface ValidarBecaCardItemProps {
   esSecretariaGeneral?: boolean;
 }
 
+const formatearNota = (valor: number | string | null | undefined): string => {
+  const num = Number(valor ?? 0);
+  return Number.isFinite(num) ? num.toFixed(2) : "0.00";
+};
+
 export function ValidarBecaCardItem({
   s,
   onView,
@@ -31,7 +41,10 @@ export function ValidarBecaCardItem({
   const [pendingAction, setPendingAction] = useState<string | null>(null)
   const risk = getRiskDetails(s.puntaje ?? 0)
 
-  const fechaEnvio = formatearFechaEnvio(s);
+  const fechaEnvio = formatearFechaEnvio(s)
+  const promedioTrimestral = formatearNota(s.promedio_notas)
+  const indiceGlobalOficial = formatearNota(s.indice_global ?? s.promedio_historico)
+  const esEgresado = esEgresadoPorSemestre(s.semestre ?? s.trimestre)
 
   const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value
@@ -49,11 +62,11 @@ export function ValidarBecaCardItem({
 
   const confirmAction = async () => {
     if (pendingAction) {
-      const res = await onStatusChange(Number(s.id), pendingAction);
-      setIsConfirming(false);
-      setPendingAction(null);
+      const res = await onStatusChange(Number(s.id), pendingAction)
+      setIsConfirming(false)
+      setPendingAction(null)
       if (res && typeof res === 'object' && res.error === 'REGLAMENTO_INCUMPLIDO') {
-        onView(s);
+        onView(s)
       }
     }
   }
@@ -99,17 +112,25 @@ export function ValidarBecaCardItem({
             </div>
           </div>
           <div className="mt-1 flex items-center justify-between text-[10px] font-black text-[#1e3a5f]">
-            <span>Trimestre: {s.semestre || s.trimestre || "0"}°</span>
+            {esEgresado ? (
+              <span className="inline-block px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider bg-teal-50 text-teal-800 border border-teal-200">
+                Egresado
+              </span>
+            ) : (
+              <span>Trimestre: {s.semestre || s.trimestre || "0"}°</span>
+            )}
           </div>
         </div>
 
         <div className="bg-slate-50 p-2 rounded-xl border border-slate-100 flex items-center justify-between">
           <div>
             <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider block">Promedio</span>
-            <span className={`text-sm font-black ${getAvgStyle(String(s.promedio_notas || "0")).split(' ')[1]}`}>
-              {s.promedio_notas || "0.00"}
+            <span className={`text-sm font-black tabular-nums ${getAvgStyle(promedioTrimestral).split(' ')[1]}`}>
+              {promedioTrimestral}
             </span>
-            <span className="text-[8px] font-black text-[#d4a843] block uppercase">G: {s.promedio_historico || s.indice_global || "0.00"}</span>
+            <span className="text-[8px] font-black text-[#d4a843] block uppercase tabular-nums">
+              G: {indiceGlobalOficial}
+            </span>
           </div>
         </div>
 
@@ -158,7 +179,8 @@ export function ValidarBecaCardItem({
             ) : (
               s.estatus !== 'En Revisión' &&
               s.estatus !== 'Aprobada' &&
-              s.estatus !== 'Rechazada' && (
+              s.estatus !== 'Rechazada' &&
+              s.estatus !== 'Finalizada' && (
                 <option value="En Revisión">⏳ Enviar a Revisión</option>
               )
             )}

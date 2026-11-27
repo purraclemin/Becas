@@ -76,7 +76,7 @@ export function SolicitudesView({ initialFilters }: { initialFilters: any }) {
     const cargarPeriodo = async () => {
       try {
         const res = await obtenerOCrearPeriodoObjetivo();
-        const idFinal = (res && typeof res === 'object') ? (res.id || res.periodo_id) : res;
+       const idFinal = Number(res);
         if (idFinal) setPeriodoActualId(Number(idFinal));
       } catch (error) {
         console.error("Error obteniendo periodo actual:", error);

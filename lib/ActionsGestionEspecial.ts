@@ -7,18 +7,25 @@ import { revalidatePath } from 'next/cache'
 import { db, queryFresh } from './db'
 import { getSession } from './ActionsSession'
 import { obtenerOCrearPeriodoObjetivo } from './SolicitudAcademic'
-import { sincronizarYObtenerRecordAcademico } from './ActionsRecordAcademico'
+import { sincronizarTodosLosRecordsFaltantes } from './ActionsRecordAcademico'
 import {
   DEPARTAMENTOS_UNIMAR_OFICIALES,
+  PROMEDIO_MINIMO_BECA,
   PROMEDIO_MINIMO_EXCELENCIA,
+  SISTEMA_ADMIN_ID,
   TRIMESTRE_MINIMO_EXCELENCIA,
   calcularDatosTrimestreAnterior,
+  calcularPromedioAritmetico,
   construirSnapshotDeTrimestre,
   esBecaExcelenciaAcademica,
   evaluarElegibilidadTrimestre,
   normalizarTipoBecaOficial,
   obtenerVariantesTipoBeca,
+  type IRegistroRecordAcademico,
 } from './RecordAcademicoUtils'
+
+const SEMESTRE_EGRESADO = 13
+const OBSERVACION_EGRESADO = 'Acabó su periodo académico'
 
 interface CarreraRow extends RowDataPacket {
   id: number;
@@ -34,6 +41,7 @@ interface CandidatoExcelenciaRow extends RowDataPacket {
   carrera: string;
   semestre: number;
   indice_global: number | string;
+  promedio_ultimo_trim: number | string;
   beca_base_respaldo: string | null;
   departamento_base_respaldo: string | null;
   solicitud_actual_id: number | null;
@@ -49,10 +57,25 @@ interface HolderExcelenciaActualRow extends RowDataPacket {
   nombre: string;
   apellido: string;
   cedula: string;
+  email: string | null;
   carrera: string;
   semestre: number;
+  indice_global: number | string;
   beca_base_respaldo: string | null;
   departamento_base_respaldo: string | null;
+}
+
+interface RecordAcademicoTxRow extends RowDataPacket {
+  id: number;
+  student_id: number;
+  pensum_materia_id: number;
+  trimestre_cursado: number;
+  codigo_materia: string;
+  nombre_materia: string;
+  unidades_credito: number;
+  nota: number | string;
+  aprobada: number;
+  created_at: Date | string;
 }
 
 interface StudentBusquedaSocialRow extends RowDataPacket {
@@ -104,6 +127,7 @@ export interface CandidatoExcelenciaUI {
   carrera: string;
   semestre: number;
   indiceGlobal: number;
+  promedioUltimoTrim: number;
   becaActual: string | null;
   estatusActual: string | null;
   becaBaseRespaldo: string | null;
@@ -113,7 +137,8 @@ export interface CandidatoExcelenciaUI {
 export interface NominaCarreraExcelenciaUI {
   carreraId: number;
   carrera: string;
-  empateTecnico: boolean;
+  desempateAutomatico: boolean;
+  criterioDesempate: string | null;
   titularActual: CandidatoExcelenciaUI | null;
   candidatosTop: CandidatoExcelenciaUI[];
   otrosElegibles: CandidatoExcelenciaUI[];
@@ -121,11 +146,12 @@ export interface NominaCarreraExcelenciaUI {
 
 export interface ResultadoRotacionExcelencia {
   success: boolean;
+  huboCambios: boolean;
   asignados: number;
   promovidosConRespaldo: number;
   retornadosABecaBase: number;
+  rechazadosPorRendimiento: number;
   liberadosSinBase: number;
-  empatesPendientes: number;
   message?: string;
   error?: string;
 }
@@ -177,10 +203,95 @@ function redondearDos(valor: number | string | null | undefined): number {
 }
 
 /**
- * Desplaza a un titular previo de Beca a la Excelencia Académica en el periodo vigente:
- * - Si tiene beca_base_respaldo: audita su trimestre anterior (>= 16 y 0 reprobadas) y lo devuelve
- *   automáticamente a su beca original (o lo rechaza por Art. 26 si bajó de 16 / reprobó).
- * - Si NO tiene beca_base_respaldo: libera la plaza de Excelencia sin aplicar sanción ni beca_perdida.
+ * Orden determinístico y 100% automático para seleccionar al #1 de cada carrera:
+ * 1° Mayor Índice Global Acumulado (>= 18.00)
+ * 2° Mayor Promedio del Trimestre Inmediatamente Anterior
+ * 3° Mayor trayectoria (trimestre más alto)
+ * 4° Continuidad (si ya posee Excelencia aprobada en el periodo vigente)
+ * 5° Antigüedad de registro (menor student_id)
+ */
+function compararCandidatosExcelencia(
+  a: CandidatoExcelenciaRow,
+  b: CandidatoExcelenciaRow
+): number {
+  const diffGlobal = redondearDos(b.indice_global) - redondearDos(a.indice_global);
+  if (Math.abs(diffGlobal) >= 0.005) return diffGlobal;
+
+  const diffTrim =
+    redondearDos(b.promedio_ultimo_trim) - redondearDos(a.promedio_ultimo_trim);
+  if (Math.abs(diffTrim) >= 0.005) return diffTrim;
+
+  const diffSem = Number(b.semestre) - Number(a.semestre);
+  if (diffSem !== 0) return diffSem;
+
+  const aTitular =
+    a.estatus_actual === 'Aprobada' && esBecaExcelenciaAcademica(a.tipo_beca_actual)
+      ? 1
+      : 0;
+  const bTitular =
+    b.estatus_actual === 'Aprobada' && esBecaExcelenciaAcademica(b.tipo_beca_actual)
+      ? 1
+      : 0;
+  if (bTitular !== aTitular) return bTitular - aTitular;
+
+  return Number(a.student_id) - Number(b.student_id);
+}
+
+/**
+ * Lee el récord académico completo usando la MISMA conexión de la transacción activa
+ * para garantizar consistencia sin riesgo de bloqueos (deadlocks) en el pool.
+ */
+async function leerRecordEnTransaccion(
+  connection: PoolConnection,
+  studentId: number
+): Promise<IRegistroRecordAcademico[]> {
+  const [rows] = await connection.execute<RecordAcademicoTxRow[]>(
+    `
+    SELECT
+      id,
+      student_id,
+      pensum_materia_id,
+      trimestre_cursado,
+      codigo_materia,
+      nombre_materia,
+      unidades_credito,
+      nota,
+      aprobada,
+      created_at
+    FROM record_academico
+    WHERE student_id = ?
+    ORDER BY trimestre_cursado ASC, codigo_materia ASC
+    `,
+    [studentId]
+  );
+
+  return rows.map((row) => ({
+    id: Number(row.id),
+    student_id: Number(row.student_id),
+    pensum_materia_id: Number(row.pensum_materia_id),
+    trimestre_cursado: Number(row.trimestre_cursado),
+    codigo_materia: String(row.codigo_materia),
+    nombre_materia: String(row.nombre_materia),
+    unidades_credito: Number(row.unidades_credito),
+    nota: Number(row.nota),
+    aprobada: Number(row.aprobada) === 1,
+    created_at:
+      row.created_at instanceof Date
+        ? row.created_at.toISOString()
+        : String(row.created_at ?? ''),
+  }));
+}
+
+/**
+ * Desplaza automáticamente a un titular previo de Beca a la Excelencia Académica en el periodo vigente:
+ * - Si el titular egresó (`semestre >= 13`) -> cierra su solicitud como `'Finalizada'` con `"Acabó su periodo académico"`.
+ * - Si tiene `beca_base_respaldo` (ej. Beca Aprendizaje / Discapacidad):
+ *   * Si mantiene todas las materias aprobadas y promedio trimestral >= 16.00 -> retorna automáticamente a su beca base.
+ *   * Si reprobó o bajó de 16.00 -> pasa a `'Rechazada'` (`beca_perdida = 1`).
+ * - Si NO tiene `beca_base_respaldo`:
+ *   * Si reprobó materia (< 10) o bajó de 16.00 en el trimestre anterior -> pasa a `'Rechazada'` (`beca_perdida = 1`).
+ *   * Si mantiene >= 16.00 y 0 reprobadas (solo fue superado por un promedio global más alto) -> cierra como `'Finalizada'`
+ *     sin sanción (`beca_perdida = 0`), conservando trazabilidad en `solicitudes` y `historial_aprobaciones`.
  */
 async function procesarDesplazamientoTitularActual(
   connection: PoolConnection,
@@ -188,47 +299,111 @@ async function procesarDesplazamientoTitularActual(
   periodoActualId: number,
   adminId: number,
   motivoDesplazamiento: string
-): Promise<'retornado_base' | 'rechazado_base' | 'liberado_sin_base'> {
+): Promise<'retornado_base' | 'rechazado' | 'liberado_sin_base'> {
   const becaBase = holder.beca_base_respaldo
     ? normalizarTipoBecaOficial(holder.beca_base_respaldo) || holder.beca_base_respaldo
     : null;
   const deptoBase = holder.departamento_base_respaldo ?? null;
 
+  const recordCompleto = await leerRecordEnTransaccion(connection, holder.student_id);
+  const semestreHolder = Number(holder.semestre || 2);
+  const trimestreAuditado = Math.min(12, Math.max(1, semestreHolder - 1));
+  const indiceGlobal =
+    recordCompleto.length > 0
+      ? calcularPromedioAritmetico(recordCompleto.map((r) => Number(r.nota)))
+      : redondearDos(holder.indice_global);
+
+  const snapshot = construirSnapshotDeTrimestre(recordCompleto, trimestreAuditado);
+  const materiasJson = JSON.stringify(
+    snapshot ?? {
+      trimestre: trimestreAuditado,
+      materias: [],
+      fecha_proceso: new Date().toISOString(),
+    }
+  );
+
+  // Caso especial: titular egresado (semestre >= 13) -> cierre limpio como 'Finalizada'
+  if (semestreHolder >= SEMESTRE_EGRESADO) {
+    const datosTrim = calcularDatosTrimestreAnterior(recordCompleto, semestreHolder);
+    const promedioTrimFinal =
+      datosTrim.promedioTrimestre > 0 ? datosTrim.promedioTrimestre : indiceGlobal;
+
+    await connection.execute<ResultSetHeader>(
+      `
+      UPDATE solicitudes
+      SET estatus = 'Finalizada',
+          promedio_notas = ?,
+          materias_json = ?,
+          departamento_asignado = NULL,
+          observaciones_admin = ?,
+          fecha_decision = NOW(),
+          revisado_por = ?
+      WHERE id = ?
+      `,
+      [
+        promedioTrimFinal.toFixed(2),
+        materiasJson,
+        OBSERVACION_EGRESADO,
+        adminId,
+        holder.solicitud_id,
+      ]
+    );
+
+    if (becaBase || deptoBase) {
+      await connection.execute<ResultSetHeader>(
+        `
+        UPDATE students
+        SET beca_base_respaldo = NULL,
+            departamento_base_respaldo = NULL
+        WHERE id = ?
+        `,
+        [holder.student_id]
+      );
+    }
+
+    await connection.execute<ResultSetHeader>(
+      `
+      INSERT INTO historial_aprobaciones (
+        solicitud_id, user_id, periodo_id, admin_id,
+        promedio_ciclo, trimestre, puntaje_baremo_, nivel_riesgo,
+        tipo_beca_snapshot, estatus_previo, estatus_nuevo,
+        observacion_admin, materias_snapshot_json, indice_global_snapshot,
+        fecha_aprobacion, token_verificacion, ip_accion
+      ) VALUES (?, ?, ?, ?, ?, ?, 0, 'Bajo', 'BECA A LA EXCELENCIA ACADÉMICA', 'Aprobada', 'Finalizada', ?, ?, ?, NOW(), ?, '127.0.0.1')
+      `,
+      [
+        holder.solicitud_id,
+        holder.student_id,
+        periodoActualId,
+        adminId,
+        promedioTrimFinal.toFixed(2),
+        semestreHolder,
+        OBSERVACION_EGRESADO,
+        materiasJson,
+        indiceGlobal.toFixed(2),
+        randomUUID(),
+      ]
+    );
+
+    return 'liberado_sin_base';
+  }
+
   if (becaBase) {
-    const recordRes = await sincronizarYObtenerRecordAcademico(
-      holder.student_id,
-      undefined,
-      becaBase
+    const evalBase = evaluarElegibilidadTrimestre(
+      trimestreAuditado,
+      recordCompleto,
+      becaBase,
+      'renovacion'
     );
-    const expediente = recordRes.success ? recordRes.data : null;
-    const trimestreAuditado = Math.max(1, Number(holder.semestre || 2) - 1);
 
-    const evalBase = expediente
-      ? evaluarElegibilidadTrimestre(
-          trimestreAuditado,
-          expediente.recordCompleto,
-          becaBase,
-          'renovacion'
-        )
-      : null;
-
-    const cumpleBase = evalBase ? evalBase.apto : true;
-    const promedioTrim = evalBase ? evalBase.promedioTrimestre : 16;
-    const indiceGlobal = expediente ? expediente.indiceGlobal : 16;
-
-    const snapshot = expediente
-      ? construirSnapshotDeTrimestre(expediente.recordCompleto, trimestreAuditado)
-      : null;
-    const materiasJson = JSON.stringify(
-      snapshot ?? {
-        trimestre: trimestreAuditado,
-        materias: [],
-        fecha_proceso: new Date().toISOString(),
-      }
-    );
+    const cumpleBase = recordCompleto.length > 0 ? evalBase.apto : true;
+    const promedioTrim =
+      recordCompleto.length > 0 ? evalBase.promedioTrimestre : PROMEDIO_MINIMO_BECA;
 
     if (cumpleBase) {
-      const obsRetorno = `${motivoDesplazamiento} Retorno automático a su beca base (${becaBase}) por mantener promedio trimestral de ${promedioTrim.toFixed(2)} pts sin asignaturas reprobadas.`;
+      const obsRetorno = `${motivoDesplazamiento} Retorno automático a su beca base (${becaBase}) por mantener promedio trimestral de ${promedioTrim.toFixed(
+        2
+      )} pts sin asignaturas reprobadas.`;
 
       await connection.execute<ResultSetHeader>(
         `
@@ -245,7 +420,7 @@ async function procesarDesplazamientoTitularActual(
         `,
         [
           becaBase,
-          promedioTrim,
+          promedioTrim.toFixed(2),
           materiasJson,
           deptoBase,
           obsRetorno,
@@ -279,12 +454,12 @@ async function procesarDesplazamientoTitularActual(
           holder.student_id,
           periodoActualId,
           adminId,
-          promedioTrim,
-          holder.semestre,
+          promedioTrim.toFixed(2),
+          semestreHolder,
           becaBase,
           obsRetorno,
           materiasJson,
-          indiceGlobal,
+          indiceGlobal.toFixed(2),
           randomUUID(),
         ]
       );
@@ -293,8 +468,8 @@ async function procesarDesplazamientoTitularActual(
     }
 
     const obsRechazo =
-      evalBase?.motivoRechazo ||
-      `${motivoDesplazamiento} No cumple el mantenimiento reglamentario para retornar a ${becaBase}.`;
+      evalBase.motivoRechazo ||
+      `${motivoDesplazamiento} No cumple el mantenimiento reglamentario (>= 16.00 pts y 0 reprobadas) para retornar a ${becaBase}.`;
 
     await connection.execute<ResultSetHeader>(
       `
@@ -311,7 +486,7 @@ async function procesarDesplazamientoTitularActual(
       `,
       [
         becaBase,
-        promedioTrim,
+        promedioTrim.toFixed(2),
         materiasJson,
         obsRechazo,
         adminId,
@@ -345,43 +520,152 @@ async function procesarDesplazamientoTitularActual(
         holder.student_id,
         periodoActualId,
         adminId,
-        promedioTrim,
-        holder.semestre,
+        promedioTrim.toFixed(2),
+        semestreHolder,
         becaBase,
         obsRechazo,
         materiasJson,
-        indiceGlobal,
+        indiceGlobal.toFixed(2),
         randomUUID(),
       ]
     );
 
-    return 'rechazado_base';
+    return 'rechazado';
   }
 
-  // Sin beca base: liberar plaza sin sanción (beca_perdida permanece en 0)
+  // Sin beca base: verificar si perdió por bajo rendimiento (< 16 o reprobada) o solo por rotación
+  const evalMinimo = evaluarElegibilidadTrimestre(
+    trimestreAuditado,
+    recordCompleto,
+    'AYUDA ECONÓMICA',
+    'renovacion'
+  );
+
+  if (recordCompleto.length > 0 && !evalMinimo.apto) {
+    const obsRechazoSinBase =
+      evalMinimo.motivoRechazo ||
+      `${motivoDesplazamiento} Incumplimiento académico en el Trimestre ${trimestreAuditado}.`;
+
+    await connection.execute<ResultSetHeader>(
+      `
+      UPDATE solicitudes
+      SET estatus = 'Rechazada',
+          promedio_notas = ?,
+          materias_json = ?,
+          departamento_asignado = NULL,
+          observaciones_admin = ?,
+          fecha_decision = NOW(),
+          revisado_por = ?
+      WHERE id = ?
+      `,
+      [
+        evalMinimo.promedioTrimestre.toFixed(2),
+        materiasJson,
+        obsRechazoSinBase,
+        adminId,
+        holder.solicitud_id,
+      ]
+    );
+
+    await connection.execute<ResultSetHeader>(
+      `UPDATE students SET beca_perdida = 1 WHERE id = ?`,
+      [holder.student_id]
+    );
+
+    await connection.execute<ResultSetHeader>(
+      `
+      INSERT INTO historial_aprobaciones (
+        solicitud_id, user_id, periodo_id, admin_id,
+        promedio_ciclo, trimestre, puntaje_baremo_, nivel_riesgo,
+        tipo_beca_snapshot, estatus_previo, estatus_nuevo,
+        observacion_admin, materias_snapshot_json, indice_global_snapshot,
+        fecha_aprobacion, token_verificacion, ip_accion
+      ) VALUES (?, ?, ?, ?, ?, ?, 0, 'Bajo', 'BECA A LA EXCELENCIA ACADÉMICA', 'Aprobada', 'Rechazada', ?, ?, ?, NOW(), ?, '127.0.0.1')
+      `,
+      [
+        holder.solicitud_id,
+        holder.student_id,
+        periodoActualId,
+        adminId,
+        evalMinimo.promedioTrimestre.toFixed(2),
+        semestreHolder,
+        obsRechazoSinBase,
+        materiasJson,
+        indiceGlobal.toFixed(2),
+        randomUUID(),
+      ]
+    );
+
+    return 'rechazado';
+  }
+
+  // Mantuvo buen rendimiento (>= 16 y 0 reprobadas) pero otro estudiante alcanzó mayor Índice Global:
+  // marcar como 'Finalizada' sin sanción (beca_perdida = 0) preservando la trazabilidad completa
+  const promedioSinSancion =
+    recordCompleto.length > 0 ? evalMinimo.promedioTrimestre : indiceGlobal;
+  const obsFinalizada = `${motivoDesplazamiento} Finalización sin sanción de Beca a la Excelencia Académica manteniendo promedio trimestral de ${promedioSinSancion.toFixed(
+    2
+  )} pts sin asignaturas reprobadas.`;
+
   await connection.execute<ResultSetHeader>(
-    `DELETE FROM historial_aprobaciones WHERE solicitud_id = ? AND periodo_id = ?`,
-    [holder.solicitud_id, periodoActualId]
+    `
+    UPDATE solicitudes
+    SET estatus = 'Finalizada',
+        promedio_notas = ?,
+        materias_json = ?,
+        departamento_asignado = NULL,
+        observaciones_admin = ?,
+        fecha_decision = NOW(),
+        revisado_por = ?
+    WHERE id = ?
+    `,
+    [
+      promedioSinSancion.toFixed(2),
+      materiasJson,
+      obsFinalizada,
+      adminId,
+      holder.solicitud_id,
+    ]
   );
 
   await connection.execute<ResultSetHeader>(
-    `DELETE FROM solicitudes WHERE id = ?`,
-    [holder.solicitud_id]
+    `
+    INSERT INTO historial_aprobaciones (
+      solicitud_id, user_id, periodo_id, admin_id,
+      promedio_ciclo, trimestre, puntaje_baremo_, nivel_riesgo,
+      tipo_beca_snapshot, estatus_previo, estatus_nuevo,
+      observacion_admin, materias_snapshot_json, indice_global_snapshot,
+      fecha_aprobacion, token_verificacion, ip_accion
+    ) VALUES (?, ?, ?, ?, ?, ?, 0, 'Bajo', 'BECA A LA EXCELENCIA ACADÉMICA', 'Aprobada', 'Finalizada', ?, ?, ?, NOW(), ?, '127.0.0.1')
+    `,
+    [
+      holder.solicitud_id,
+      holder.student_id,
+      periodoActualId,
+      adminId,
+      promedioSinSancion.toFixed(2),
+      semestreHolder,
+      obsFinalizada,
+      materiasJson,
+      indiceGlobal.toFixed(2),
+      randomUUID(),
+    ]
   );
 
   return 'liberado_sin_base';
 }
 
 /**
- * Otorga Beca a la Excelencia Académica a un ganador específico dentro de una transacción abierta.
- * Si ya poseía una beca aprobada (ej. Discapacidad o Aprendizaje), la respalda en students.beca_base_respaldo.
+ * Otorga automáticamente Beca a la Excelencia Académica al ganador #1 de la carrera
+ * dentro de la transacción activa. Si ya poseía otra beca aprobada (ej. Beca Aprendizaje),
+ * resguarda esa beca original en `students.beca_base_respaldo` y `departamento_base_respaldo`.
  */
 async function otorgarExcelenciaAGanador(
   connection: PoolConnection,
   ganador: CandidatoExcelenciaRow,
   periodoActualId: number,
   adminId: number,
-  esResolucionEmpate: boolean = false
+  notaDesempate: string | null = null
 ): Promise<{ asignado: boolean; promovidoConRespaldo: boolean }> {
   const yaEsExcelenciaAprobada =
     ganador.solicitud_actual_id !== null &&
@@ -392,27 +676,21 @@ async function otorgarExcelenciaAGanador(
     return { asignado: false, promovidoConRespaldo: false };
   }
 
-  const recordRes = await sincronizarYObtenerRecordAcademico(
-    ganador.student_id,
-    undefined,
-    'BECA A LA EXCELENCIA ACADÉMICA'
-  );
-  const expediente = recordRes.success ? recordRes.data : null;
-  const trimestreAuditado = Math.max(1, Number(ganador.semestre || 4) - 1);
+  const recordCompleto = await leerRecordEnTransaccion(connection, ganador.student_id);
+  const semestreGanador = Number(ganador.semestre || 4);
+  const trimestreAuditado = Math.min(12, Math.max(1, semestreGanador - 1));
 
-  const datosTrim = expediente
-    ? calcularDatosTrimestreAnterior(expediente.recordCompleto, Number(ganador.semestre || 4))
-    : null;
-  const promedioTrim = datosTrim && datosTrim.promedioTrimestre > 0
-    ? datosTrim.promedioTrimestre
-    : redondearDos(ganador.indice_global);
-  const indiceGlobalReal = expediente && expediente.indiceGlobal > 0
-    ? expediente.indiceGlobal
-    : redondearDos(ganador.indice_global);
+  const datosTrim = calcularDatosTrimestreAnterior(recordCompleto, semestreGanador);
+  const promedioTrim =
+    datosTrim.promedioTrimestre > 0
+      ? datosTrim.promedioTrimestre
+      : redondearDos(ganador.promedio_ultimo_trim || ganador.indice_global);
+  const indiceGlobalReal =
+    recordCompleto.length > 0
+      ? calcularPromedioAritmetico(recordCompleto.map((r) => Number(r.nota)))
+      : redondearDos(ganador.indice_global);
 
-  const snapshot = expediente
-    ? construirSnapshotDeTrimestre(expediente.recordCompleto, trimestreAuditado)
-    : null;
+  const snapshot = construirSnapshotDeTrimestre(recordCompleto, trimestreAuditado);
   const materiasJson = JSON.stringify(
     snapshot ?? {
       trimestre: trimestreAuditado,
@@ -424,7 +702,6 @@ async function otorgarExcelenciaAGanador(
   let promovidoConRespaldo = false;
   let textoRespaldo = '';
 
-  // Si ya tenía otra beca aprobada en el periodo actual (ej. Discapacidad), resguardarla en beca_base_respaldo
   const tieneOtraBecaAprobadaActual =
     ganador.solicitud_actual_id !== null &&
     ganador.estatus_actual === 'Aprobada' &&
@@ -450,12 +727,13 @@ async function otorgarExcelenciaAGanador(
     }
 
     promovidoConRespaldo = true;
-    textoRespaldo = ` Se resguarda su beneficio base (${becaBaseActual}) en caso de rotación futura.`;
+    textoRespaldo = ` Se resguarda su beneficio base (${becaBaseActual}) para retorno automático si cambia el ranking.`;
   }
 
-  const observacion = esResolucionEmpate
-    ? `Otorgamiento de Beca a la Excelencia Académica (Art. 8 — resolución de empate técnico) con Índice Global de ${indiceGlobalReal.toFixed(2)} pts en ${ganador.carrera}.${textoRespaldo}`
-    : `Asignación automática de Beca a la Excelencia Académica (Art. 8 y 32): mayor Índice Académico Acumulado (${indiceGlobalReal.toFixed(2)} pts) en ${ganador.carrera}.${textoRespaldo}`;
+  const detalleDesempate = notaDesempate ? ` (${notaDesempate})` : '';
+  const observacion = `Asignación automática de Beca a la Excelencia Académica (Art. 8 y 32): mayor Índice Académico Acumulado (${indiceGlobalReal.toFixed(
+    2
+  )} pts) en ${ganador.carrera}${detalleDesempate}.${textoRespaldo}`;
 
   let solicitudIdFinal = 0;
   let estatusPrevio = 'Automática';
@@ -477,7 +755,7 @@ async function otorgarExcelenciaAGanador(
           revisado_por = ?
       WHERE id = ?
       `,
-      [promedioTrim, materiasJson, observacion, adminId, solicitudIdFinal]
+      [promedioTrim.toFixed(2), materiasJson, observacion, adminId, solicitudIdFinal]
     );
   } else {
     const [insRes] = await connection.execute<ResultSetHeader>(
@@ -499,7 +777,7 @@ async function otorgarExcelenciaAGanador(
         ganador.student_id,
         periodoActualId,
         ganador.email ?? null,
-        promedioTrim,
+        promedioTrim.toFixed(2),
         materiasJson,
         observacion,
         adminId,
@@ -528,12 +806,12 @@ async function otorgarExcelenciaAGanador(
       ganador.student_id,
       periodoActualId,
       adminId,
-      promedioTrim,
-      ganador.semestre,
+      promedioTrim.toFixed(2),
+      semestreGanador,
       estatusPrevio,
       observacion,
       materiasJson,
-      indiceGlobalReal,
+      indiceGlobalReal.toFixed(2),
       randomUUID(),
     ]
   );
@@ -542,9 +820,315 @@ async function otorgarExcelenciaAGanador(
 }
 
 /**
- * Consulta la nómina en vivo de Beca a la Excelencia Académica por las 8 carreras (Art. 8 y 32).
- * Evalúa estrictamente: semestre >= 4, Índice Global >= 18.00, beca_perdida = 0 y cero reprobadas (< 10)
- * en el trimestre inmediatamente anterior.
+ * Consulta base unificada de elegibles para Beca a la Excelencia Académica en el periodo vigente:
+ * - semestre >= 4 y semestre < 13 (excluye egresados)
+ * - Índice Global >= 18.00
+ * - beca_perdida = 0 y sin ninguna solicitud 'Rechazada'
+ * - Cero asignaturas reprobadas (< 10) en el trimestre inmediatamente anterior (semestre - 1)
+ */
+async function consultarCandidatosElegiblesExcelencia(
+  periodoActualId: number
+): Promise<CandidatoExcelenciaRow[]> {
+  const rows = await queryFresh<CandidatoExcelenciaRow[]>(
+    `
+    SELECT
+      st.id AS student_id,
+      st.nombre,
+      st.apellido,
+      st.cedula,
+      st.email,
+      st.carrera,
+      st.semestre,
+      IFNULL(st.indice_global, 0.00) AS indice_global,
+      IFNULL((
+        SELECT ROUND(AVG(ra_p.nota), 2)
+        FROM record_academico ra_p
+        WHERE ra_p.student_id = st.id
+          AND ra_p.trimestre_cursado = LEAST(12, GREATEST(1, st.semestre - 1))
+      ), IFNULL(st.indice_global, 0.00)) AS promedio_ultimo_trim,
+      st.beca_base_respaldo,
+      st.departamento_base_respaldo,
+      s_act.id AS solicitud_actual_id,
+      s_act.tipo_beca AS tipo_beca_actual,
+      s_act.estatus AS estatus_actual,
+      s_act.departamento_asignado AS departamento_actual,
+      (
+        SELECT COUNT(*)
+        FROM record_academico ra
+        WHERE ra.student_id = st.id
+          AND ra.trimestre_cursado = LEAST(12, GREATEST(1, st.semestre - 1))
+          AND (ra.nota < 10 OR ra.aprobada = 0)
+      ) AS reprobadas_ultimo_trim
+    FROM students st
+    LEFT JOIN solicitudes s_act
+      ON s_act.user_id = st.id AND s_act.periodo_id = ?
+    WHERE st.semestre >= ?
+      AND st.semestre < ?
+      AND IFNULL(st.beca_perdida, 0) = 0
+      AND IFNULL(st.indice_global, 0) >= ?
+      AND NOT EXISTS (
+        SELECT 1
+        FROM solicitudes s_rej
+        WHERE s_rej.user_id = st.id
+          AND LOWER(TRIM(s_rej.estatus)) IN ('rechazada', 'rechazado')
+      )
+    `,
+    [
+      periodoActualId,
+      TRIMESTRE_MINIMO_EXCELENCIA,
+      SEMESTRE_EGRESADO,
+      PROMEDIO_MINIMO_EXCELENCIA,
+    ]
+  );
+
+  return rows
+    .filter((c) => Number(c.reprobadas_ultimo_trim || 0) === 0)
+    .sort(compararCandidatosExcelencia);
+}
+
+/**
+ * Motor 100% automático, determinístico e idempotente de Beca a la Excelencia Académica.
+ * - Si las 8 carreras ya están exactamente sincronizadas con su ganador #1, retorna al instante
+ *   sin abrir transacción ni escribir en disco.
+ * - Si detecta un nuevo #1 (por cambio de periodo, precarga, nuevo aprobado o variación de promedio),
+ *   promueve automáticamente al nuevo ganador (resguardando su beca base si tenía otra beca aprobada)
+ *   y retorna automáticamente al titular anterior a su beca base si cumple >= 16 y 0 reprobadas,
+ *   o lo cierra como 'Finalizada' sin sanción si no tenía beca base.
+ */
+export async function ejecutarRotacionExcelenciaEnPeriodo(
+  periodoIdInput?: number,
+  adminIdEjecutor: number = SISTEMA_ADMIN_ID
+): Promise<ResultadoRotacionExcelencia> {
+  let connection: PoolConnection | undefined;
+
+  try {
+    const periodoActualId =
+      periodoIdInput && Number(periodoIdInput) > 0
+        ? Number(periodoIdInput)
+        : Number(await obtenerOCrearPeriodoObjetivo());
+
+    if (!periodoActualId) {
+      return {
+        success: false,
+        huboCambios: false,
+        asignados: 0,
+        promovidosConRespaldo: 0,
+        retornadosABecaBase: 0,
+        rechazadosPorRendimiento: 0,
+        liberadosSinBase: 0,
+        error: 'No hay periodo académico activo.',
+      };
+    }
+
+    // 1. Mantener sincronizado el veto Art. 28 y los récords faltantes antes de calcular el ranking
+    await db.execute<ResultSetHeader>(
+      `
+      UPDATE students st
+      SET st.beca_perdida = 1
+      WHERE IFNULL(st.beca_perdida, 0) = 0
+        AND EXISTS (
+          SELECT 1
+          FROM solicitudes s_rej
+          WHERE s_rej.user_id = st.id
+            AND LOWER(TRIM(s_rej.estatus)) IN ('rechazada', 'rechazado')
+        )
+      `
+    );
+
+    await sincronizarTodosLosRecordsFaltantes(300);
+
+    const variantesExcelencia = obtenerVariantesTipoBeca('BECA A LA EXCELENCIA ACADÉMICA');
+    const placeholdersEx = variantesExcelencia.map(() => '?').join(', ');
+
+    const [carreras, elegibles, holdersActuales] = await Promise.all([
+      queryFresh<CarreraRow[]>(`SELECT id, nombre FROM carreras ORDER BY nombre ASC`),
+      consultarCandidatosElegiblesExcelencia(periodoActualId),
+      queryFresh<HolderExcelenciaActualRow[]>(
+        `
+        SELECT
+          s.id AS solicitud_id,
+          st.id AS student_id,
+          st.nombre,
+          st.apellido,
+          st.cedula,
+          st.email,
+          st.carrera,
+          st.semestre,
+          IFNULL(st.indice_global, 0.00) AS indice_global,
+          st.beca_base_respaldo,
+          st.departamento_base_respaldo
+        FROM solicitudes s
+        JOIN students st ON s.user_id = st.id
+        WHERE s.periodo_id = ?
+          AND LOWER(TRIM(s.estatus)) IN ('aprobada', 'aprobado')
+          AND LOWER(TRIM(s.tipo_beca)) IN (${placeholdersEx})
+        `,
+        [periodoActualId, ...variantesExcelencia]
+      ),
+    ]);
+
+    // 2. Planificación en memoria y verificación rápida de idempotencia (cero escrituras si todo coincide)
+    interface PlanCarrera {
+      carrera: string;
+      ganador: CandidatoExcelenciaRow | null;
+      holdersADesplazar: HolderExcelenciaActualRow[];
+      requiereAsignarGanador: boolean;
+      notaDesempate: string | null;
+    }
+
+    const planesConCambios: PlanCarrera[] = [];
+
+    for (const carreraRow of carreras) {
+      const claveCarrera = carreraRow.nombre.trim().toLowerCase();
+      const candidatosCarrera = elegibles
+        .filter((c) => c.carrera.trim().toLowerCase() === claveCarrera)
+        .sort(compararCandidatosExcelencia);
+      const holdersCarrera = holdersActuales.filter(
+        (h) => h.carrera.trim().toLowerCase() === claveCarrera
+      );
+
+      const ganador = candidatosCarrera[0] ?? null;
+
+      if (!ganador) {
+        if (holdersCarrera.length > 0) {
+          planesConCambios.push({
+            carrera: carreraRow.nombre,
+            ganador: null,
+            holdersADesplazar: holdersCarrera,
+            requiereAsignarGanador: false,
+            notaDesempate: null,
+          });
+        }
+        continue;
+      }
+
+      const holdersADesplazar = holdersCarrera.filter(
+        (h) => Number(h.student_id) !== Number(ganador.student_id)
+      );
+      const yaEsTitular = holdersCarrera.some(
+        (h) => Number(h.student_id) === Number(ganador.student_id)
+      );
+
+      if (holdersADesplazar.length > 0 || !yaEsTitular) {
+        const segundo = candidatosCarrera[1] ?? null;
+        let notaDesempate: string | null = null;
+        if (
+          segundo &&
+          Math.abs(
+            redondearDos(ganador.indice_global) - redondearDos(segundo.indice_global)
+          ) < 0.005
+        ) {
+          notaDesempate = `desempate automático por prom. trim. ${redondearDos(
+            ganador.promedio_ultimo_trim
+          ).toFixed(2)} pts / ${ganador.semestre}° trim.`;
+        }
+
+        planesConCambios.push({
+          carrera: carreraRow.nombre,
+          ganador,
+          holdersADesplazar,
+          requiereAsignarGanador: !yaEsTitular,
+          notaDesempate,
+        });
+      }
+    }
+
+    // Fast-path: todas las carreras ya están sincronizadas con su titular #1
+    if (planesConCambios.length === 0) {
+      return {
+        success: true,
+        huboCambios: false,
+        asignados: 0,
+        promovidosConRespaldo: 0,
+        retornadosABecaBase: 0,
+        rechazadosPorRendimiento: 0,
+        liberadosSinBase: 0,
+        message: 'Nómina de Excelencia Académica sincronizada al día.',
+      };
+    }
+
+    let asignados = 0;
+    let promovidosConRespaldo = 0;
+    let retornadosABecaBase = 0;
+    let rechazadosPorRendimiento = 0;
+    let liberadosSinBase = 0;
+
+    connection = await db.getConnection();
+    await connection.beginTransaction();
+
+    try {
+      for (const plan of planesConCambios) {
+        const motivoDesplazamiento = plan.ganador
+          ? `Rotación automática de Beca a la Excelencia Académica en ${plan.carrera}: otro estudiante alcanzó un mejor posicionamiento (${redondearDos(
+              plan.ganador.indice_global
+            ).toFixed(2)} pts).`
+          : `Cese automático de Beca a la Excelencia Académica en ${plan.carrera} por dejar de cumplir el umbral mínimo de 18.00 pts o presentar asignatura reprobada.`;
+
+        for (const holder of plan.holdersADesplazar) {
+          const resDesp = await procesarDesplazamientoTitularActual(
+            connection,
+            holder,
+            periodoActualId,
+            adminIdEjecutor,
+            motivoDesplazamiento
+          );
+          if (resDesp === 'retornado_base') retornadosABecaBase += 1;
+          else if (resDesp === 'rechazado') rechazadosPorRendimiento += 1;
+          else liberadosSinBase += 1;
+        }
+
+        if (plan.ganador && plan.requiereAsignarGanador) {
+          const resGanador = await otorgarExcelenciaAGanador(
+            connection,
+            plan.ganador,
+            periodoActualId,
+            adminIdEjecutor,
+            plan.notaDesempate
+          );
+          if (resGanador.asignado) asignados += 1;
+          if (resGanador.promovidoConRespaldo) promovidosConRespaldo += 1;
+        }
+      }
+
+      await connection.commit();
+    } catch (sqlErr) {
+      await connection.rollback();
+      throw sqlErr;
+    } finally {
+      connection.release();
+      connection = undefined;
+    }
+
+    return {
+      success: true,
+      huboCambios: true,
+      asignados,
+      promovidosConRespaldo,
+      retornadosABecaBase,
+      rechazadosPorRendimiento,
+      liberadosSinBase,
+      message: `Sincronización automática completada: ${asignados} otorgada(s), ${promovidosConRespaldo} con beca base resguardada, ${retornadosABecaBase} retornado(s) a su beca base, ${liberadosSinBase} finalizada(s) sin sanción.`,
+    };
+  } catch (error) {
+    console.error('❌ Error en ejecutarRotacionExcelenciaEnPeriodo:', error);
+    return {
+      success: false,
+      huboCambios: false,
+      asignados: 0,
+      promovidosConRespaldo: 0,
+      retornadosABecaBase: 0,
+      rechazadosPorRendimiento: 0,
+      liberadosSinBase: 0,
+      error: 'Error interno al sincronizar la Beca a la Excelencia Académica.',
+    };
+  } finally {
+    if (connection) connection.release();
+  }
+}
+
+/**
+ * Consulta la Nómina Automática en vivo de las 8 carreras, garantizando primero
+ * que la rotación automática haya sincronizado los beneficiarios aprobados del periodo vigente.
  */
 export async function obtenerNominaExcelenciaAcademica(
   periodoIdInput?: number
@@ -552,6 +1136,7 @@ export async function obtenerNominaExcelenciaAcademica(
   success: boolean;
   periodoCodigo: string;
   periodoNombre: string;
+  huboCambios: boolean;
   nomina: NominaCarreraExcelenciaUI[];
   error?: string;
 }> {
@@ -562,6 +1147,7 @@ export async function obtenerNominaExcelenciaAcademica(
         success: false,
         periodoCodigo: '',
         periodoNombre: '',
+        huboCambios: false,
         nomina: [],
         error: auth.error,
       };
@@ -572,56 +1158,26 @@ export async function obtenerNominaExcelenciaAcademica(
         ? Number(periodoIdInput)
         : Number(await obtenerOCrearPeriodoObjetivo());
 
-    const [periodoInfoRows, carreras, candidatos] = await Promise.all([
+    // Sincronización automática garantizada antes de devolver la vista
+    const syncRes = await ejecutarRotacionExcelenciaEnPeriodo(
+      periodoActualId,
+      SISTEMA_ADMIN_ID
+    );
+
+    const [periodoInfoRows, carreras, elegibles] = await Promise.all([
       queryFresh<PeriodoAnioRow[]>(
         `SELECT YEAR(fecha_inicio) AS anio, codigo, nombre FROM periodos_academicos WHERE id = ? LIMIT 1`,
         [periodoActualId]
       ),
       queryFresh<CarreraRow[]>(`SELECT id, nombre FROM carreras ORDER BY nombre ASC`),
-      queryFresh<CandidatoExcelenciaRow[]>(
-        `
-        SELECT
-          st.id AS student_id,
-          st.nombre,
-          st.apellido,
-          st.cedula,
-          st.email,
-          st.carrera,
-          st.semestre,
-          IFNULL(st.indice_global, 0.00) AS indice_global,
-          st.beca_base_respaldo,
-          st.departamento_base_respaldo,
-          s_act.id AS solicitud_actual_id,
-          s_act.tipo_beca AS tipo_beca_actual,
-          s_act.estatus AS estatus_actual,
-          s_act.departamento_asignado AS departamento_actual,
-          (
-            SELECT COUNT(*)
-            FROM record_academico ra
-            WHERE ra.student_id = st.id
-              AND ra.trimestre_cursado = GREATEST(1, st.semestre - 1)
-              AND (ra.nota < 10 OR ra.aprobada = 0)
-          ) AS reprobadas_ultimo_trim
-        FROM students st
-        LEFT JOIN solicitudes s_act
-          ON s_act.user_id = st.id AND s_act.periodo_id = ?
-        WHERE st.semestre >= ?
-          AND IFNULL(st.beca_perdida, 0) = 0
-          AND IFNULL(st.indice_global, 0) >= ?
-        ORDER BY st.indice_global DESC, st.semestre DESC, st.id ASC
-        `,
-        [periodoActualId, TRIMESTRE_MINIMO_EXCELENCIA, PROMEDIO_MINIMO_EXCELENCIA]
-      ),
+      consultarCandidatosElegiblesExcelencia(periodoActualId),
     ]);
-
-    const elegiblesLimpios = candidatos.filter(
-      (c) => Number(c.reprobadas_ultimo_trim || 0) === 0
-    );
 
     const nomina: NominaCarreraExcelenciaUI[] = carreras.map((carreraRow) => {
       const claveCarrera = carreraRow.nombre.trim().toLowerCase();
-      const listaCarrera = elegiblesLimpios
+      const listaCarrera = elegibles
         .filter((c) => c.carrera.trim().toLowerCase() === claveCarrera)
+        .sort(compararCandidatosExcelencia)
         .map<CandidatoExcelenciaUI>((c) => ({
           studentId: Number(c.student_id),
           nombre: c.nombre,
@@ -631,6 +1187,7 @@ export async function obtenerNominaExcelenciaAcademica(
           carrera: c.carrera,
           semestre: Number(c.semestre),
           indiceGlobal: redondearDos(c.indice_global),
+          promedioUltimoTrim: redondearDos(c.promedio_ultimo_trim),
           becaActual: c.tipo_beca_actual
             ? normalizarTipoBecaOficial(c.tipo_beca_actual) || c.tipo_beca_actual
             : null,
@@ -647,7 +1204,8 @@ export async function obtenerNominaExcelenciaAcademica(
         return {
           carreraId: Number(carreraRow.id),
           carrera: carreraRow.nombre,
-          empateTecnico: false,
+          desempateAutomatico: false,
+          criterioDesempate: null,
           titularActual,
           candidatosTop: [],
           otrosElegibles: [],
@@ -655,20 +1213,24 @@ export async function obtenerNominaExcelenciaAcademica(
       }
 
       const maxIndice = listaCarrera[0].indiceGlobal;
-      const candidatosTop = listaCarrera.filter(
+      const empatadosEnGlobal = listaCarrera.filter(
         (c) => Math.abs(c.indiceGlobal - maxIndice) < 0.005
       );
-      const otrosElegibles = listaCarrera.filter(
-        (c) => Math.abs(c.indiceGlobal - maxIndice) >= 0.005
-      );
+      const desempateAutomatico = empatadosEnGlobal.length > 1;
+      const criterioDesempate = desempateAutomatico
+        ? `Desempate automático: Prom. Trim. ${listaCarrera[0].promedioUltimoTrim.toFixed(
+            2
+          )} pts • ${listaCarrera[0].semestre}° Trim.`
+        : null;
 
       return {
         carreraId: Number(carreraRow.id),
         carrera: carreraRow.nombre,
-        empateTecnico: candidatosTop.length > 1,
+        desempateAutomatico,
+        criterioDesempate,
         titularActual,
-        candidatosTop,
-        otrosElegibles,
+        candidatosTop: [listaCarrera[0]],
+        otrosElegibles: listaCarrera.slice(1),
       };
     });
 
@@ -676,6 +1238,7 @@ export async function obtenerNominaExcelenciaAcademica(
       success: true,
       periodoCodigo: periodoInfoRows[0]?.codigo || 'Vigente',
       periodoNombre: periodoInfoRows[0]?.nombre || 'Periodo Actual',
+      huboCambios: Boolean(syncRes.huboCambios),
       nomina,
     };
   } catch (error) {
@@ -684,388 +1247,10 @@ export async function obtenerNominaExcelenciaAcademica(
       success: false,
       periodoCodigo: '',
       periodoNombre: '',
+      huboCambios: false,
       nomina: [],
       error: 'No se pudo consultar la nómina de Excelencia Académica.',
     };
-  }
-}
-
-/**
- * Motor determinístico e idempotente de rotación automática de Beca a la Excelencia Académica
- * para las 8 carreras en el periodo vigente (invocable en transición de periodo o por Coordinación).
- */
-export async function ejecutarRotacionExcelenciaEnPeriodo(
-  periodoIdInput?: number,
-  adminIdEjecutor: number = 0
-): Promise<ResultadoRotacionExcelencia> {
-  let connection: PoolConnection | undefined;
-
-  try {
-    const periodoActualId =
-      periodoIdInput && Number(periodoIdInput) > 0
-        ? Number(periodoIdInput)
-        : Number(await obtenerOCrearPeriodoObjetivo());
-
-    if (!periodoActualId) {
-      return {
-        success: false,
-        asignados: 0,
-        promovidosConRespaldo: 0,
-        retornadosABecaBase: 0,
-        liberadosSinBase: 0,
-        empatesPendientes: 0,
-        error: 'No hay periodo académico activo.',
-      };
-    }
-
-    const variantesExcelencia = obtenerVariantesTipoBeca('BECA A LA EXCELENCIA ACADÉMICA');
-    const placeholdersEx = variantesExcelencia.map(() => '?').join(', ');
-
-    const [carreras, candidatosRaw, holdersActuales] = await Promise.all([
-      queryFresh<CarreraRow[]>(`SELECT id, nombre FROM carreras ORDER BY nombre ASC`),
-      queryFresh<CandidatoExcelenciaRow[]>(
-        `
-        SELECT
-          st.id AS student_id,
-          st.nombre,
-          st.apellido,
-          st.cedula,
-          st.email,
-          st.carrera,
-          st.semestre,
-          IFNULL(st.indice_global, 0.00) AS indice_global,
-          st.beca_base_respaldo,
-          st.departamento_base_respaldo,
-          s_act.id AS solicitud_actual_id,
-          s_act.tipo_beca AS tipo_beca_actual,
-          s_act.estatus AS estatus_actual,
-          s_act.departamento_asignado AS departamento_actual,
-          (
-            SELECT COUNT(*)
-            FROM record_academico ra
-            WHERE ra.student_id = st.id
-              AND ra.trimestre_cursado = GREATEST(1, st.semestre - 1)
-              AND (ra.nota < 10 OR ra.aprobada = 0)
-          ) AS reprobadas_ultimo_trim
-        FROM students st
-        LEFT JOIN solicitudes s_act
-          ON s_act.user_id = st.id AND s_act.periodo_id = ?
-        WHERE st.semestre >= ?
-          AND IFNULL(st.beca_perdida, 0) = 0
-          AND IFNULL(st.indice_global, 0) >= ?
-        ORDER BY st.indice_global DESC, st.semestre DESC, st.id ASC
-        `,
-        [periodoActualId, TRIMESTRE_MINIMO_EXCELENCIA, PROMEDIO_MINIMO_EXCELENCIA]
-      ),
-      queryFresh<HolderExcelenciaActualRow[]>(
-        `
-        SELECT
-          s.id AS solicitud_id,
-          st.id AS student_id,
-          st.nombre,
-          st.apellido,
-          st.cedula,
-          st.carrera,
-          st.semestre,
-          st.beca_base_respaldo,
-          st.departamento_base_respaldo
-        FROM solicitudes s
-        JOIN students st ON s.user_id = st.id
-        WHERE s.periodo_id = ?
-          AND s.estatus = 'Aprobada'
-          AND LOWER(TRIM(s.tipo_beca)) IN (${placeholdersEx})
-        `,
-        [periodoActualId, ...variantesExcelencia]
-      ),
-    ]);
-
-    const elegibles = candidatosRaw.filter(
-      (c) => Number(c.reprobadas_ultimo_trim || 0) === 0
-    );
-
-    let asignados = 0;
-    let promovidosConRespaldo = 0;
-    let retornadosABecaBase = 0;
-    let liberadosSinBase = 0;
-    let empatesPendientes = 0;
-
-    connection = await db.getConnection();
-    await connection.beginTransaction();
-
-    try {
-      for (const carreraRow of carreras) {
-        const claveCarrera = carreraRow.nombre.trim().toLowerCase();
-        const candidatosCarrera = elegibles.filter(
-          (c) => c.carrera.trim().toLowerCase() === claveCarrera
-        );
-        const holdersCarrera = holdersActuales.filter(
-          (h) => h.carrera.trim().toLowerCase() === claveCarrera
-        );
-
-        if (candidatosCarrera.length === 0) {
-          // Ningún estudiante califica >= 18 en esta carrera: desplazar titular previo si existía
-          for (const holder of holdersCarrera) {
-            const resDesp = await procesarDesplazamientoTitularActual(
-              connection,
-              holder,
-              periodoActualId,
-              adminIdEjecutor,
-              'Cese de Beca a la Excelencia Académica por no cumplir requisito mínimo de 18.00 pts.'
-            );
-            if (resDesp === 'retornado_base') retornadosABecaBase += 1;
-            else if (resDesp === 'liberado_sin_base') liberadosSinBase += 1;
-          }
-          continue;
-        }
-
-        const maxIndice = redondearDos(candidatosCarrera[0].indice_global);
-        const empatados = candidatosCarrera.filter(
-          (c) => Math.abs(redondearDos(c.indice_global) - maxIndice) < 0.005
-        );
-
-        if (empatados.length > 1) {
-          // Si ya hay un titular entre los empatados, se respeta hasta que Coordinación/Consejo resuelva
-          const yaResuelto = holdersCarrera.some((h) =>
-            empatados.some((e) => Number(e.student_id) === Number(h.student_id))
-          );
-          if (!yaResuelto) {
-            empatesPendientes += 1;
-          }
-          continue;
-        }
-
-        const ganador = empatados[0];
-
-        // 1. Desplazar titulares anteriores de esta carrera distintos al nuevo ganador
-        for (const holder of holdersCarrera) {
-          if (Number(holder.student_id) === Number(ganador.student_id)) continue;
-
-          const resDesp = await procesarDesplazamientoTitularActual(
-            connection,
-            holder,
-            periodoActualId,
-            adminIdEjecutor,
-            `Rotación de Beca a la Excelencia Académica en ${carreraRow.nombre}: otro estudiante obtuvo un Índice Global superior (${maxIndice.toFixed(2)} pts).`
-          );
-          if (resDesp === 'retornado_base') retornadosABecaBase += 1;
-          else if (resDesp === 'liberado_sin_base') liberadosSinBase += 1;
-        }
-
-        // 2. Otorgar Excelencia al ganador #1 de la carrera
-        const resGanador = await otorgarExcelenciaAGanador(
-          connection,
-          ganador,
-          periodoActualId,
-          adminIdEjecutor,
-          false
-        );
-
-        if (resGanador.asignado) asignados += 1;
-        if (resGanador.promovidoConRespaldo) promovidosConRespaldo += 1;
-      }
-
-      await connection.commit();
-    } catch (sqlErr) {
-      await connection.rollback();
-      throw sqlErr;
-    } finally {
-      connection.release();
-      connection = undefined;
-    }
-
-    return {
-      success: true,
-      asignados,
-      promovidosConRespaldo,
-      retornadosABecaBase,
-      liberadosSinBase,
-      empatesPendientes,
-      message: `Rotación completada: ${asignados} asignado(s), ${promovidosConRespaldo} con beca base resguardada, ${retornadosABecaBase} retornado(s) a beca base, ${empatesPendientes} empate(s) por resolver.`,
-    };
-  } catch (error) {
-    console.error('❌ Error en ejecutarRotacionExcelenciaEnPeriodo:', error);
-    return {
-      success: false,
-      asignados: 0,
-      promovidosConRespaldo: 0,
-      retornadosABecaBase: 0,
-      liberadosSinBase: 0,
-      empatesPendientes: 0,
-      error: 'Error interno al ejecutar la rotación de Excelencia Académica.',
-    };
-  } finally {
-    if (connection) connection.release();
-  }
-}
-
-/**
- * Acción invocada desde el panel de Coordinación para ejecutar/sincronizar la nómina automática.
- */
-export async function sincronizarNominaExcelenciaCoordinacion(): Promise<ResultadoRotacionExcelencia> {
-  const auth = await verificarCoordinacion();
-  if (!auth.autorizado) {
-    return {
-      success: false,
-      asignados: 0,
-      promovidosConRespaldo: 0,
-      retornadosABecaBase: 0,
-      liberadosSinBase: 0,
-      empatesPendientes: 0,
-      error: auth.error,
-    };
-  }
-
-  const res = await ejecutarRotacionExcelenciaEnPeriodo(undefined, auth.adminId);
-  if (res.success) {
-    revalidatePath('/admin/validarBeca');
-    revalidatePath('/admin/dashboard');
-    revalidatePath('/admin/reportes');
-    revalidatePath('/perfil');
-  }
-  return res;
-}
-
-/**
- * Resuelve manualmente un empate técnico (Art. 8) asignando la Beca a la Excelencia Académica
- * al estudiante designado por Secretaría General / Consejo Superior para esa carrera.
- */
-export async function resolverEmpateExcelenciaAcademica(
-  studentIdInput: number
-): Promise<{ success: boolean; message?: string; error?: string }> {
-  const auth = await verificarCoordinacion();
-  if (!auth.autorizado) {
-    return { success: false, error: auth.error };
-  }
-
-  const studentId = Number(studentIdInput);
-  if (!Number.isInteger(studentId) || studentId <= 0) {
-    return { success: false, error: 'Estudiante inválido.' };
-  }
-
-  let connection: PoolConnection | undefined;
-
-  try {
-    const periodoActualId = Number(await obtenerOCrearPeriodoObjetivo());
-    const variantesExcelencia = obtenerVariantesTipoBeca('BECA A LA EXCELENCIA ACADÉMICA');
-    const placeholdersEx = variantesExcelencia.map(() => '?').join(', ');
-
-    const rows = await queryFresh<CandidatoExcelenciaRow[]>(
-      `
-      SELECT
-        st.id AS student_id,
-        st.nombre,
-        st.apellido,
-        st.cedula,
-        st.email,
-        st.carrera,
-        st.semestre,
-        IFNULL(st.indice_global, 0.00) AS indice_global,
-        st.beca_base_respaldo,
-        st.departamento_base_respaldo,
-        s_act.id AS solicitud_actual_id,
-        s_act.tipo_beca AS tipo_beca_actual,
-        s_act.estatus AS estatus_actual,
-        s_act.departamento_asignado AS departamento_actual,
-        (
-          SELECT COUNT(*)
-          FROM record_academico ra
-          WHERE ra.student_id = st.id
-            AND ra.trimestre_cursado = GREATEST(1, st.semestre - 1)
-            AND (ra.nota < 10 OR ra.aprobada = 0)
-        ) AS reprobadas_ultimo_trim
-      FROM students st
-      LEFT JOIN solicitudes s_act
-        ON s_act.user_id = st.id AND s_act.periodo_id = ?
-      WHERE st.id = ?
-      LIMIT 1
-      `,
-      [periodoActualId, studentId]
-    );
-
-    if (rows.length === 0) {
-      return { success: false, error: 'Estudiante no encontrado.' };
-    }
-
-    const elegido = rows[0];
-    if (
-      Number(elegido.semestre) < TRIMESTRE_MINIMO_EXCELENCIA ||
-      redondearDos(elegido.indice_global) < PROMEDIO_MINIMO_EXCELENCIA ||
-      Number(elegido.reprobadas_ultimo_trim || 0) > 0
-    ) {
-      return {
-        success: false,
-        error: 'El estudiante no cumple con los requisitos de Art. 8 (>= 4° trimestre, Índice Global >= 18 y cero reprobadas en el último trimestre).',
-      };
-    }
-
-    const holdersCarrera = await queryFresh<HolderExcelenciaActualRow[]>(
-      `
-      SELECT
-        s.id AS solicitud_id,
-        st.id AS student_id,
-        st.nombre,
-        st.apellido,
-        st.cedula,
-        st.carrera,
-        st.semestre,
-        st.beca_base_respaldo,
-        st.departamento_base_respaldo
-      FROM solicitudes s
-      JOIN students st ON s.user_id = st.id
-      WHERE s.periodo_id = ?
-        AND s.estatus = 'Aprobada'
-        AND LOWER(TRIM(s.tipo_beca)) IN (${placeholdersEx})
-        AND LOWER(TRIM(st.carrera)) = LOWER(TRIM(?))
-      `,
-      [periodoActualId, ...variantesExcelencia, elegido.carrera]
-    );
-
-    connection = await db.getConnection();
-    await connection.beginTransaction();
-
-    try {
-      for (const holder of holdersCarrera) {
-        if (Number(holder.student_id) === Number(elegido.student_id)) continue;
-        await procesarDesplazamientoTitularActual(
-          connection,
-          holder,
-          periodoActualId,
-          auth.adminId,
-          `Resolución de empate técnico en ${elegido.carrera} por Secretaría General / Consejo Superior.`
-        );
-      }
-
-      await otorgarExcelenciaAGanador(
-        connection,
-        elegido,
-        periodoActualId,
-        auth.adminId,
-        true
-      );
-
-      await connection.commit();
-    } catch (sqlErr) {
-      await connection.rollback();
-      throw sqlErr;
-    } finally {
-      connection.release();
-      connection = undefined;
-    }
-
-    revalidatePath('/admin/validarBeca');
-    revalidatePath('/admin/dashboard');
-    revalidatePath('/admin/reportes');
-    revalidatePath('/perfil');
-
-    return {
-      success: true,
-      message: `Beca a la Excelencia Académica otorgada a ${elegido.nombre} ${elegido.apellido} en ${elegido.carrera}.`,
-    };
-  } catch (error) {
-    console.error('❌ Error en resolverEmpateExcelenciaAcademica:', error);
-    return { success: false, error: 'Error al resolver el empate técnico.' };
-  } finally {
-    if (connection) connection.release();
   }
 }
 
@@ -1233,11 +1418,7 @@ export async function buscarEstudianteParaConcursoSocial(cedulaInput: string): P
 }
 
 /**
- * Registra directamente a un beneficiario seleccionado en el Concurso Anual de Beca Social Aprendizaje
- * (ya evaluado por Secretaría General y Consejo Superior).
- * - Si el estudiante no tiene cuenta, crea users + students (1er trimestre) con clave inicial = su cédula.
- * - Valida cupo anual (máx. 10 nuevos ingresos) y tope activo (máx. 60).
- * - Registra la solicitud directamente en estatus 'Aprobada' con su departamento asignado.
+ * Registra directamente a un beneficiario seleccionado en el Concurso Anual de Beca Social Aprendizaje.
  */
 export async function registrarBecarioConcursoSocial(
   input: InputRegistroConcursoSocial
@@ -1489,7 +1670,6 @@ export async function registrarBecarioConcursoSocial(
 
       const nuevaSolicitudId = Number(solIns.insertId);
 
-      // Registrar ficha socioeconómica base con la U.E. Pública de procedencia
       await connection.execute<ResultSetHeader>(
         `
         INSERT INTO estudios_socioeconomicos (
@@ -1536,6 +1716,8 @@ export async function registrarBecarioConcursoSocial(
       connection = undefined;
     }
 
+    await ejecutarRotacionExcelenciaEnPeriodo(periodoActualId, SISTEMA_ADMIN_ID);
+
     revalidatePath('/admin/validarBeca');
     revalidatePath('/admin/dashboard');
     revalidatePath('/admin/reportes');
@@ -1561,11 +1743,8 @@ export async function registrarBecarioConcursoSocial(
 }
 
 /**
- * Precarga 24 estudiantes élite (3 por cada una de las 8 carreras, trimestres 4° a 9°)
- * con récords académicos reales entre 18.20 y 19.60 para demostrar:
- * - Selección automática de Beca a la Excelencia Académica por carrera.
- * - Promoción de un becario previo (Discapacidad / Aprendizaje) con respaldo de beca base.
- * - Rotación y retorno automático al cambiar de periodo.
+ * Precarga 24 estudiantes élite (3 por cada una de las 8 carreras, varios con beca base aprobada)
+ * y ejecuta de inmediato la sincronización automática de Beca a la Excelencia Académica.
  */
 export async function precargarEstudiantesExcelencia(): Promise<{
   success: boolean;
@@ -1605,7 +1784,8 @@ export async function precargarEstudiantesExcelencia(): Promise<{
     const municipios = [
       'Maneiro', 'Mariño', 'García', 'Arismendi', 'Gómez', 'Díaz', 'Marcano', 'Antolín del Campo',
     ];
-    const passwordHash = await bcrypt.hash('estudiante123', 10);
+    const passwordHash =
+      '$2b$10$3o3FgCxBEZsl2sU3Qgy/seA5CBzAwc8LHYLkMd9Mt6J0qAnr8AhMi';
 
     let creados = 0;
 
@@ -1633,22 +1813,18 @@ export async function precargarEstudiantesExcelencia(): Promise<{
           [carrera.id]
         );
 
-        // 3 perfiles por carrera:
-        // Slot 0: Candidato #1 (nota base 19-20) SIN beca previa o con BECA POR DISCAPACIDAD en carreras pares
-        // Slot 1: Candidato #2 (nota base 18-19) con BECA APRENDIZAJE aprobada
-        // Slot 2: Candidato #3 (nota base 18-19) sin beca previa
         const perfiles = [
           {
             semestre: 6 + (cIdx % 3),
             poolNotas: [19, 19, 20, 19, 20],
-            becaInicial: cIdx % 2 === 0 ? 'BECA POR DISCAPACIDAD' : null,
-            deptoInicial: cIdx % 2 === 0 ? 'Biblioteca' : null,
+            becaInicial: cIdx % 2 === 0 ? 'BECA APRENDIZAJE' : 'BECA POR DISCAPACIDAD',
+            deptoInicial: cIdx % 2 === 0 ? 'Bienestar Estudiantil' : 'Biblioteca',
           },
           {
             semestre: 5 + (cIdx % 3),
             poolNotas: [18, 19, 19, 18, 19],
             becaInicial: 'BECA APRENDIZAJE',
-            deptoInicial: 'Bienestar Estudiantil',
+            deptoInicial: 'Control de Estudios',
           },
           {
             semestre: 4 + (cIdx % 3),
@@ -1817,16 +1993,23 @@ export async function precargarEstudiantesExcelencia(): Promise<{
       connection = undefined;
     }
 
+    // Sincronización automática inmediata tras precarga (sin pasos manuales)
+    const resRot = await ejecutarRotacionExcelenciaEnPeriodo(
+      periodoActualId,
+      SISTEMA_ADMIN_ID
+    );
+
     revalidatePath('/admin/validarBeca');
     revalidatePath('/admin/dashboard');
+    revalidatePath('/admin/reportes');
 
     return {
       success: true,
       creados,
       message:
         creados > 0
-          ? `Se precargaron ${creados} estudiantes élite distribuidos en las ${carreras.length} carreras (incluyendo becarios base para probar promoción y retorno).`
-          : 'Los 24 estudiantes élite de las 8 carreras ya se encontraban precargados.',
+          ? `Se precargaron ${creados} estudiantes élite (clave: 123456) y la Nómina Automática asignó de inmediato ${resRot.asignados} Beca(s) a la Excelencia Académica (${resRot.promovidosConRespaldo} con beca base resguardada).`
+          : 'Los 24 estudiantes élite ya estaban precargados y la Nómina Automática se encuentra sincronizada.',
     };
   } catch (error) {
     console.error('❌ Error en precargarEstudiantesExcelencia:', error);
@@ -1841,7 +2024,8 @@ export async function precargarEstudiantesExcelencia(): Promise<{
 }
 
 /**
- * Elimina únicamente los estudiantes precargados de Excelencia (`excelencia_c%@unimar.edu.ve`).
+ * Elimina únicamente los estudiantes precargados de Excelencia (`excelencia_c%@unimar.edu.ve`)
+ * y vuelve a sincronizar automáticamente la nómina con los estudiantes restantes.
  */
 export async function limpiarEstudiantesExcelencia(): Promise<{
   success: boolean;
@@ -1857,8 +2041,11 @@ export async function limpiarEstudiantesExcelencia(): Promise<{
   let connection: PoolConnection | undefined;
 
   try {
+    const periodoActualId = Number(await obtenerOCrearPeriodoObjetivo());
     connection = await db.getConnection();
     await connection.beginTransaction();
+
+    let eliminados = 0;
 
     try {
       const [rows] = await connection.execute<ExistingIdRow[]>(
@@ -1866,52 +2053,37 @@ export async function limpiarEstudiantesExcelencia(): Promise<{
       );
       const ids = rows.map((r) => Number(r.id));
 
-      if (ids.length === 0) {
-        await connection.commit();
-        return {
-          success: true,
-          eliminados: 0,
-          message: 'No hay estudiantes élite de prueba para eliminar.',
-        };
+      if (ids.length > 0) {
+        const placeholders = ids.map(() => '?').join(',');
+
+        await connection.execute<ResultSetHeader>(
+          `DELETE FROM historial_aprobaciones WHERE user_id IN (${placeholders})`,
+          ids
+        );
+        await connection.execute<ResultSetHeader>(
+          `DELETE FROM estudios_socioeconomicos WHERE student_id IN (${placeholders})`,
+          ids
+        );
+        await connection.execute<ResultSetHeader>(
+          `DELETE FROM record_academico WHERE student_id IN (${placeholders})`,
+          ids
+        );
+        await connection.execute<ResultSetHeader>(
+          `DELETE FROM solicitudes WHERE user_id IN (${placeholders})`,
+          ids
+        );
+        await connection.execute<ResultSetHeader>(
+          `DELETE FROM students WHERE id IN (${placeholders})`,
+          ids
+        );
+        await connection.execute<ResultSetHeader>(
+          `DELETE FROM users WHERE id IN (${placeholders})`,
+          ids
+        );
+        eliminados = ids.length;
       }
 
-      const placeholders = ids.map(() => '?').join(',');
-
-      await connection.execute<ResultSetHeader>(
-        `DELETE FROM historial_aprobaciones WHERE user_id IN (${placeholders})`,
-        ids
-      );
-      await connection.execute<ResultSetHeader>(
-        `DELETE FROM estudios_socioeconomicos WHERE student_id IN (${placeholders})`,
-        ids
-      );
-      await connection.execute<ResultSetHeader>(
-        `DELETE FROM record_academico WHERE student_id IN (${placeholders})`,
-        ids
-      );
-      await connection.execute<ResultSetHeader>(
-        `DELETE FROM solicitudes WHERE user_id IN (${placeholders})`,
-        ids
-      );
-      await connection.execute<ResultSetHeader>(
-        `DELETE FROM students WHERE id IN (${placeholders})`,
-        ids
-      );
-      await connection.execute<ResultSetHeader>(
-        `DELETE FROM users WHERE id IN (${placeholders})`,
-        ids
-      );
-
       await connection.commit();
-
-      revalidatePath('/admin/validarBeca');
-      revalidatePath('/admin/dashboard');
-
-      return {
-        success: true,
-        eliminados: ids.length,
-        message: `Se eliminaron ${ids.length} estudiantes élite de prueba correctamente.`,
-      };
     } catch (sqlErr) {
       await connection.rollback();
       throw sqlErr;
@@ -1919,6 +2091,22 @@ export async function limpiarEstudiantesExcelencia(): Promise<{
       connection.release();
       connection = undefined;
     }
+
+    // Recalcular automáticamente la nómina con los estudiantes que permanecen en la base de datos
+    await ejecutarRotacionExcelenciaEnPeriodo(periodoActualId, SISTEMA_ADMIN_ID);
+
+    revalidatePath('/admin/validarBeca');
+    revalidatePath('/admin/dashboard');
+    revalidatePath('/admin/reportes');
+
+    return {
+      success: true,
+      eliminados,
+      message:
+        eliminados > 0
+          ? `Se eliminaron ${eliminados} estudiantes élite y se resincronizó automáticamente la Nómina de Excelencia.`
+          : 'No hay estudiantes élite de prueba para eliminar.',
+    };
   } catch (error) {
     console.error('❌ Error en limpiarEstudiantesExcelencia:', error);
     return {

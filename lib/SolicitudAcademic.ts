@@ -1,150 +1,205 @@
 'use server'
 
+import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise'
 import { db } from './db'
 import { getModoPruebaStatus } from './ModoPrueba'
 
+interface RecordPromedioRow extends RowDataPacket {
+  promedio: number | string | null;
+  total: number;
+}
+
+interface SolicitudMateriasRow extends RowDataPacket {
+  materias_json: string | null;
+}
+
+interface PeriodoExistenteRow extends RowDataPacket {
+  id: number;
+  es_actual: number;
+}
+
+export interface MateriaNotaEntrada {
+  nota: number | string;
+}
+
 /**
- * 🟢 LÓGICA DE CÁLCULO DE ÍNDICE GLOBAL
- * Corregido para soportar la nueva estructura del JSON de materias
+ * Recalcula students.indice_global priorizando siempre `record_academico`
+ * como Única Fuente de Verdad. Solo recurre a `solicitudes.materias_json`
+ * si el estudiante aún no posee filas en `record_academico`.
  */
-export async function actualizarIndiceGlobal(userId: number, materiasActuales: any[]) {
+export async function actualizarIndiceGlobal(
+  userId: number,
+  materiasActuales: ReadonlyArray<MateriaNotaEntrada> = []
+): Promise<void> {
   try {
-    const [solicitudes]: any = await db.execute(
-      'SELECT materias_json FROM solicitudes WHERE user_id = ? AND estatus IN ("Aprobada", "Revision Especial", "Pendiente")',
-      [userId]
+    const idNum = Number(userId);
+    if (!Number.isInteger(idNum) || idNum <= 0) return;
+
+    const [recordRows] = await db.execute<RecordPromedioRow[]>(
+      `
+      SELECT
+        ROUND(AVG(nota), 2) AS promedio,
+        COUNT(*) AS total
+      FROM record_academico
+      WHERE student_id = ?
+      `,
+      [idNum]
+    );
+
+    const totalRecord = Number(recordRows[0]?.total ?? 0);
+    if (totalRecord > 0) {
+      const promedioRecord = Number(recordRows[0]?.promedio ?? 0);
+      if (Number.isFinite(promedioRecord)) {
+        await db.execute<ResultSetHeader>(
+          'UPDATE students SET indice_global = ? WHERE id = ?',
+          [promedioRecord.toFixed(2), idNum]
+        );
+      }
+      return;
+    }
+
+    const [solicitudes] = await db.execute<SolicitudMateriasRow[]>(
+      `
+      SELECT materias_json
+      FROM solicitudes
+      WHERE user_id = ?
+        AND estatus IN ('Aprobada', 'Revisión Especial', 'Revision Especial', 'Pendiente')
+      `,
+      [idNum]
     );
 
     let sumaNotas = 0;
     let totalMaterias = 0;
 
-    solicitudes.forEach((sol: any) => {
-      if (sol.materias_json) {
-        try {
-          const parsedData = JSON.parse(sol.materias_json);
-          
-          /**
-           * 🟢 CORRECCIÓN:
-           * Verificamos si los datos vienen en el nuevo formato (parsedData.materias)
-           * o en el formato antiguo (si parsedData es un array directamente).
-           */
-          const listaMaterias = Array.isArray(parsedData) 
-            ? parsedData 
-            : (parsedData.materias || []);
+    for (const sol of solicitudes) {
+      if (!sol.materias_json) continue;
+      try {
+        const parsedData: unknown = JSON.parse(sol.materias_json);
+        const listaMaterias: unknown[] = Array.isArray(parsedData)
+          ? parsedData
+          : parsedData &&
+              typeof parsedData === 'object' &&
+              'materias' in parsedData &&
+              Array.isArray((parsedData as { materias?: unknown }).materias)
+            ? ((parsedData as { materias: unknown[] }).materias)
+            : [];
 
-          listaMaterias.forEach((m: any) => {
-            const nota = parseFloat(m.nota);
-            if (!isNaN(nota)) {
+        for (const item of listaMaterias) {
+          if (item && typeof item === 'object' && 'nota' in item) {
+            const nota = parseFloat(String((item as { nota?: unknown }).nota ?? ''));
+            if (Number.isFinite(nota)) {
               sumaNotas += nota;
-              totalMaterias++;
+              totalMaterias += 1;
             }
-          });
-        } catch (e) {
-          console.error("Error al parsear materias del historial:", e);
+          }
         }
+      } catch (e) {
+        console.error('Error al parsear materias del historial:', e);
       }
-    });
+    }
 
-    // Sumar las materias que el usuario está enviando en la solicitud actual
-    if (materiasActuales && materiasActuales.length > 0) {
-      materiasActuales.forEach((m: any) => {
-        const nota = parseFloat(m.nota);
-        if (!isNaN(nota)) {
-          sumaNotas += nota;
-          totalMaterias++;
-        }
-      });
+    for (const m of materiasActuales) {
+      const nota = parseFloat(String(m.nota));
+      if (Number.isFinite(nota)) {
+        sumaNotas += nota;
+        totalMaterias += 1;
+      }
     }
 
     if (totalMaterias > 0) {
       const nuevoIndice = (sumaNotas / totalMaterias).toFixed(2);
-      await db.execute(
+      await db.execute<ResultSetHeader>(
         'UPDATE students SET indice_global = ? WHERE id = ?',
-        [nuevoIndice, userId]
+        [nuevoIndice, idNum]
       );
     }
   } catch (error) {
-    console.error("❌ Error recalculando índice global:", error);
+    console.error('❌ Error recalculando índice global:', error);
   }
 }
 
 /**
- * 🟢 LÓGICA DE PERIODO AUTOMÁTICO (CON SOPORTE PARA MODO PRUEBA)
- * Restaurada y optimizada para no romper la renovación.
+ * Determina, crea o activa el periodo académico correspondiente al calendario real
+ * o al mes simulado en Modo Prueba.
  */
-export async function obtenerOCrearPeriodoObjetivo() {
+export async function obtenerOCrearPeriodoObjetivo(): Promise<number> {
   const { activo, mesSimulado } = await getModoPruebaStatus();
   const fecha = new Date();
-  
-  const mes = (activo && mesSimulado) ? parseInt(mesSimulado) : (fecha.getMonth() + 1);
+
+  const mes = activo && mesSimulado ? parseInt(mesSimulado, 10) : fecha.getMonth() + 1;
   const anio = fecha.getFullYear();
 
-  let codigo = "";
-  let nombre = "";
-  let f_inicio = "";
-  let f_fin = "";
+  let codigo = '';
+  let nombre = '';
+  let fInicio = '';
+  let fFin = '';
 
-  // Determinamos cuál debería ser el periodo actual según el calendario
   if (mes === 12 || mes <= 3) {
-    const targetAnio = (mes === 12) ? anio + 1 : anio;
+    const targetAnio = mes === 12 ? anio + 1 : anio;
     codigo = `${targetAnio}-I`;
     nombre = `Periodo I ${targetAnio} (Ene-Abr)`;
-    f_inicio = `${targetAnio}-01-01`;
-    f_fin = `${targetAnio}-04-30`;
+    fInicio = `${targetAnio}-01-01`;
+    fFin = `${targetAnio}-04-30`;
   } else if (mes >= 4 && mes <= 7) {
     codigo = `${anio}-II`;
     nombre = `Periodo II ${anio} (May-Ago)`;
-    f_inicio = `${anio}-05-01`;
-    f_fin = `${anio}-08-31`;
+    fInicio = `${anio}-05-01`;
+    fFin = `${anio}-08-31`;
   } else {
     codigo = `${anio}-III`;
     nombre = `Periodo III ${anio} (Sep-Dic)`;
-    f_inicio = `${anio}-09-01`;
-    f_fin = `${anio}-12-31`;
+    fInicio = `${anio}-09-01`;
+    fFin = `${anio}-12-31`;
   }
 
-  const fechaInicioObj = new Date(f_inicio + "T00:00:00");
+  const fechaInicioObj = new Date(`${fInicio}T00:00:00`);
   const fechaLimiteObj = new Date(fechaInicioObj);
-  fechaLimiteObj.setDate(fechaInicioObj.getDate() + 14); 
-  const f_limite = fechaLimiteObj.toISOString().split('T')[0];
+  fechaLimiteObj.setDate(fechaInicioObj.getDate() + 14);
+  const fLimite = fechaLimiteObj.toISOString().split('T')[0];
 
-  // Buscamos si el periodo calculado ya existe
-  const [rows]: any = await db.execute(
+  const [rows] = await db.execute<PeriodoExistenteRow[]>(
     'SELECT id, es_actual FROM periodos_academicos WHERE codigo = ? LIMIT 1',
     [codigo]
   );
 
-  let periodId;
+  let periodId = 0;
 
   if (rows.length > 0) {
-    periodId = rows[0].id;
-    // Si existe pero no está marcado como actual, o si queremos asegurar la fecha límite
-    if (rows[0].es_actual === 0) {
-        await db.execute('UPDATE periodos_academicos SET es_actual = 0');
-        await db.execute(
-            'UPDATE periodos_academicos SET fecha_limite_solicitud = ?, es_actual = 1 WHERE id = ?',
-            [f_limite, periodId]
-        );
+    periodId = Number(rows[0].id);
+    if (Number(rows[0].es_actual) === 0) {
+      await db.execute<ResultSetHeader>('UPDATE periodos_academicos SET es_actual = 0');
+      await db.execute<ResultSetHeader>(
+        'UPDATE periodos_academicos SET fecha_limite_solicitud = ?, es_actual = 1 WHERE id = ?',
+        [fLimite, periodId]
+      );
     }
   } else {
-    // Si no existe el periodo cronológico, lo creamos como el nuevo actual
-    await db.execute('UPDATE periodos_academicos SET es_actual = 0');
-    const [result]: any = await db.execute(`
-      INSERT INTO periodos_academicos 
-      (codigo, nombre, fecha_inicio, fecha_fin, fecha_limite_solicitud, es_actual) 
+    await db.execute<ResultSetHeader>('UPDATE periodos_academicos SET es_actual = 0');
+    const [result] = await db.execute<ResultSetHeader>(
+      `
+      INSERT INTO periodos_academicos
+        (codigo, nombre, fecha_inicio, fecha_fin, fecha_limite_solicitud, es_actual)
       VALUES (?, ?, ?, ?, ?, 1)
-    `, [codigo, nombre, f_inicio, f_fin, f_limite]);
-    periodId = result.insertId;
+      `,
+      [codigo, nombre, fInicio, fFin, fLimite]
+    );
+    periodId = Number(result.insertId);
   }
-  
+
   return periodId;
 }
 
 /**
- * 🟢 LÓGICA AUXILIAR PARA CÁLCULO DE FECHAS
+ * Calcula los metadatos del siguiente periodo académico a partir de un código (ej. 2026-III -> 2027-I).
  */
-export async function obtenerSiguientePeriodoData(codigoActual: string) {
+export async function obtenerSiguientePeriodoData(codigoActual: string): Promise<{
+  codigo: string;
+  nombre: string;
+  inicio: string;
+  fin: string;
+}> {
   const [anioStr, lapso] = codigoActual.split('-');
-  let anio = parseInt(anioStr);
+  const anio = parseInt(anioStr, 10);
   let nuevoLapso = '';
   let nuevoAnio = anio;
 
@@ -160,15 +215,18 @@ export async function obtenerSiguientePeriodoData(codigoActual: string) {
   }
 
   const nuevoCodigo = `${nuevoAnio}-${nuevoLapso}`;
-  const mesesDesc = nuevoLapso === 'I' ? 'Ene-Abr' : nuevoLapso === 'II' ? 'May-Ago' : 'Sep-Dic';
-  
-  const mesInicio = nuevoLapso === 'I' ? '01-01' : nuevoLapso === 'II' ? '05-01' : '09-01';
-  const mesFin = nuevoLapso === 'I' ? '04-30' : nuevoLapso === 'II' ? '08-31' : '12-31';
+  const mesesDesc =
+    nuevoLapso === 'I' ? 'Ene-Abr' : nuevoLapso === 'II' ? 'May-Ago' : 'Sep-Dic';
 
-  return { 
-    codigo: nuevoCodigo, 
+  const mesInicio =
+    nuevoLapso === 'I' ? '01-01' : nuevoLapso === 'II' ? '05-01' : '09-01';
+  const mesFin =
+    nuevoLapso === 'I' ? '04-30' : nuevoLapso === 'II' ? '08-31' : '12-31';
+
+  return {
+    codigo: nuevoCodigo,
     nombre: `Periodo ${nuevoLapso} ${nuevoAnio} (${mesesDesc})`,
     inicio: `${nuevoAnio}-${mesInicio}`,
-    fin: `${nuevoAnio}-${mesFin}`
+    fin: `${nuevoAnio}-${mesFin}`,
   };
 }

@@ -3,6 +3,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { GraduationCap, Mail, IdCard, CalendarDays, BookOpen, Clock, User2, Trophy, LucideIcon } from "lucide-react"
 
+const SEMESTRE_EGRESADO = 13
+
 // 1. INTERFACES ESTRICTAS (Cero 'any')
 export interface IAcademicInfoUser {
   id?: number | string;
@@ -11,6 +13,7 @@ export interface IAcademicInfoUser {
   carrera?: string;
   trimestre?: number | string;
   semestre?: number | string;
+  esEgresado?: boolean;
   periodoActual?: string;
   indiceGlobal?: number | string | null;
 }
@@ -20,11 +23,19 @@ interface IAcademicInfoProps {
 }
 
 export function AcademicInfo({ user }: IAcademicInfoProps) {
-  // 🟢 Formateo seguro para el Índice Global:
-  // Evitamos que un valor de 0 sea tratado como "falso" y aseguramos la conversión a decimal.
-  const displayIndice = (user.indiceGlobal !== undefined && user.indiceGlobal !== null) 
-    ? parseFloat(user.indiceGlobal.toString()).toFixed(2) 
-    : "0.00";
+  const displayIndice =
+    user.indiceGlobal !== undefined && user.indiceGlobal !== null
+      ? parseFloat(user.indiceGlobal.toString()).toFixed(2)
+      : "0.00";
+
+  const semestreNum = Number(user.semestre ?? user.trimestre ?? 0);
+  const esEgresado =
+    Boolean(user.esEgresado) ||
+    (Number.isFinite(semestreNum) && semestreNum >= SEMESTRE_EGRESADO);
+
+  const nivelAcademicoTexto = esEgresado
+    ? "Egresado"
+    : `${user.trimestre || user.semestre || "0"}° Trimestre`;
 
   return (
     <Card className="border-none shadow-2xl bg-white overflow-hidden">
@@ -38,37 +49,56 @@ export function AcademicInfo({ user }: IAcademicInfoProps) {
       </CardHeader>
       <CardContent className="p-6 md:p-10">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-y-10 gap-x-8">
-          <InfoItem icon={IdCard} label="Cédula" value={`V-${user.cedula || "---"}`} />
-          
-          {/* 🟢 Se añade la prop isEmail para aplicar el quiebre de palabra largo */}
-          <InfoItem icon={Mail} label="Email" value={user.email} isLowercase isEmail />
-          
-          <InfoItem icon={BookOpen} label="Carrera" value={user.carrera} isUppercase />
-          
-          <InfoItem 
-            icon={CalendarDays} 
-            label="Nivel Académico" 
-            value={`${user.trimestre || user.semestre || "0"}° Trimestre`} 
-          />
-          
-          <InfoItem 
-            icon={Clock} 
-            label="Periodo Actual" 
-            value={user.periodoActual && user.periodoActual !== "N/A" ? user.periodoActual : "Sin Periodo Activo"} 
-            isUppercase 
+          <InfoItem
+            icon={IdCard}
+            label="Cédula"
+            value={`V-${user.cedula || "---"}`}
           />
 
-          <InfoItem 
-            icon={Trophy} 
-            label="Índice Global" 
-            value={displayIndice} 
+          <InfoItem
+            icon={Mail}
+            label="Email"
+            value={user.email}
+            isLowercase
+            isEmail
           />
 
-          <InfoItem 
-            icon={User2} 
-            label="Expediente" 
-            value={user.id ? user.id.toString().slice(0, 8).toUpperCase() : "---"} 
-            isUppercase 
+          <InfoItem
+            icon={BookOpen}
+            label="Carrera"
+            value={user.carrera}
+            isUppercase
+          />
+
+          <InfoItem
+            icon={CalendarDays}
+            label="Nivel Académico"
+            value={nivelAcademicoTexto}
+            isUppercase={esEgresado}
+          />
+
+          <InfoItem
+            icon={Clock}
+            label="Periodo Actual"
+            value={
+              user.periodoActual && user.periodoActual !== "N/A"
+                ? user.periodoActual
+                : "Sin Periodo Activo"
+            }
+            isUppercase
+          />
+
+          <InfoItem
+            icon={Trophy}
+            label="Índice Global"
+            value={displayIndice}
+          />
+
+          <InfoItem
+            icon={User2}
+            label="Expediente"
+            value={user.id ? user.id.toString().slice(0, 8).toUpperCase() : "---"}
+            isUppercase
           />
         </div>
       </CardContent>
@@ -82,21 +112,30 @@ interface IInfoItemProps {
   value: string | number | undefined | null;
   isLowercase?: boolean;
   isUppercase?: boolean;
-  isEmail?: boolean; // 🟢 Prop opcional para control de correos largos
+  isEmail?: boolean;
 }
 
-function InfoItem({ icon: Icon, label, value, isLowercase, isUppercase, isEmail }: IInfoItemProps) {
+function InfoItem({
+  icon: Icon,
+  label,
+  value,
+  isLowercase,
+  isUppercase,
+  isEmail,
+}: IInfoItemProps) {
   return (
-    <div className="space-y-2 group cursor-default min-w-0"> {/* min-w-0 evita que el grid colapse con textos largos */}
+    <div className="space-y-2 group cursor-default min-w-0">
       <div className="flex items-center gap-2 text-[10px] text-gray-400 font-black uppercase tracking-widest group-hover:text-[#d4a843] transition-colors">
-        <Icon className="h-4 w-4 shrink-0" /> 
+        <Icon className="h-4 w-4 shrink-0" />
         {label}
       </div>
-      <p className={`text-sm md:text-base font-bold text-[#1e3a5f] border-b border-gray-100 pb-2 transition-all group-hover:border-[#d4a843]/30 ${
-        isLowercase ? 'lowercase' : isUppercase ? 'uppercase tracking-tighter' : ''
-      } ${
-        isEmail ? 'break-all sm:break-all md:break-words' : 'truncate'
-      }`}>
+      <p
+        className={`text-sm md:text-base font-bold text-[#1e3a5f] border-b border-gray-100 pb-2 transition-all group-hover:border-[#d4a843]/30 ${
+          isLowercase ? "lowercase" : isUppercase ? "uppercase tracking-tighter" : ""
+        } ${
+          isEmail ? "break-all sm:break-all md:break-words" : "truncate"
+        }`}
+      >
         {value || "---"}
       </p>
     </div>

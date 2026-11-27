@@ -1,9 +1,19 @@
 // utils/SolicitudesUtils.ts
 
+export const SEMESTRE_EGRESADO = 13;
+
+export const esEgresadoPorSemestre = (
+  semestre: number | string | null | undefined
+): boolean => {
+  const num = Number(semestre ?? 0);
+  return Number.isFinite(num) && num >= SEMESTRE_EGRESADO;
+};
+
 export const getBadgeColor = (e: string): string => {
   const styles: Record<string, string> = {
     'Aprobada': 'bg-emerald-100 text-emerald-700 border-emerald-200',
     'Rechazada': 'bg-rose-100 text-rose-700 border-rose-200',
+    'Finalizada': 'bg-teal-100 text-teal-800 border-teal-300 font-bold',
     'Convocado a Entrevista': 'bg-orange-100 text-orange-800 border-orange-300 font-bold',
     'En Revisión': 'bg-blue-100 text-blue-700 border-blue-200',
     'Renovacion': 'bg-purple-100 text-purple-800 border-purple-300 font-bold',

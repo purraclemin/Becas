@@ -7,6 +7,8 @@ import nodemailer from 'nodemailer'
 import { registrarDecisionEnHistorial } from './ActionsEstatusBecaSQL'
 import { validarCuposYRequisitos } from './ActionsBecaValidators'
 import { obtenerOCrearPeriodoObjetivo } from './SolicitudAcademic'
+import { ejecutarRotacionExcelenciaEnPeriodo } from './ActionsGestionEspecial'
+import { SISTEMA_ADMIN_ID } from './RecordAcademicoUtils'
 import { db } from './db'
 
 const ESTATUS_VALIDOS = ['Pendiente', 'Convocado a Entrevista', 'En Revisión', 'Aprobada', 'Rechazada'];
@@ -87,8 +89,7 @@ function crearTransporterSMTP(): {
 
 /**
  * Acción del Servidor: Orquestador para la actualización de estatus de becas.
- * Permite gestionar y dictaminar solicitudes en curso sin importar su periodo de origen,
- * evaluando cupos contra el periodo vigente actual y sincronizando la lista de espera.
+ * Al emitir un dictamen de Aprobada o Rechazada, sincroniza automáticamente la Nómina de Excelencia.
  */
 export async function actualizarEstatusBeca(
   id: number,
@@ -106,7 +107,7 @@ export async function actualizarEstatusBeca(
     const adminId = matchId ? parseInt(matchId[1], 10) : NaN;
 
     if (!Number.isInteger(adminId) || adminId <= 0) {
-      return { error: "Acceso denegado: Se requiere una sesión institucional válida." };
+      return { error: 'Acceso denegado: Se requiere una sesión institucional válida.' };
     }
 
     const [actorRows] = await db.execute<ActorUsuarioRow[]>(
@@ -115,7 +116,7 @@ export async function actualizarEstatusBeca(
     );
 
     if (actorRows.length === 0) {
-      return { error: "Acceso denegado: Usuario no encontrado." };
+      return { error: 'Acceso denegado: Usuario no encontrado.' };
     }
 
     const actor = actorRows[0];
@@ -125,12 +126,12 @@ export async function actualizarEstatusBeca(
     const esCoordinacion = actor.role === 'admin' && !esSecretariaGeneral;
 
     if (!esSecretariaGeneral && !esCoordinacion) {
-      return { error: "Acceso denegado: Se requieren permisos de Coordinación o Secretaría General." };
+      return { error: 'Acceso denegado: Se requieren permisos de Coordinación o Secretaría General.' };
     }
 
     // 2. VALIDACIÓN DE DATOS DE ENTRADA
     if (!id || !ESTATUS_VALIDOS.includes(nuevoEstatus)) {
-      return { error: "Los datos de la solicitud o el estatus proporcionado no son válidos." };
+      return { error: 'Los datos de la solicitud o el estatus proporcionado no son válidos.' };
     }
 
     const observacionesLimpias =
@@ -153,7 +154,7 @@ export async function actualizarEstatusBeca(
 
     const [solRows] = solRowsResult;
     if (solRows.length === 0) {
-      return { error: "La solicitud indicada no existe en el sistema." };
+      return { error: 'La solicitud indicada no existe en el sistema.' };
     }
 
     const sol = solRows[0];
@@ -169,7 +170,7 @@ export async function actualizarEstatusBeca(
       ) {
         return {
           error:
-            "Acción restringida: La Coordinación únicamente realiza gestión y auditoría. La aprobación o rechazo corresponde exclusivamente a Secretaría General.",
+            'Acción restringida: La Coordinación únicamente realiza gestión y auditoría. La aprobación o rechazo corresponde exclusivamente a Secretaría General.',
         };
       }
     }
@@ -185,7 +186,7 @@ export async function actualizarEstatusBeca(
       if (nuevoEstatus !== 'Aprobada' && nuevoEstatus !== 'Rechazada') {
         return {
           error:
-            "Acción restringida: Secretaría General únicamente emite dictámenes de Aprobación o Rechazo.",
+            'Acción restringida: Secretaría General únicamente emite dictámenes de Aprobación o Rechazo.',
         };
       }
     }
@@ -198,11 +199,10 @@ export async function actualizarEstatusBeca(
         if (Number(sol.beca_perdida) === 1) {
           return {
             error:
-              "El estudiante posee un rechazo definitivo previo (beca perdida) y no puede optar nuevamente por ninguna beca o ayuda económica.",
+              'El estudiante posee un rechazo definitivo previo (beca perdida) y no puede optar nuevamente por ninguna beca o ayuda económica.',
           };
         }
 
-        // Siempre valida contra el periodo actual donde se están habilitando los cupos
         const diagnostico = await validarCuposYRequisitos(Number(id), periodoActualId);
 
         if (diagnostico.codigo === 'BECA_PERDIDA') {
@@ -216,7 +216,7 @@ export async function actualizarEstatusBeca(
 
         if (!diagnostico.apto && !confirmacionEspecial && !saltarValidacionCupo) {
           return {
-            error: "REGLAMENTO_INCUMPLIDO",
+            error: 'REGLAMENTO_INCUMPLIDO',
             code: diagnostico.codigo,
             message: diagnostico.mensaje,
           };
@@ -224,7 +224,7 @@ export async function actualizarEstatusBeca(
       }
     }
 
-    // 5. DELEGACIÓN TRANSACCIONAL (promueve solicitudes en cola al periodo vigente si aplica)
+    // 5. DELEGACIÓN TRANSACCIONAL
     const resultado = await registrarDecisionEnHistorial(
       Number(id),
       nuevoEstatus,
@@ -236,7 +236,16 @@ export async function actualizarEstatusBeca(
       periodoActualId
     );
 
-    // 6. NOTIFICACIÓN OMNICANAL SI ES CONVOCATORIA A ENTREVISTA
+    // 6. SINCRONIZACIÓN AUTOMÁTICA DE NÓMINA DE EXCELENCIA AL APROBAR O RECHAZAR
+    if (resultado.success && (nuevoEstatus === 'Aprobada' || nuevoEstatus === 'Rechazada')) {
+      try {
+        await ejecutarRotacionExcelenciaEnPeriodo(periodoActualId, SISTEMA_ADMIN_ID);
+      } catch (rotErr) {
+        console.error('⚠️ Advertencia sincronizando Nómina de Excelencia tras dictamen:', rotErr);
+      }
+    }
+
+    // 7. NOTIFICACIÓN OMNICANAL SI ES CONVOCATORIA A ENTREVISTA
     let emailEnviado: boolean | undefined = undefined;
     let emailError: string | undefined = undefined;
 
@@ -248,7 +257,7 @@ export async function actualizarEstatusBeca(
 
         if (!transporter) {
           emailError = errorConfig;
-          console.error("⚠️ Advertencia SMTP:", errorConfig);
+          console.error('⚠️ Advertencia SMTP:', errorConfig);
         } else {
           const [estudianteRows] = await db.execute<EstudianteCorreoRow[]>(
             `
@@ -328,13 +337,13 @@ export async function actualizarEstatusBeca(
         const smtpErr = err as Error;
         emailError = smtpErr.message || 'Fallo de autenticación o conexión con el servidor SMTP.';
         console.error(
-          "⚠️ Advertencia: No se pudo despachar el correo de convocatoria, pero el estatus cambió en la BD:",
+          '⚠️ Advertencia: No se pudo despachar el correo de convocatoria, pero el estatus cambió en la BD:',
           smtpErr
         );
       }
     }
 
-    // 7. FINALIZACIÓN Y REVALIDACIÓN DE CACHÉ (Admin + Reportes + Portal Estudiante)
+    // 8. REVALIDACIÓN DE CACHÉ
     if (resultado.success) {
       revalidatePath('/admin/solicitudes');
       revalidatePath('/admin/dashboard');
@@ -359,12 +368,12 @@ export async function actualizarEstatusBeca(
       };
     }
 
-    return { error: "No se pudo procesar la actualización en el servidor." };
+    return { error: 'No se pudo procesar la actualización en el servidor.' };
   } catch (error: unknown) {
     const err = error as Error;
-    console.error("❌ Error crítico en el orquestador de estatus:", err);
+    console.error('❌ Error crítico en el orquestador de estatus:', err);
     return {
-      error: "Error de comunicación con el motor de base de datos. Intente nuevamente.",
+      error: 'Error de comunicación con el motor de base de datos. Intente nuevamente.',
     };
   }
 }

@@ -9,6 +9,7 @@ import {
   AlertCircle,
   Award,
   UserPlus,
+  Archive,
   LucideIcon
 } from "lucide-react"
 
@@ -44,6 +45,7 @@ export function ValidarBecaHeader({
     { label: "En Revisión", value: "En Revisión", icon: AlertCircle },
     { label: "Aprobada", value: "Aprobada", icon: CheckCircle },
     { label: "Rechazada", value: "Rechazada", icon: XCircle },
+    { label: "Finalizada", value: "Finalizada", icon: Archive },
   ];
 
   const tabsSecretaria: TabItem[] = [

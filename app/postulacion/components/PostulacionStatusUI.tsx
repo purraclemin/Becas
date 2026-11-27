@@ -9,9 +9,12 @@ import {
   XCircle,
   AlertCircle,
   MessageSquareQuote,
-  ArrowRight
+  ArrowRight,
+  GraduationCap
 } from "lucide-react"
 import type { Student } from "@/lib/TablaStudient"
+
+const SEMESTRE_EGRESADO = 13
 
 export interface StatusStudentData extends Partial<Student> {
   observaciones_beca?: string | null;
@@ -46,7 +49,7 @@ export function RestrictedAccessCard() {
 
 /**
  * TARJETA: ESTADO DE SOLICITUD
- * Se muestra cuando ya existe un proceso, veto o beneficio activo.
+ * Se muestra cuando ya existe un proceso, veto, egreso o beneficio activo.
  */
 export function StatusCard({
   estatus,
@@ -56,20 +59,30 @@ export function StatusCard({
   studentRaw: StatusStudentData | null;
 }) {
   const esRechazada = estatus === "Rechazada" || studentRaw?.beca_perdida === 1;
-  const esAprobada = !esRechazada && (estatus === "Aprobada" || studentRaw?.ha_tenido_beca === 1);
-  const observaciones = studentRaw?.observaciones_beca || studentRaw?.motivo_exclusion || null;
+  const esEgresado =
+    !esRechazada &&
+    (Number(studentRaw?.semestre ?? 0) >= SEMESTRE_EGRESADO || estatus === "Finalizada");
+  const esAprobada = !esRechazada && !esEgresado && estatus === "Aprobada";
+  const observaciones =
+    studentRaw?.observaciones_beca ||
+    studentRaw?.motivo_exclusion ||
+    (esEgresado ? "Acabó su periodo académico" : null);
 
   const tituloEstado = esRechazada
     ? "Solicitud Denegada"
-    : esAprobada
-      ? "Beneficio Aprobado"
-      : "Solicitud en Proceso";
+    : esEgresado
+      ? "Periodo Académico Culminado"
+      : esAprobada
+        ? "Beneficio Aprobado"
+        : "Solicitud en Proceso";
 
   const descripcionEstado = esRechazada
     ? "Su postulación no ha sido aprobada por el comité evaluador en esta oportunidad."
-    : esAprobada
-      ? "Actualmente cuenta con un beneficio estudiantil aprobado y activo en el sistema."
-      : "Actualmente su solicitud se encuentra en fase de validación por el departamento de Bienestar Estudiantil.";
+    : esEgresado
+      ? "Has culminado satisfactoriamente los 12 trimestres de tu carrera en UNIMAR. No es posible registrar nuevas postulaciones."
+      : esAprobada
+        ? "Actualmente cuenta con un beneficio estudiantil aprobado y activo en el sistema."
+        : "Actualmente su solicitud se encuentra en fase de validación por el departamento de Bienestar Estudiantil.";
 
   return (
     <div className="flex w-full items-center justify-center bg-[#f8fafc] p-4 sm:p-6 animate-in fade-in duration-500">
@@ -79,13 +92,17 @@ export function StatusCard({
             className={`h-20 w-20 rounded-3xl flex items-center justify-center mx-auto mb-6 border ${
               esRechazada
                 ? "bg-rose-50 border-rose-100"
-                : esAprobada
-                  ? "bg-emerald-50 border-emerald-100"
-                  : "bg-[#d4a843]/10 border-[#d4a843]/30"
+                : esEgresado
+                  ? "bg-teal-50 border-teal-200"
+                  : esAprobada
+                    ? "bg-emerald-50 border-emerald-100"
+                    : "bg-[#d4a843]/10 border-[#d4a843]/30"
             }`}
           >
             {esRechazada ? (
               <XCircle className="h-10 w-10 text-rose-500" />
+            ) : esEgresado ? (
+              <GraduationCap className="h-10 w-10 text-teal-600" />
             ) : esAprobada ? (
               <CheckCircle2 className="h-10 w-10 text-emerald-500" />
             ) : (
@@ -106,7 +123,9 @@ export function StatusCard({
               <div className="bg-[#f8fafc] p-4 rounded-2xl border border-slate-200/80 text-left">
                 <div className="flex items-center gap-2 mb-1.5 text-[#1e3a5f]">
                   <MessageSquareQuote className="h-4 w-4 text-[#d4a843]" />
-                  <span className="text-[10px] font-black uppercase tracking-widest">Observaciones</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest">
+                    Observaciones
+                  </span>
                 </div>
                 <p className="text-xs lg:text-[11px] font-semibold italic text-slate-600">
                   &ldquo;{observaciones}&rdquo;

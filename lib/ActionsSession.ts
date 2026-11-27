@@ -9,6 +9,8 @@ export type UserRole = 'estudiante' | 'admin' | 'secretaria'
 export type PerfilAutoridad = 'estudiante' | 'coordinacion' | 'secretaria_general'
 
 const EMAIL_SECRETARIA_GENERAL = 'secretariageneral@unimar.edu.ve'
+const SEMESTRE_EGRESADO = 13
+const OBSERVACION_EGRESADO = 'Acabó su periodo académico'
 
 interface AccountRoleRow extends RowDataPacket {
   id: number;
@@ -103,6 +105,8 @@ export async function getSession() {
       }
 
       const s = userRows[0];
+      const semestreNum = Number(s.semestre);
+      const esEgresado = semestreNum >= SEMESTRE_EGRESADO;
 
       let estatusReciente = 'ninguna';
       let materiasArray: unknown = [];
@@ -125,7 +129,8 @@ export async function getSession() {
             `
               SELECT id, observaciones_admin
               FROM solicitudes
-              WHERE user_id = ? AND estatus = 'Rechazada'
+              WHERE user_id = ?
+                AND LOWER(TRIM(estatus)) IN ('rechazada', 'rechazado')
               ORDER BY id DESC
               LIMIT 1
             `,
@@ -149,10 +154,17 @@ export async function getSession() {
           if (!observacionesAdmin && rechazoRows[0]?.observaciones_admin) {
             observacionesAdmin = String(rechazoRows[0].observaciones_admin).trim();
           }
+        } else if (esEgresado && estatusReciente === 'Finalizada' && !observacionesAdmin) {
+          observacionesAdmin = OBSERVACION_EGRESADO;
         }
       } catch (solError) {
         console.error('⚠️ Advertencia leyendo solicitud reciente en sesión:', solError);
       }
+
+      const puedePostular =
+        !becaPerdida &&
+        !esEgresado &&
+        (estatusReciente === 'ninguna' || estatusReciente === 'Finalizada');
 
       return {
         isLoggedIn: true as const,
@@ -167,8 +179,10 @@ export async function getSession() {
         email: s.email ?? '',
 
         carrera: s.carrera,
-        trimestre: Number(s.semestre),
-        semestre: Number(s.semestre),
+        trimestre: semestreNum,
+        semestre: semestreNum,
+        esEgresado,
+        puedePostular,
         indiceGlobal: Number(s.indice_global ?? 0),
 
         estatus: estatusReciente,

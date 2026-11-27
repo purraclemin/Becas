@@ -12,6 +12,8 @@ import {
   CalendarDays,
   MessageSquareText,
   Lock,
+  Archive,
+  GraduationCap,
   type LucideIcon
 } from "lucide-react"
 
@@ -25,6 +27,7 @@ type StatusKey =
   | 'convocado'
   | 'pendiente'
   | 'rechazada'
+  | 'finalizada'
   | 'especial'
   | 'revision'
   | 'renovacion'
@@ -47,19 +50,21 @@ interface ProfileStatusProps {
   motivoRechazo?: string;
   observacionesAdmin?: string | null;
   becaPerdida?: boolean;
+  esEgresado?: boolean;
 }
 
 /**
  * COMPONENTE: ESTATUS VISUAL DEL PERFIL
  * Muestra el estatus de la solicitud, despliega instrucciones de citación,
- * detalla la renovación automática aprobada y refleja la inhabilitación permanente por rechazo.
+ * refleja el cierre neutro 'Finalizada' (egreso o rotación sin sanción) y la inhabilitación por rechazo.
  */
 export function ProfileStatus({
   estatus,
   materias,
   motivoRechazo,
   observacionesAdmin,
-  becaPerdida = false
+  becaPerdida = false,
+  esEgresado = false,
 }: ProfileStatusProps) {
   const s =
     estatus
@@ -89,7 +94,9 @@ export function ProfileStatus({
   const tieneReprobadas = listaMaterias.some((m) => Number(m.nota) < 10);
 
   const observacionLimpia =
-    observacionesAdmin && observacionesAdmin.trim() !== '' ? observacionesAdmin.trim() : null;
+    observacionesAdmin && observacionesAdmin.trim() !== ''
+      ? observacionesAdmin.trim()
+      : null;
 
   const mensajeRechazo =
     motivoRechazo && motivoRechazo.trim() !== ''
@@ -99,6 +106,12 @@ export function ProfileStatus({
         : tieneReprobadas || s.includes('materia')
           ? "Solicitud rechazada: se detectó al menos una unidad curricular reprobada (calificación inferior a 10 puntos). Por reglamento institucional, no podrá optar nuevamente por becas."
           : "Tu solicitud ha sido rechazada de forma definitiva. Por reglamento institucional, no podrás optar nuevamente a becas ni ayudas económicas.";
+
+  const mensajeFinalizada = observacionLimpia
+    ? observacionLimpia
+    : esEgresado
+      ? "Acabó su periodo académico. Has culminado satisfactoriamente tu trayectoria académica en UNIMAR."
+      : "Tu beneficio anterior culminó sin sanción académica ni disciplinaria. Puedes postularte nuevamente en el periodo vigente.";
 
   const config: Record<StatusKey, StatusVisualConfig> = {
     aprobada: {
@@ -140,6 +153,16 @@ export function ProfileStatus({
       icon: XCircle,
       pulse: false,
       msg: mensajeRechazo
+    },
+    finalizada: {
+      bg: "bg-teal-50",
+      bar: "bg-teal-600",
+      text: "text-teal-900",
+      iconText: "text-teal-600",
+      label: esEgresado ? "Periodo Culminado" : "Proceso Finalizado",
+      icon: esEgresado ? GraduationCap : Archive,
+      pulse: false,
+      msg: mensajeFinalizada
     },
     especial: {
       bg: "bg-orange-50",
@@ -185,6 +208,7 @@ export function ProfileStatus({
 
   const resolveKey = (): StatusKey => {
     if (becaPerdida) return 'rechazada';
+    if (s.includes('finaliz')) return 'finalizada';
     if (s.includes('aprob') || s.includes('aprov') || s === 'becado') return 'aprobada';
     if (s.includes('convocad')) return 'convocado';
     if (s.includes('pendiente')) return 'pendiente';
@@ -204,7 +228,9 @@ export function ProfileStatus({
       <div className={`absolute left-0 top-0 bottom-0 w-2 ${c.bar}`}></div>
       <CardContent className="p-6">
         <div className="flex items-center justify-between mb-5">
-          <span className="text-[10px] font-black uppercase tracking-widest text-[#1e3a5f]">Estatus de Solicitud</span>
+          <span className="text-[10px] font-black uppercase tracking-widest text-[#1e3a5f]">
+            Estatus de Solicitud
+          </span>
           <div className={`h-3 w-3 rounded-full shadow-sm ${c.pulse ? 'animate-pulse' : ''} ${c.bar}`} />
         </div>
         <div className="flex items-center gap-4">
@@ -226,7 +252,21 @@ export function ProfileStatus({
           </div>
         )}
 
-
+        {key === 'finalizada' && (
+          <div className="mt-4 p-3 rounded-xl bg-white/85 border border-teal-200 flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-teal-800">
+            {esEgresado ? (
+              <>
+                <GraduationCap className="h-3.5 w-3.5 shrink-0 text-teal-600" />
+                <span>Egresado UNIMAR: Periodo académico culminado</span>
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-teal-600" />
+                <span>Sin Sanción: Habilitado para nuevas postulaciones</span>
+              </>
+            )}
+          </div>
+        )}
 
         {key === 'convocado' && observacionLimpia && (
           <div className="mt-4 p-3.5 rounded-xl bg-white/85 border border-orange-200 space-y-1.5">

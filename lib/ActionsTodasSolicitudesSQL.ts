@@ -4,11 +4,15 @@ import type { RowDataPacket } from 'mysql2/promise'
 import { db } from './db'
 import { getSession } from './ActionsSession'
 import { procesarTransicionMasivaDePeriodo } from './ActionsRenovacion'
-import { obtenerVariantesTipoBeca } from './RecordAcademicoUtils'
+import { sincronizarTodosLosRecordsFaltantes } from './ActionsRecordAcademico'
+import { ejecutarRotacionExcelenciaEnPeriodo } from './ActionsGestionEspecial'
+import { SISTEMA_ADMIN_ID, obtenerVariantesTipoBeca } from './RecordAcademicoUtils'
 import { aplicarFiltroEstudioAdmin } from '@/app/admin/validarBeca/lib/ValidarEstudioHecho'
 
 export interface FiltrosDB {
   search?: string;
+  cedulaExacta?: string;
+  incluirHistorico?: boolean;
   status?: string;
   municipio?: string;
   carrera?: string;
@@ -31,8 +35,16 @@ interface PeriodoIdRow extends RowDataPacket {
   id: number;
 }
 
+interface ConfigPeriodoActivoRow extends RowDataPacket {
+  valor_int: number | null;
+}
+
 interface PendientesTransicionRow extends RowDataPacket {
   hay_pendientes: number;
+}
+
+interface DesincronizadosCheckRow extends RowDataPacket {
+  hay_desincronizados: number;
 }
 
 interface TotalCountRow extends RowDataPacket {
@@ -172,43 +184,114 @@ export async function fetchSolicitudesDesdeDB(filtros: FiltrosDB = {}): Promise<
     );
     const pId = Number(periodoRes?.[0]?.id || 0);
 
-    // Sincronización automática e idempotente de becados Aprobada y lista de espera al detectar cambio de periodo
+    // 1. Transición automática de periodo + hidratación de récords + rotación automática de Excelencia
     if (pId > 0) {
-      const [pendientesRows] = await db.execute<PendientesTransicionRow[]>(
-        `
-        SELECT EXISTS (
-          SELECT 1
-          FROM solicitudes s
-          JOIN students st ON s.user_id = st.id
-          WHERE s.periodo_id < ?
-            AND IFNULL(st.beca_perdida, 0) = 0
-            AND NOT EXISTS (
-              SELECT 1 FROM solicitudes s_act
-              WHERE s_act.user_id = s.user_id AND s_act.periodo_id = ?
-            )
-            AND NOT EXISTS (
-              SELECT 1 FROM solicitudes s_rej
-              WHERE s_rej.user_id = s.user_id AND s_rej.estatus = 'Rechazada'
-            )
-            AND (
-              (s.estatus = 'Aprobada' AND IFNULL(st.semestre, 1) < 12)
-              OR (
-                s.estatus IN ('Pendiente', 'Convocado a Entrevista', 'En Revisión', 'Revisión Especial')
-                AND NOT EXISTS (
-                  SELECT 1 FROM historial_aprobaciones h_upd
-                  WHERE h_upd.solicitud_id = s.id
-                    AND h_upd.periodo_id = ?
-                    AND h_upd.admin_id = 0
+      const [configPeriodoRows, pendientesRows] = await Promise.all([
+        db.execute<ConfigPeriodoActivoRow[]>(
+          `SELECT valor_int FROM sistema_config WHERE clave = 'ultimo_periodo_activo' LIMIT 1`
+        ),
+        db.execute<PendientesTransicionRow[]>(
+          `
+          SELECT EXISTS (
+            SELECT 1
+            FROM solicitudes s
+            JOIN (
+              SELECT user_id, MAX(id) AS last_id
+              FROM solicitudes
+              WHERE periodo_id < ?
+              GROUP BY user_id
+            ) ult ON s.id = ult.last_id
+            JOIN students st ON s.user_id = st.id
+            WHERE IFNULL(st.beca_perdida, 0) = 0
+              AND NOT EXISTS (
+                SELECT 1 FROM solicitudes s_act
+                WHERE s_act.user_id = s.user_id AND s_act.periodo_id = ?
+              )
+              AND NOT EXISTS (
+                SELECT 1 FROM solicitudes s_rej
+                WHERE s_rej.user_id = s.user_id
+                  AND LOWER(TRIM(s_rej.estatus)) IN ('rechazada', 'rechazado')
+              )
+              AND (
+                (
+                  LOWER(TRIM(s.estatus)) IN ('aprobada', 'aprobado')
+                  AND NOT EXISTS (
+                    SELECT 1 FROM historial_aprobaciones h_fin
+                    WHERE h_fin.solicitud_id = s.id
+                      AND h_fin.periodo_id = ?
+                      AND h_fin.admin_id = 0
+                      AND h_fin.estatus_nuevo = 'Finalizada'
+                  )
+                )
+                OR (
+                  s.estatus IN ('Pendiente', 'Convocado a Entrevista', 'En Revisión', 'Revisión Especial')
+                  AND NOT EXISTS (
+                    SELECT 1 FROM historial_aprobaciones h_upd
+                    WHERE h_upd.solicitud_id = s.id
+                      AND h_upd.periodo_id = ?
+                      AND h_upd.admin_id = 0
+                  )
                 )
               )
-            )
-        ) AS hay_pendientes
-        `,
-        [pId, pId, pId]
-      );
+          ) AS hay_pendientes
+          `,
+          [pId, pId, pId, pId]
+        ),
+      ]);
 
-      if (Number(pendientesRows[0]?.hay_pendientes || 0) === 1) {
+      const ultimoPeriodoProcesado = Number(configPeriodoRows[0]?.[0]?.valor_int ?? 0);
+      const hayPendientes = Number(pendientesRows[0]?.[0]?.hay_pendientes ?? 0) === 1;
+
+      if (ultimoPeriodoProcesado !== pId || hayPendientes) {
         await procesarTransicionMasivaDePeriodo(pId);
+      } else {
+        const [desyncRows] = await db.execute<DesincronizadosCheckRow[]>(
+          `
+          SELECT EXISTS (
+            SELECT 1
+            FROM students st
+            JOIN carreras c ON LOWER(TRIM(st.carrera)) = LOWER(TRIM(c.nombre))
+            WHERE st.semestre > 1
+              AND EXISTS (
+                SELECT 1
+                FROM pensum_materias pm
+                WHERE pm.carrera_id = c.id
+                  AND pm.trimestre_ubicacion = LEAST(12, st.semestre - 1)
+              )
+              AND (
+                NOT EXISTS (
+                  SELECT 1
+                  FROM record_academico ra
+                  WHERE ra.student_id = st.id
+                    AND ra.trimestre_cursado = LEAST(12, st.semestre - 1)
+                )
+                OR IFNULL(st.indice_global, 0) = 0
+                OR EXISTS (
+                  SELECT 1
+                  FROM solicitudes s_act
+                  WHERE s_act.user_id = st.id
+                    AND s_act.periodo_id = ?
+                    AND ABS(
+                      IFNULL(s_act.promedio_notas, 0) - IFNULL((
+                        SELECT ROUND(AVG(ra_t.nota), 2)
+                        FROM record_academico ra_t
+                        WHERE ra_t.student_id = st.id
+                          AND ra_t.trimestre_cursado = LEAST(12, st.semestre - 1)
+                      ), 0)
+                    ) > 0.01
+                )
+              )
+          ) AS hay_desincronizados
+          `,
+          [pId]
+        );
+
+        if (Number(desyncRows[0]?.hay_desincronizados ?? 0) === 1) {
+          await sincronizarTodosLosRecordsFaltantes(300);
+        }
+
+        // Fast-path idempotente: mantiene sincronizada la Nómina Automática de Excelencia en cada carga
+        await ejecutarRotacionExcelenciaEnPeriodo(pId, SISTEMA_ADMIN_ID);
       }
     }
 
@@ -226,11 +309,16 @@ export async function fetchSolicitudesDesdeDB(filtros: FiltrosDB = {}): Promise<
     const params: Array<string | number> = [];
 
     // REGLA OPERATIVA DE BANDEJA VALIDAR BECAS:
-    // - Aprobada y Rechazada: SOLO del periodo actual (el histórico se audita en Recurrencia Trimestral).
+    // - Aprobada, Rechazada y Finalizada: SOLO del periodo actual (salvo apertura directa histórica por auditoría).
     // - Pendiente, Convocado a Entrevista, En Revisión, Revisión Especial: TODOS los periodos (lista de espera).
-    if (pId > 0) {
-      whereClause += ` AND (s.periodo_id = ? OR s.estatus NOT IN ('Aprobada', 'Rechazada'))`;
+    if (pId > 0 && !filtros.incluirHistorico) {
+      whereClause += ` AND (s.periodo_id = ? OR s.estatus NOT IN ('Aprobada', 'Rechazada', 'Finalizada'))`;
       params.push(pId);
+    }
+
+    if (filtros.cedulaExacta) {
+      whereClause += ` AND LOWER(TRIM(st.cedula)) = ?`;
+      params.push(filtros.cedulaExacta.trim().toLowerCase());
     }
 
     if (filtros.search) {
@@ -241,7 +329,7 @@ export async function fetchSolicitudesDesdeDB(filtros: FiltrosDB = {}): Promise<
 
     if (esSecretariaGeneral) {
       whereClause += ` AND s.estatus = 'En Revisión'`;
-    } else if (filtros.status && filtros.status !== "Todas") {
+    } else if (filtros.status && filtros.status !== 'Todas') {
       whereClause += ` AND s.estatus = ?`;
       params.push(filtros.status);
     }
@@ -270,12 +358,16 @@ export async function fetchSolicitudesDesdeDB(filtros: FiltrosDB = {}): Promise<
       }
     }
 
-    if (filtros.es_renovacion === 'true' || filtros.vulnerabilidadMin || filtros.tendencia === 'descenso') {
-      whereClause += ` AND s.periodo_id = ${pId} AND EXISTS (
+    if (
+      filtros.es_renovacion === 'true' ||
+      filtros.vulnerabilidadMin ||
+      filtros.tendencia === 'descenso'
+    ) {
+      whereClause += ` AND s.periodo_id = ${Number(pId)} AND EXISTS (
         SELECT 1 FROM solicitudes s_old 
         WHERE s_old.user_id = s.user_id 
         AND s_old.estatus = 'Aprobada' 
-        AND s_old.periodo_id = ${prevPId}
+        AND s_old.periodo_id = ${Number(prevPId)}
       )`;
 
       if (filtros.tendencia !== 'descenso') {
@@ -302,24 +394,24 @@ export async function fetchSolicitudesDesdeDB(filtros: FiltrosDB = {}): Promise<
         FROM solicitudes s_ant 
         WHERE s_ant.user_id = s.user_id 
         AND s_ant.estatus = 'Aprobada'
-        AND s_ant.periodo_id = ${prevPId}
+        AND s_ant.periodo_id = ${Number(prevPId)}
         LIMIT 1
       )`;
     }
 
     if (!esSecretariaGeneral && filtros.scope === 'total_beneficiarios') {
-      whereClause += ` AND s.periodo_id = ${pId} AND s.estatus = 'Aprobada' AND (
+      whereClause += ` AND s.periodo_id = ${Number(pId)} AND s.estatus = 'Aprobada' AND (
         EXISTS (
           SELECT 1 FROM solicitudes s_old 
           WHERE s_old.user_id = s.user_id 
           AND s_old.estatus = 'Aprobada' 
-          AND s_old.periodo_id = ${prevPId}
+          AND s_old.periodo_id = ${Number(prevPId)}
         )
         OR 
         NOT EXISTS (
           SELECT 1 FROM solicitudes s_none
           WHERE s_none.user_id = s.user_id 
-          AND s_none.periodo_id = ${prevPId}
+          AND s_none.periodo_id = ${Number(prevPId)}
         )
       )`;
     }
@@ -331,9 +423,9 @@ export async function fetchSolicitudesDesdeDB(filtros: FiltrosDB = {}): Promise<
     }
 
     if (filtros.filtroPromedio && !filtros.promedioMin) {
-      if (filtros.filtroPromedio === "19-20") whereClause += ` AND s.promedio_notas >= 19`;
-      else if (filtros.filtroPromedio === "16-18") whereClause += ` AND s.promedio_notas BETWEEN 16 AND 18.99`;
-      else if (filtros.filtroPromedio === "10-15") whereClause += ` AND s.promedio_notas BETWEEN 10 AND 15.99`;
+      if (filtros.filtroPromedio === '19-20') whereClause += ` AND s.promedio_notas >= 19`;
+      else if (filtros.filtroPromedio === '16-18') whereClause += ` AND s.promedio_notas BETWEEN 16 AND 18.99`;
+      else if (filtros.filtroPromedio === '10-15') whereClause += ` AND s.promedio_notas BETWEEN 10 AND 15.99`;
     }
 
     const joinEstudioMasReciente = `
@@ -356,6 +448,18 @@ export async function fetchSolicitudesDesdeDB(filtros: FiltrosDB = {}): Promise<
     const [countRows] = await db.execute<TotalCountRow[]>(countQuery, params);
     const totalRegistros = Number(countRows[0]?.total || 0);
 
+    const indiceGlobalExpr = `
+      COALESCE(
+        CASE WHEN IFNULL(st.indice_global, 0) > 0 THEN ROUND(st.indice_global, 2) ELSE NULL END,
+        (
+          SELECT ROUND(AVG(ra.nota), 2)
+          FROM record_academico ra
+          WHERE ra.student_id = st.id
+        ),
+        0.00
+      )
+    `;
+
     let query = `
       SELECT 
         s.id, s.user_id, s.tipo_beca, s.estatus, s.observaciones_admin, s.promedio_notas, s.fecha_registro, 
@@ -365,7 +469,8 @@ export async function fetchSolicitudesDesdeDB(filtros: FiltrosDB = {}): Promise<
         s.notas_certificadas, s.carnet_discapacidad, s.documentos_filiacion,
         s.email_institucional, s.periodo_id, s.departamento_asignado,
         st.nombre, st.apellido, st.cedula, st.carrera, st.telefono,
-        st.semestre, st.municipio_residencia, st.sexo, st.fecha_nacimiento, st.indice_global,
+        st.semestre, st.municipio_residencia, st.sexo, st.fecha_nacimiento,
+        ${indiceGlobalExpr} AS indice_global,
         e.puntaje, e.nivel_riesgo, e.monto_ingreso_familiar,
         e.socio_lugar_nac, e.socio_nacionalidad, e.socio_estado_civil, e.socio_telf_hab,
         e.direccion_completa, e.socio_trabajo_empresa, e.socio_trabajo_cargo,
@@ -395,34 +500,35 @@ export async function fetchSolicitudesDesdeDB(filtros: FiltrosDB = {}): Promise<
         e.equip_lavadora, e.equip_nevera, e.equip_cable, e.equip_aire, e.equip_ventilador,
         e.equip_tv, e.equip_cocina, e.equip_microondas, e.equip_sonido, e.equip_computadora, e.equip_celular,
         e.salud_enfermedad_desc, e.salud_tratamiento,
-        (
-          SELECT ROUND(AVG(promedio_notas), 2) 
-          FROM solicitudes 
-          WHERE user_id = st.id
-        ) AS promedio_historico
+        ${indiceGlobalExpr} AS promedio_historico
       FROM solicitudes s
       JOIN students st ON s.user_id = st.id
       ${joinEstudioMasReciente}
       ${whereClause}
     `;
 
-    query += ` ORDER BY 
-      CASE 
-        WHEN s.estatus = 'Renovacion' OR s.estatus = 'Renovación' THEN 1
-        WHEN s.estatus = 'Pendiente' THEN 2
-        WHEN s.estatus = 'Convocado a Entrevista' THEN 3
-        WHEN s.estatus = 'En Revisión' OR s.estatus = 'En revision' THEN 4
-        WHEN s.estatus = 'Revisión Especial' OR s.estatus = 'Revision especial' THEN 5
-        WHEN s.estatus = 'Aprobada' OR s.estatus = 'Aprobado' THEN 6
-        WHEN s.estatus = 'Rechazada' THEN 7
-        ELSE 8 
-      END ASC, 
-      s.periodo_id DESC,
-      s.promedio_notas DESC, 
-      s.id DESC`;
+    if (filtros.incluirHistorico) {
+      query += ` ORDER BY s.periodo_id DESC, s.id DESC`;
+    } else {
+      query += ` ORDER BY 
+        CASE 
+          WHEN s.estatus = 'Renovacion' OR s.estatus = 'Renovación' THEN 1
+          WHEN s.estatus = 'Pendiente' THEN 2
+          WHEN s.estatus = 'Convocado a Entrevista' THEN 3
+          WHEN s.estatus = 'En Revisión' OR s.estatus = 'En revision' THEN 4
+          WHEN s.estatus = 'Revisión Especial' OR s.estatus = 'Revision especial' THEN 5
+          WHEN s.estatus = 'Aprobada' OR s.estatus = 'Aprobado' THEN 6
+          WHEN s.estatus = 'Rechazada' THEN 7
+          WHEN s.estatus = 'Finalizada' THEN 8
+          ELSE 9 
+        END ASC, 
+        s.periodo_id DESC,
+        s.promedio_notas DESC, 
+        s.id DESC`;
+    }
 
-    const page = Math.max(1, Number(filtros.page) || 1);
-    const limit = Math.max(1, Number(filtros.limit) || 7);
+    const page = Math.max(1, Math.floor(Number(filtros.page) || 1));
+    const limit = Math.max(1, Math.floor(Number(filtros.limit) || 7));
     const offset = (page - 1) * limit;
 
     query += ` LIMIT ${limit} OFFSET ${offset}`;
@@ -431,7 +537,7 @@ export async function fetchSolicitudesDesdeDB(filtros: FiltrosDB = {}): Promise<
 
     return { rows, totalRegistros, limit };
   } catch (error) {
-    console.error("❌ Error en fetchSolicitudesDesdeDB:", error);
+    console.error('❌ Error en fetchSolicitudesDesdeDB:', error);
     throw error;
   }
 }

@@ -5,7 +5,14 @@ import { getStudentHistory } from "@/lib/ActionsHistoryMaterias"
 import { sincronizarYObtenerRecordAcademico } from "@/lib/ActionsRecordAcademico"
 import { evaluarYRenovarEstudianteEnCambioPeriodo } from "@/lib/ActionsRenovacion"
 import { Button } from "@/components/ui/button"
-import { AlertCircle, ArrowLeft, LayoutDashboard, History, CalendarDays, MessageSquareText } from "lucide-react"
+import {
+  AlertCircle,
+  ArrowLeft,
+  LayoutDashboard,
+  History,
+  CalendarDays,
+  MessageSquareText
+} from "lucide-react"
 import { ProfileIdentity } from "./components/ProfileIdentity"
 import { ProfileStatus } from "./components/ProfileStatus"
 import { AcademicInfo } from "./components/AcademicInfo"
@@ -16,8 +23,10 @@ import { AlertaConvocatoria } from "./components/AlertaConvocatoria"
 import type { IEvaluacionAcademica } from "@/lib/RecordAcademicoUtils"
 
 // CRÍTICO: Fuerza a Next.js a no cachear esta página para ver cambios de periodo y estatus al instante
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+
+const SEMESTRE_EGRESADO = 13
 
 interface PerfilSession {
   isLoggedIn?: boolean;
@@ -26,6 +35,8 @@ interface PerfilSession {
   nombre?: string;
   email?: string;
   becaPerdida?: boolean;
+  esEgresado?: boolean;
+  puedePostular?: boolean;
   observacionesAdmin?: string | null;
   [key: string]: unknown;
 }
@@ -33,6 +44,8 @@ interface PerfilSession {
 interface PerfilStatusData {
   estatus?: string;
   becaPerdida?: boolean;
+  esEgresado?: boolean;
+  puedePostular?: boolean;
   observacionesAdmin?: string | null;
   materias?: unknown;
   periodoActual?: string;
@@ -50,17 +63,23 @@ interface PerfilStatusData {
   evaluacionAcademica?: IEvaluacionAcademica | null;
 }
 
-export default async function PerfilPage(props: { searchParams: Promise<{ view?: string, trimestre_renovacion?: string }> }) {
-  const sessionUser = (await getSession()) as PerfilSession;
-  const searchParams = await props.searchParams;
+export default async function PerfilPage(props: {
+  searchParams: Promise<{ view?: string; trimestre_renovacion?: string }>;
+}) {
+  const sessionUser = (await getSession()) as PerfilSession
+  const searchParams = await props.searchParams
 
   if (!sessionUser?.isLoggedIn) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#f0f4f8] px-4">
         <div className="max-w-md w-full bg-white rounded-xl text-center p-8 border-t-4 border-red-500 shadow-xl">
           <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-black text-[#1e3a5f] uppercase tracking-tight">Acceso Denegado</h2>
-          <p className="text-gray-500 text-sm mt-2 mb-6">Inicia sesión para visualizar tu información académica.</p>
+          <h2 className="text-xl font-black text-[#1e3a5f] uppercase tracking-tight">
+            Acceso Denegado
+          </h2>
+          <p className="text-gray-500 text-sm mt-2 mb-6">
+            Inicia sesión para visualizar tu información académica.
+          </p>
           <Link href="/login">
             <Button className="bg-[#1e3a5f] text-white w-full uppercase font-black tracking-widest hover:bg-[#162c46] py-6">
               Iniciar Sesión
@@ -71,29 +90,43 @@ export default async function PerfilPage(props: { searchParams: Promise<{ view?:
     )
   }
 
-  const studentIdNum = Number(sessionUser.id ?? 0);
+  const studentIdNum = Number(sessionUser.id ?? 0)
 
   // 1. Transición automática de periodo + sincronización única previa al Promise.all
-  if (sessionUser.role === 'estudiante' && Number.isInteger(studentIdNum) && studentIdNum > 0) {
-    await evaluarYRenovarEstudianteEnCambioPeriodo(studentIdNum);
-    await sincronizarYObtenerRecordAcademico(studentIdNum);
+  if (sessionUser.role === "estudiante" && Number.isInteger(studentIdNum) && studentIdNum > 0) {
+    await evaluarYRenovarEstudianteEnCambioPeriodo(studentIdNum)
+    await sincronizarYObtenerRecordAcademico(studentIdNum)
   }
 
   const [statusDataRaw, historyDataResult] = await Promise.all([
     getStudentAcademicStatus(studentIdNum, searchParams.trimestre_renovacion),
     getStudentHistory(studentIdNum)
-  ]);
+  ])
 
-  const statusData = statusDataRaw as PerfilStatusData;
-  const currentView = searchParams.view || 'status';
+  const statusData = statusDataRaw as PerfilStatusData
+  const currentView = searchParams.view || "status"
 
-  const becaPerdidaFinal = Boolean(statusData.becaPerdida || sessionUser.becaPerdida);
+  const becaPerdidaFinal = Boolean(statusData.becaPerdida || sessionUser.becaPerdida)
+  const semestreFinal = Number(statusData.semestre ?? 0)
+  const esEgresadoFinal = Boolean(
+    statusData.esEgresado || sessionUser.esEgresado || semestreFinal >= SEMESTRE_EGRESADO
+  )
   const observacionesAdminFinal =
-    statusData.observacionesAdmin ?? sessionUser.observacionesAdmin ?? null;
+    statusData.observacionesAdmin ?? sessionUser.observacionesAdmin ?? null
+
+  const estatusFinal = becaPerdidaFinal ? "Rechazada" : statusData.estatus || "ninguna"
+  const puedePostularFinal = Boolean(
+    !becaPerdidaFinal &&
+      !esEgresadoFinal &&
+      (statusData.puedePostular ??
+        (estatusFinal === "ninguna" || estatusFinal === "Finalizada"))
+  )
 
   const academicStatus = {
-    estatus: becaPerdidaFinal ? 'Rechazada' : (statusData.estatus || 'ninguna'),
+    estatus: estatusFinal,
     becaPerdida: becaPerdidaFinal,
+    esEgresado: esEgresadoFinal,
+    puedePostular: puedePostularFinal,
     observacionesAdmin: observacionesAdminFinal,
     materias: statusData.materias,
     periodoActual: statusData.periodoActual || "Sin Periodo Activo",
@@ -101,29 +134,25 @@ export default async function PerfilPage(props: { searchParams: Promise<{ view?:
     periodoNotas: statusData.periodoNotas || "",
     indiceGlobal: statusData.indiceGlobal,
     carrera: statusData.carrera,
-    semestre: statusData.semestre,
+    semestre: semestreFinal,
     trimestreEvaluado: statusData.trimestreSugerido
-  };
+  }
 
   const historyData = historyDataResult.success
     ? historyDataResult
-    : { data: [], stats: { promedioHistorico: "0.00", totalMaterias: 0, totalPeriodos: 0 } };
+    : { data: [], stats: { promedioHistorico: "0.00", totalMaterias: 0, totalPeriodos: 0 } }
 
-  const user = { ...sessionUser, ...academicStatus };
+  const user = { ...sessionUser, ...academicStatus }
 
-  const esUltimoTrimestre = user.semestre === 12;
+  const esUltimoTrimestre = user.semestre === 12
+  const mostrarBannerFinalista = esUltimoTrimestre || esEgresadoFinal
 
-  const estatusNormalizado = user.estatus?.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || '';
-  const esConvocado = estatusNormalizado.includes('convocad');
-
-  const evaluacion = statusData.evaluacionAcademica;
-  const tieneRestriccionAcademica = Boolean(
-    evaluacion && !evaluacion.esNuevoIngreso && !evaluacion.apto
-  );
+  const estatusNormalizado =
+    user.estatus?.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || ""
+  const esConvocado = estatusNormalizado.includes("convocad")
 
   return (
     <div className="min-h-screen bg-[#f0f4f8] py-8 md:py-16">
-
       {/* ALERTA MODAL EN TODA LA PANTALLA CON LAS INSTRUCCIONES DE CITACIÓN */}
       <AlertaConvocatoria
         estatus={user.estatus}
@@ -131,12 +160,16 @@ export default async function PerfilPage(props: { searchParams: Promise<{ view?:
       />
 
       <div className="container mx-auto px-4 max-w-5xl animate-in fade-in slide-in-from-bottom-4 duration-700">
-
         <div className="mb-8 flex justify-center md:justify-start">
           <Link href="/">
-            <Button variant="outline" className="flex items-center gap-2 border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white transition-all shadow-sm bg-white group px-6 py-5">
+            <Button
+              variant="outline"
+              className="flex items-center gap-2 border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white transition-all shadow-sm bg-white group px-6 py-5"
+            >
               <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
-              <span className="font-black uppercase text-[10px] tracking-[0.2em]">Inicio Unimar</span>
+              <span className="font-black uppercase text-[10px] tracking-[0.2em]">
+                Inicio Unimar
+              </span>
             </Button>
           </Link>
         </div>
@@ -183,16 +216,20 @@ export default async function PerfilPage(props: { searchParams: Promise<{ view?:
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 lg:gap-10">
-
           {/* COLUMNA IZQUIERDA */}
           <div className="md:col-span-4 space-y-6">
             <ProfileIdentity user={user} />
             <ProfileStatus
               estatus={user.estatus}
               materias={user.materias}
-              motivoRechazo={user.estatus === 'Rechazada' ? (user.observacionesAdmin ?? undefined) : undefined}
+              motivoRechazo={
+                user.estatus === "Rechazada"
+                  ? (user.observacionesAdmin ?? undefined)
+                  : undefined
+              }
               observacionesAdmin={user.observacionesAdmin}
               becaPerdida={user.becaPerdida}
+              esEgresado={user.esEgresado}
             />
           </div>
 
@@ -204,30 +241,38 @@ export default async function PerfilPage(props: { searchParams: Promise<{ view?:
               <Link
                 href="/perfil?view=status"
                 scroll={false}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${currentView === 'status' ? 'bg-[#1e3a5f] text-white shadow-lg' : 'text-gray-400 hover:bg-gray-50'}`}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${
+                  currentView === "status"
+                    ? "bg-[#1e3a5f] text-white shadow-lg"
+                    : "text-gray-400 hover:bg-gray-50"
+                }`}
               >
                 <LayoutDashboard className="h-4 w-4" /> Estatus Actual
               </Link>
               <Link
                 href="/perfil?view=history"
                 scroll={false}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${currentView === 'history' ? 'bg-[#1e3a5f] text-white shadow-lg' : 'text-gray-400 hover:bg-gray-50'}`}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${
+                  currentView === "history"
+                    ? "bg-[#1e3a5f] text-white shadow-lg"
+                    : "text-gray-400 hover:bg-gray-50"
+                }`}
               >
                 <History className="h-4 w-4" /> Materias Cursadas
               </Link>
             </div>
 
-            {currentView === 'status' ? (
+            {currentView === "status" ? (
               <div className="space-y-6 animate-in fade-in duration-500">
-                
+                {mostrarBannerFinalista && (
+                  <FinalistBanner esEgresado={esEgresadoFinal} />
+                )}
 
-                {esUltimoTrimestre && <FinalistBanner />}
+                {user.puedePostular && <ActionBanner />}
 
-                {!user.becaPerdida && user.estatus === 'ninguna' && <ActionBanner />}
-
-                {!user.becaPerdida && user.estatus === 'Renovacion' && (
+                {!user.becaPerdida && !esEgresadoFinal && user.estatus === "Renovacion" && (
                   <RenovationBanner
-                    materias={user.materias as unknown[]}
+                    materias={user.materias}
                     materiasSugeridas={statusData.materiasSugeridas}
                     trimestreActual={academicStatus.trimestreEvaluado}
                     periodo={user.periodoActual}
@@ -236,11 +281,17 @@ export default async function PerfilPage(props: { searchParams: Promise<{ view?:
                   />
                 )}
 
-                <GradesHistory materias={user.materias} periodoNotas={user.periodoNotas} />
+                <GradesHistory
+                  materias={user.materias}
+                  periodoNotas={user.periodoNotas}
+                />
               </div>
             ) : (
               <div className="animate-in fade-in duration-500">
-                <HistoryTimeline history={historyData.data} stats={historyData.stats} />
+                <HistoryTimeline
+                  history={historyData.data}
+                  stats={historyData.stats}
+                />
               </div>
             )}
 

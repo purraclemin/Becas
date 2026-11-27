@@ -1,12 +1,16 @@
 "use client"
 
 import React, { useState, useEffect, useRef, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import { Loader2, Calendar } from "lucide-react"
 
 // Importamos los componentes modulares
 import { PageHeader } from "@/components/admin/PageHeader"
 import { FiltrosEstudiantes } from "@/components/admin/estudiantes/FiltrosEstudiantes"
-import { FilaEstudiante } from "@/components/admin/estudiantes/FilaEstudiante"
+import {
+  FilaEstudiante,
+  type IEstudianteAdminFila
+} from "@/components/admin/estudiantes/FilaEstudiante"
 import { PrintReportLayout } from "@/components/imprimirReporte"
 
 // Importamos las acciones
@@ -19,8 +23,11 @@ export interface IEstudianteAdmin {
   nombre?: string;
   apellido?: string;
   correo?: string;
+  email?: string;
+  email_institucional?: string;
   telefono?: string;
   carrera?: string;
+  semestre?: string | number;
   fecha_ingreso?: string;
   fecha_registro?: string;
   fecha_solicitud?: string;
@@ -36,6 +43,7 @@ interface IEstudiantesResponse {
 }
 
 export default function EstudiantesAdminPage() {
+  const router = useRouter()
   const [estudiantes, setEstudiantes] = useState<IEstudianteAdmin[]>([])
   const [busqueda, setBusqueda] = useState("")
   const [loading, setLoading] = useState(true)
@@ -58,7 +66,7 @@ export default function EstudiantesAdminPage() {
     setLoading(true)
 
     try {
-      const data = await obtenerEstudiantesConSolicitud(termino, pagina, 12) as IEstudiantesResponse
+      const data = (await obtenerEstudiantesConSolicitud(termino, pagina, 12)) as IEstudiantesResponse
 
       if (controller.signal.aborted) return
 
@@ -96,6 +104,17 @@ export default function EstudiantesAdminPage() {
   useEffect(() => {
     setPage(1)
   }, [busqueda])
+
+  const handleSeleccionarEstudiante = useCallback(
+    (estudiante: IEstudianteAdminFila) => {
+      const cedulaLimpia = String(estudiante.cedula ?? "").trim()
+      if (!cedulaLimpia) return
+      router.push(
+        `/admin/validarBeca?abrirAuditoria=${encodeURIComponent(cedulaLimpia)}&origen=estudiantes`
+      )
+    },
+    [router]
+  )
 
   const handleExportar = () => {
     window.print()
@@ -167,12 +186,18 @@ export default function EstudiantesAdminPage() {
                   <tr className="block md:table-row bg-white rounded-xl shadow-sm md:shadow-none border border-slate-200 md:border-none">
                     <td colSpan={4} className="block md:table-cell py-16 md:py-20 text-center">
                       <Loader2 className="inline-block h-8 w-8 text-[#d4a843] animate-spin" />
-                      <p className="mt-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sincronizando base de datos...</p>
+                      <p className="mt-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                        Sincronizando base de datos...
+                      </p>
                     </td>
                   </tr>
                 ) : estudiantes.length > 0 ? (
                   estudiantes.map((e) => (
-                    <FilaEstudiante key={e.id} estudiante={e} />
+                    <FilaEstudiante
+                      key={e.id}
+                      estudiante={e}
+                      onSelect={handleSeleccionarEstudiante}
+                    />
                   ))
                 ) : (
                   <tr className="block md:table-row bg-white rounded-xl shadow-sm md:shadow-none border border-slate-200 md:border-none">
@@ -201,7 +226,11 @@ export default function EstudiantesAdminPage() {
       {/* PLANTILLA DE IMPRESIÓN LIMPIA E INSTITUCIONAL */}
       <PrintReportLayout
         titulo="Base de Estudiantes"
-        subtitulo={busqueda ? `Filtro aplicado: "${busqueda}" — Página ${page}` : `Gestión y Control de Datos Académicos — Página ${page}`}
+        subtitulo={
+          busqueda
+            ? `Filtro aplicado: "${busqueda}" — Página ${page}`
+            : `Gestión y Control de Datos Académicos — Página ${page}`
+        }
         columnas={["Estudiante / Cédula", "Contacto", "Carrera", "Fecha Ingreso"]}
         datos={estudiantes}
         renderFila={(row: Record<string, unknown>, idx: number) => {

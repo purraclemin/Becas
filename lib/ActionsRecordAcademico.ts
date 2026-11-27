@@ -16,6 +16,8 @@ import {
   type PerfilAcademicoAleatorio,
 } from "@/lib/RecordAcademicoUtils";
 
+const MAX_TRIMESTRE_PENSUM = 12;
+
 interface StudentCarreraRow extends RowDataPacket {
   student_id: number;
   carrera: string;
@@ -65,6 +67,17 @@ interface PensumMateriaRow extends RowDataPacket {
   codigo_materia: string;
   nombre_materia: string;
   unidades_credito: number;
+}
+
+interface SolicitudVigenteSyncRow extends RowDataPacket {
+  id: number;
+  promedio_notas: number | string | null;
+  materias_json: string | null;
+}
+
+interface EstudianteDesincronizadoRow extends RowDataPacket {
+  id: number;
+  tipo_beca_activa: string | null;
 }
 
 export interface IResultadoRecordAcademico {
@@ -126,9 +139,16 @@ function formatearFechaISO(fecha: Date): string {
 
 function generarFechaIngresoUnimarISO(semestreActual: number): string {
   const hoy = new Date();
-  const trimestresCursados = Math.max(0, Number(semestreActual || 1) - 1);
+  const trimestresCursados = Math.max(
+    0,
+    Math.min(MAX_TRIMESTRE_PENSUM, Number(semestreActual || 1) - 1)
+  );
   const mesesAtras = Math.max(2, trimestresCursados * 4 + enteroEnRango(0, 2));
-  const fecha = new Date(hoy.getFullYear(), hoy.getMonth() - mesesAtras, enteroEnRango(1, 28));
+  const fecha = new Date(
+    hoy.getFullYear(),
+    hoy.getMonth() - mesesAtras,
+    enteroEnRango(1, 28)
+  );
 
   const fechaMinima = new Date(2005, 0, 1);
   if (fecha < fechaMinima) {
@@ -202,6 +222,26 @@ async function consultarRecordPersistido(
   return rows.map(mapearFilaRecord);
 }
 
+function extraerTrimestreDeMateriasJson(raw: string | null): number | null {
+  if (!raw || raw.trim() === "") return null;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      "trimestre" in parsed &&
+      (parsed as { trimestre?: unknown }).trimestre !== null &&
+      (parsed as { trimestre?: unknown }).trimestre !== undefined
+    ) {
+      const n = Number((parsed as { trimestre: unknown }).trimestre);
+      return Number.isFinite(n) ? n : null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Genera y persiste una sola vez en base de datos los datos simulados de
  * StepEncuestaPersonal y StepEncuestaInfoUni para que no lleguen null ni vacíos
@@ -261,7 +301,9 @@ export async function asegurarDatosSocioeconomicosSimulados(
     );
 
     const existente = estudioRows[0];
-    const municipioTexto = st.municipio_residencia ? `, Mun. ${st.municipio_residencia}` : "";
+    const municipioTexto = st.municipio_residencia
+      ? `, Mun. ${st.municipio_residencia}`
+      : "";
 
     const nacionalidad = !estaVacio(existente?.socio_nacionalidad)
       ? String(existente.socio_nacionalidad)
@@ -391,11 +433,13 @@ export async function asegurarDatosSocioeconomicosSimulados(
 }
 
 /**
- * Sincroniza de forma idempotente el récord académico oficial del estudiante:
- * - Semestre 1: queda habilitado sin materias precargadas.
- * - Semestre > 1: genera y persiste automáticamente las notas faltantes de los
- *   trimestres cursados (1 hasta semestre - 1), mantiene students.indice_global
- *   fiel al acumulado real y expone por separado promedioUltimoTrimestre.
+ * Sincroniza de forma idempotente el récord académico oficial del estudiante (Única Fuente de Verdad):
+ * 1. Semestre 1: habilitado sin materias universitarias precargadas.
+ * 2. Semestre > 1 (hasta egresado 13): genera y persiste automáticamente las asignaturas faltantes
+ *    de los trimestres cursados (1 hasta min(12, semestre - 1)) desde `pensum_materias` deduplicado.
+ * 3. Actualiza `students.indice_global` con el promedio exacto acumulado de `record_academico`.
+ * 4. Alinea la solicitud activa del periodo vigente (`solicitudes.promedio_notas` y `materias_json`)
+ *    con el promedio y materias del último trimestre cursado para eliminar cualquier desfase.
  */
 export async function sincronizarYObtenerRecordAcademico(
   studentIdInput: number | string,
@@ -443,12 +487,13 @@ export async function sincronizarYObtenerRecordAcademico(
 
     const student = studentRows[0];
     const semestreActual = Number(student.semestre);
+    const semestreEfectivoRecord = Math.min(MAX_TRIMESTRE_PENSUM + 1, semestreActual);
     const carreraId = Number(student.carrera_id);
     const indiceGuardado = Number(student.indice_global);
     const promedioMinimoObjetivo = obtenerPromedioMinimoPorTipoBeca(
       tipoBecaObjetivo,
       "ingreso",
-      semestreActual
+      semestreEfectivoRecord
     );
 
     if (semestreActual <= 1) {
@@ -490,10 +535,11 @@ export async function sincronizarYObtenerRecordAcademico(
           FROM pensum_materias pm
           WHERE pm.carrera_id = ?
             AND pm.trimestre_ubicacion < ?
+            AND pm.trimestre_ubicacion <= ?
           GROUP BY pm.trimestre_ubicacion, pm.codigo_materia
           ORDER BY pm.trimestre_ubicacion ASC, pm.codigo_materia ASC
         `,
-        [carreraId, semestreActual]
+        [carreraId, semestreEfectivoRecord, MAX_TRIMESTRE_PENSUM]
       );
 
       const existentesKey = new Set<string>(
@@ -565,7 +611,7 @@ export async function sincronizarYObtenerRecordAcademico(
     }
 
     const evaluacion = evaluarElegibilidadAcademica(
-      semestreActual,
+      semestreEfectivoRecord,
       recordCompleto,
       tipoBecaObjetivo
     );
@@ -580,15 +626,55 @@ export async function sincronizarYObtenerRecordAcademico(
           SET indice_global = ?
           WHERE id = ?
         `,
-        [evaluacion.promedioGlobal, studentId]
+        [evaluacion.promedioGlobal.toFixed(2), studentId]
       );
     }
 
     const historialPorTrimestre = agruparRecordPorTrimestre(recordCompleto);
     const ultimoTrimestreSnapshot = construirUltimoTrimestreSnapshot(
       recordCompleto,
-      semestreActual
+      semestreEfectivoRecord
     );
+
+    // Sincronizar la solicitud del periodo vigente con el promedio y snapshot exacto del último trimestre cursado
+    if (ultimoTrimestreSnapshot && ultimoTrimestreSnapshot.materias.length > 0) {
+      const solActualRows = await queryFresh<SolicitudVigenteSyncRow[]>(
+        `
+          SELECT s.id, s.promedio_notas, s.materias_json
+          FROM solicitudes s
+          JOIN periodos_academicos p ON s.periodo_id = p.id
+          WHERE s.user_id = ?
+            AND p.es_actual = 1
+          ORDER BY s.id DESC
+          LIMIT 1
+        `,
+        [studentId]
+      );
+
+      if (solActualRows.length > 0) {
+        const solActual = solActualRows[0];
+        const promGuardado = Number(solActual.promedio_notas ?? 0);
+        const trimGuardado = extraerTrimestreDeMateriasJson(solActual.materias_json);
+        const difPromedio = Math.abs(promGuardado - evaluacion.promedioTrimestreAnterior) > 0.009;
+        const difTrimestre = trimGuardado !== ultimoTrimestreSnapshot.trimestre;
+
+        if (recienGenerado || difPromedio || difTrimestre) {
+          await db.execute<ResultSetHeader>(
+            `
+              UPDATE solicitudes
+              SET promedio_notas = ?,
+                  materias_json = ?
+              WHERE id = ?
+            `,
+            [
+              evaluacion.promedioTrimestreAnterior.toFixed(2),
+              JSON.stringify(ultimoTrimestreSnapshot),
+              solActual.id,
+            ]
+          );
+        }
+      }
+    }
 
     return {
       success: true,
@@ -613,6 +699,92 @@ export async function sincronizarYObtenerRecordAcademico(
       data: null,
       error: "No fue posible sincronizar el récord académico del estudiante.",
     };
+  }
+}
+
+/**
+ * Hidrata automáticamente en bloque a TODOS los estudiantes (semestre > 1) que tengan
+ * `record_academico` vacío/incompleto, `indice_global = 0.00`, o `solicitudes.promedio_notas`
+ * desalineado respecto al último trimestre cursado (acotado al máximo real de 12 trimestres).
+ */
+export async function sincronizarTodosLosRecordsFaltantes(
+  limiteLote: number = 300
+): Promise<{ sincronizados: number }> {
+  noStore();
+
+  try {
+    const limiteSeguro = Math.max(1, Math.min(500, Math.floor(Number(limiteLote) || 300)));
+
+    const pendientes = await queryFresh<EstudianteDesincronizadoRow[]>(
+      `
+        SELECT
+          st.id,
+          (
+            SELECT s_ult.tipo_beca
+            FROM solicitudes s_ult
+            WHERE s_ult.user_id = st.id
+            ORDER BY s_ult.periodo_id DESC, s_ult.id DESC
+            LIMIT 1
+          ) AS tipo_beca_activa
+        FROM students st
+        JOIN carreras c
+          ON LOWER(TRIM(st.carrera)) = LOWER(TRIM(c.nombre))
+        WHERE st.semestre > 1
+          AND EXISTS (
+            SELECT 1
+            FROM pensum_materias pm
+            WHERE pm.carrera_id = c.id
+              AND pm.trimestre_ubicacion = LEAST(${MAX_TRIMESTRE_PENSUM}, st.semestre - 1)
+          )
+          AND (
+            NOT EXISTS (
+              SELECT 1
+              FROM record_academico ra
+              WHERE ra.student_id = st.id
+                AND ra.trimestre_cursado = LEAST(${MAX_TRIMESTRE_PENSUM}, st.semestre - 1)
+            )
+            OR IFNULL(st.indice_global, 0) = 0
+            OR EXISTS (
+              SELECT 1
+              FROM solicitudes s_act
+              JOIN periodos_academicos p_act ON s_act.periodo_id = p_act.id
+              WHERE s_act.user_id = st.id
+                AND p_act.es_actual = 1
+                AND ABS(
+                  IFNULL(s_act.promedio_notas, 0) - IFNULL((
+                    SELECT ROUND(AVG(ra_t.nota), 2)
+                    FROM record_academico ra_t
+                    WHERE ra_t.student_id = st.id
+                      AND ra_t.trimestre_cursado = LEAST(${MAX_TRIMESTRE_PENSUM}, st.semestre - 1)
+                  ), 0)
+                ) > 0.01
+            )
+          )
+        ORDER BY st.id ASC
+        LIMIT ${limiteSeguro}
+      `
+    );
+
+    if (pendientes.length === 0) {
+      return { sincronizados: 0 };
+    }
+
+    let sincronizados = 0;
+    for (const row of pendientes) {
+      const res = await sincronizarYObtenerRecordAcademico(
+        Number(row.id),
+        undefined,
+        row.tipo_beca_activa
+      );
+      if (res.success) {
+        sincronizados += 1;
+      }
+    }
+
+    return { sincronizados };
+  } catch (error) {
+    console.error("Error en sincronizarTodosLosRecordsFaltantes:", error);
+    return { sincronizados: 0 };
   }
 }
 
