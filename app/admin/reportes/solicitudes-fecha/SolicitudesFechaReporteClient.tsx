@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useRef, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import {
   Calendar,
   User,
@@ -21,11 +22,17 @@ import {
   type ExportReportXLSXHandle,
   type CeldaXLSX
 } from "@/components/imprimirReporteXLSX"
+import { esEgresadoPorSemestre } from "@/app/admin/validarBeca/lib/ValidarBecaUtils"
 import {
   obtenerReporteSolicitudesFecha,
   type ReporteSolicitudFechaItem,
   type RespuestaReporteSolicitudesFecha
 } from "./actions"
+
+const formatearTrimestre = (semestre: number, corto: boolean = false): string => {
+  if (esEgresadoPorSemestre(semestre)) return "Egresado"
+  return corto ? `${semestre}° Trim.` : `${semestre}° Trimestre`
+}
 
 interface SolicitudesFechaReporteClientProps {
   initialData: RespuestaReporteSolicitudesFecha
@@ -60,6 +67,8 @@ const getStatusStyles = (status: string): string => {
       return "bg-emerald-100 text-emerald-700 border-emerald-200"
     case "Rechazada":
       return "bg-rose-100 text-rose-700 border-rose-200"
+    case "Finalizada":
+      return "bg-teal-100 text-teal-800 border-teal-300"
     case "Convocado a Entrevista":
       return "bg-orange-100 text-orange-800 border-orange-300"
     case "En Revisión":
@@ -80,6 +89,7 @@ const getStatusStyles = (status: string): string => {
 export function SolicitudesFechaReporteClient({
   initialData
 }: SolicitudesFechaReporteClientProps) {
+  const router = useRouter()
   const [data, setData] = useState<ReporteSolicitudFechaItem[]>(initialData.data)
   const [actualizando, setActualizando] = useState<boolean>(false)
   const [exportandoXlsx, setExportandoXlsx] = useState<boolean>(false)
@@ -101,8 +111,8 @@ export function SolicitudesFechaReporteClient({
 
       try {
         const res = await obtenerReporteSolicitudesFecha({
-          inicio: inicio && fin ? inicio : undefined,
-          fin: inicio && fin ? fin : undefined,
+          fechaDesde: inicio || undefined,
+          fechaHasta: fin || undefined,
           search: termino || undefined
         })
 
@@ -128,12 +138,8 @@ export function SolicitudesFechaReporteClient({
       return
     }
 
-    const fechasIncompletas =
-      (range.inicio !== "" && range.fin === "") ||
-      (range.inicio === "" && range.fin !== "")
-
-    if (fechasIncompletas) {
-      setAvisoFecha("Seleccione ambas fechas (Desde y Hasta) para filtrar por rango.")
+    if (range.inicio && range.fin && range.inicio > range.fin) {
+      setAvisoFecha("La fecha 'Desde' no puede ser posterior a la fecha 'Hasta'.")
       return
     }
 
@@ -163,6 +169,17 @@ export function SolicitudesFechaReporteClient({
     await xlsxRef.current.exportar()
   }
 
+  const abrirAuditoria = useCallback(
+    (cedula: string) => {
+      const cedulaLimpia = String(cedula || "").trim()
+      if (!cedulaLimpia) return
+      router.push(
+        `/admin/validarBeca?abrirAuditoria=${encodeURIComponent(cedulaLimpia)}&origen=reportes-solicitudes-fecha`
+      )
+    },
+    [router]
+  )
+
   const mapearFilaXLSX = useCallback((row: ReporteSolicitudFechaItem): CeldaXLSX[] => {
     const fecha = formatearFecha(row.fecha_registro)
     const hora = formatearHora(row.fecha_registro)
@@ -171,7 +188,7 @@ export function SolicitudesFechaReporteClient({
       `${row.nombre} ${row.apellido}`.trim().toUpperCase(),
       `V-${row.cedula}`,
       row.carrera.toUpperCase(),
-      `${row.semestre}°`,
+      formatearTrimestre(row.semestre, true).toUpperCase(),
       row.tipo_beca.toUpperCase(),
       Number(row.promedio_notas),
       Number(row.indice_global),
@@ -186,11 +203,15 @@ export function SolicitudesFechaReporteClient({
   const subtituloReporte = `${
     range.inicio && range.fin
       ? `Periodo de registro: ${range.inicio} al ${range.fin}`
-      : "Listado completo de ingresos al sistema"
+      : range.inicio
+        ? `Registros desde: ${range.inicio}`
+        : range.fin
+          ? `Registros hasta: ${range.fin}`
+          : "Listado completo de ingresos al sistema"
   } — Total: ${data.length}${search.trim() ? ` | Filtro: "${search.trim()}"` : ""}`
 
   return (
-    <div className="space-y-4 print:space-y-0 print:overflow-visible print:h-auto print:min-h-0">
+    <div className="space-y-4 print:block print:space-y-0 print:overflow-visible print:h-auto print:min-h-0">
       {/* CABECERA CON EXPORTACIÓN DUAL (PDF / EXCEL) */}
       <div className="print:hidden">
         <PageHeader
@@ -344,7 +365,9 @@ export function SolicitudesFechaReporteClient({
                   {data.map((row) => (
                     <tr
                       key={row.solicitud_id}
-                      className="hover:bg-[#f8fafc] transition-colors"
+                      onClick={() => abrirAuditoria(row.cedula)}
+                      title="Abrir panel de auditoría del estudiante"
+                      className="hover:bg-blue-50/40 transition-colors cursor-pointer"
                     >
                       <td className="px-3.5 py-2.5">
                         <div className="flex items-center gap-2.5">
@@ -356,7 +379,7 @@ export function SolicitudesFechaReporteClient({
                               {row.nombre} {row.apellido}
                             </p>
                             <p className="text-[10px] text-slate-500 font-mono font-bold mt-0.5">
-                              V-{row.cedula} • {row.semestre}° Trim.
+                              V-{row.cedula} • {formatearTrimestre(row.semestre, true)}
                             </p>
                           </div>
                         </div>
@@ -421,7 +444,8 @@ export function SolicitudesFechaReporteClient({
               {data.map((row) => (
                 <div
                   key={`mob-${row.solicitud_id}`}
-                  className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm space-y-2.5"
+                  onClick={() => abrirAuditoria(row.cedula)}
+                  className="bg-white rounded-xl border border-slate-200 hover:border-[#1e3a5f]/50 p-4 shadow-sm space-y-2.5 cursor-pointer transition-colors"
                 >
                   <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-2">
                     <div className="min-w-0">
@@ -429,7 +453,7 @@ export function SolicitudesFechaReporteClient({
                         {row.nombre} {row.apellido}
                       </p>
                       <p className="text-xs font-mono font-bold text-slate-500 mt-0.5">
-                        V-{row.cedula} • {row.semestre}° Trim.
+                        V-{row.cedula} • {formatearTrimestre(row.semestre, true)}
                       </p>
                     </div>
                     <span
@@ -485,7 +509,7 @@ export function SolicitudesFechaReporteClient({
                 {row.nombre} {row.apellido}
               </span>
               <span className="text-[8px] text-slate-500 font-semibold">
-                V-{row.cedula} • {row.semestre}° Trim.
+                V-{row.cedula} • {formatearTrimestre(row.semestre, true)}
               </span>
             </td>
             <td className="p-1.5 border border-slate-400">

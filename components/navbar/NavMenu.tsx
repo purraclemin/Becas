@@ -67,9 +67,38 @@ function renderNavIcon(icon: NavItem["icon"], isMobile?: boolean) {
   }
 }
 
+function getMobileStatusBadgeClass(status: string): string {
+  const s = status
+    .toLowerCase()
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+
+  if (s === "aprobada" || s === "aprobado") {
+    return "bg-emerald-50 text-emerald-700 border-emerald-200"
+  }
+  if (s === "rechazada" || s === "rechazado") {
+    return "bg-rose-50 text-rose-700 border-rose-200"
+  }
+  if (s.includes("finaliz")) {
+    return "bg-teal-50 text-teal-800 border-teal-200"
+  }
+  if (s.includes("convocad")) {
+    return "bg-orange-50 text-orange-800 border-orange-200 animate-pulse"
+  }
+  if (s.includes("revision")) {
+    return "bg-blue-50 text-blue-700 border-blue-200 animate-pulse"
+  }
+  if (s === "pendiente") {
+    return "bg-amber-50 text-amber-800 border-amber-200 animate-pulse"
+  }
+  return "bg-slate-100 text-slate-600 border-slate-200"
+}
+
 export function NavMenu({
   mobileOpen,
   setMobileOpen,
+  user,
   showLeadingDivider = true,
   showTrailingDivider = true,
 }: NavMenuProps) {
@@ -133,12 +162,46 @@ export function NavMenu({
     }
   }
 
+  const esEstudianteLogueado = Boolean(
+    user && user.isLoggedIn === true && user.role === "estudiante"
+  )
+  const estatusEstudiante = esEstudianteLogueado
+    ? String(user?.estatus ?? user?.status ?? "ninguna").trim()
+    : ""
+  const semestreEstudiante = esEstudianteLogueado
+    ? Number(user?.semestre ?? user?.trimestre ?? 0)
+    : 0
+  const etiquetaNivelEstudiante =
+    semestreEstudiante >= 13
+      ? "Egresado"
+      : `${semestreEstudiante > 0 ? semestreEstudiante : 0}° Trim.`
+
   return (
     <nav aria-label="Navegación principal" className="w-full">
+      {mobileOpen && esEstudianteLogueado && (
+        <div className="px-3 pt-2.5 pb-1.5">
+          <Link
+            href="/perfil"
+            onClick={() => setMobileOpen && setMobileOpen(false)}
+            className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-[#f8fafc] border border-slate-200"
+          >
+            <span className="text-[11px] font-black uppercase text-[#1e3a5f] truncate">
+              Mi Estatus • {etiquetaNivelEstudiante}
+            </span>
+            <span
+              className={`px-2 py-0.5 rounded-full border text-[10px] font-black uppercase shrink-0 ${getMobileStatusBadgeClass(
+                estatusEstudiante
+              )}`}
+            >
+              {estatusEstudiante === "ninguna" ? "Sin Solicitud" : estatusEstudiante}
+            </span>
+          </Link>
+        </div>
+      )}
       <ul
         className={`w-full ${
           mobileOpen
-            ? "grid grid-cols-2 gap-2 py-0.5"
+            ? "grid grid-cols-2 gap-2 py-2 px-3"
             : "flex flex-row items-center justify-center gap-1 xl:gap-1.5"
         }`}
       >

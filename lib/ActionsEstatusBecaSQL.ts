@@ -11,6 +11,7 @@ interface SnapshotSolicitudRow extends RowDataPacket {
   estatus_anterior_db: string;
   tipo_beca: string | null;
   materias_json: string | null;
+  departamento_anterior: string | null;
   semestre: number | null;
   indice_global: number | string | null;
   puntaje: number | null;
@@ -21,10 +22,20 @@ interface SolicitudExistenteRow extends RowDataPacket {
   id: number;
 }
 
+export interface ResultadoRegistroHistorial {
+  success: boolean;
+  token: string;
+  departamentoAnterior?: string | null;
+  observacionRegistrada?: string | null;
+}
+
 /**
  * Registra cada cambio de estatus en el historial, capturando una "fotografía" académica.
  * Permite gestionar y dictaminar solicitudes provenientes de periodos anteriores:
  * - Toma siempre el último baremo administrativo del estudiante.
+ * - Captura el `departamento_asignado` previo y construye trazabilidad explícita
+ *   `Reasignación de Departamento: [Depto. Anterior] → [Depto. Nuevo]` cuando Coordinación
+ *   reasigna el departamento de un becario aprobado.
  * - Si la solicitud venía en cola de un periodo previo y no existe otra solicitud del mismo
  *   estudiante en el periodo vigente, la sincroniza al periodo vigente para que consuma
  *   correctamente el cupo actual.
@@ -38,7 +49,7 @@ export async function registrarDecisionEnHistorial(
   estatusPrevioForzado?: string,
   departamentoAsignado?: string,
   periodoActualId?: number
-): Promise<{ success: boolean; token: string }> {
+): Promise<ResultadoRegistroHistorial> {
   let connection;
   try {
     connection = await db.getConnection();
@@ -54,6 +65,7 @@ export async function registrarDecisionEnHistorial(
         s.estatus AS estatus_anterior_db, 
         s.tipo_beca,
         s.materias_json,
+        NULLIF(TRIM(s.departamento_asignado), '') AS departamento_anterior,
         st.semestre,
         IFNULL(st.indice_global, 0.00) AS indice_global,
         IFNULL(e.puntaje, 0) AS puntaje, 
@@ -79,8 +91,38 @@ export async function registrarDecisionEnHistorial(
     const estatusPrevioReal = estatusPrevioForzado || snapshot.estatus_anterior_db;
     const responsableReal = nuevoEstatus === 'Renovacion' ? 0 : adminId;
     const token = randomUUID();
-    const observacionesLimpias =
+
+    const deptoAnteriorLimpio = snapshot.departamento_anterior
+      ? String(snapshot.departamento_anterior).trim()
+      : null;
+    const deptoNuevoLimpio =
+      departamentoAsignado && departamentoAsignado.trim() !== ''
+        ? departamentoAsignado.trim()
+        : null;
+
+    const esReasignacionDepto =
+      estatusPrevioReal === 'Aprobada' &&
+      nuevoEstatus === 'Aprobada' &&
+      Boolean(deptoNuevoLimpio);
+
+    let observacionesLimpias =
       observaciones && observaciones.trim() !== '' ? observaciones.trim() : null;
+
+    if (esReasignacionDepto && deptoNuevoLimpio) {
+      const etiquetaAnterior = deptoAnteriorLimpio || 'Sin asignar';
+      const encabezadoReasignacion = `Reasignación de Departamento: ${etiquetaAnterior} → ${deptoNuevoLimpio}`;
+
+      const notaExtra =
+        observacionesLimpias &&
+        observacionesLimpias.toLowerCase() !== 'actualización de departamento asignado' &&
+        !observacionesLimpias.toLowerCase().startsWith('reasignación de departamento:')
+          ? observacionesLimpias
+          : null;
+
+      observacionesLimpias = notaExtra
+        ? `${encabezadoReasignacion} | ${notaExtra}`
+        : encabezadoReasignacion;
+    }
 
     const materiasSnapshot =
       typeof snapshot.materias_json === 'string'
@@ -160,7 +202,7 @@ export async function registrarDecisionEnHistorial(
 
     // 4. LÓGICA DE NEGOCIO PARA EL DEPARTAMENTO ASIGNADO:
     const debeGuardarDept = ['Aprobada', 'Convocado a Entrevista'].includes(nuevoEstatus);
-    const deptFinal = debeGuardarDept ? (departamentoAsignado || null) : null;
+    const deptFinal = debeGuardarDept ? deptoNuevoLimpio : null;
 
     // 5. ACTUALIZAR ESTATUS, OBSERVACIONES, DEPARTAMENTO Y PERIODO EFECTIVO EN TABLA SOLICITUDES
     let updateSolicitud =
@@ -206,7 +248,12 @@ export async function registrarDecisionEnHistorial(
     }
 
     await connection.commit();
-    return { success: true, token };
+    return {
+      success: true,
+      token,
+      departamentoAnterior: deptoAnteriorLimpio,
+      observacionRegistrada: observacionesLimpias,
+    };
   } catch (error) {
     if (connection) await connection.rollback();
     console.error("❌ Error en registrarDecisionEnHistorial:", error);

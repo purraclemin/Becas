@@ -120,6 +120,7 @@ export function ModalConcursoSocial({
       if (res.encontrado && res.estudiante) {
         const est = res.estudiante;
         setEstudianteExistente(true);
+        setBloqueadoParaRegistro(true);
         setForm((prev) => ({
           ...prev,
           cedula: est.cedula,
@@ -133,29 +134,22 @@ export function ModalConcursoSocial({
           carrera: est.carrera || prev.carrera,
         }));
 
-        if (est.beca_perdida) {
-          setBloqueadoParaRegistro(true);
-          setFeedback({
-            tipo: 'error',
-            mensaje: 'Este estudiante registra una suspensión definitiva previa (Art. 28) y no puede recibir beca.',
-          });
-        } else if (est.yaTieneSolicitudActual) {
-          setBloqueadoParaRegistro(true);
-          setFeedback({
-            tipo: 'warning',
-            mensaje: `El estudiante ya posee un registro activo en el periodo actual (${est.tipoBecaActual} — ${est.estatusActual}).`,
-          });
-        } else {
-          setFeedback({
-            tipo: 'success',
-            mensaje: `Estudiante encontrado (${est.nombre} ${est.apellido}). Complete los datos del concurso y el departamento para aprobar directamente.`,
-          });
-        }
+        const detalleExistente = est.yaTieneSolicitudActual
+          ? ` — Posee solicitud activa (${est.tipoBecaActual} / ${est.estatusActual})`
+          : est.beca_perdida
+            ? ' — Posee suspensión definitiva previa'
+            : '';
+
+        setFeedback({
+          tipo: 'error',
+          mensaje: `Registro bloqueado: la cédula V-${est.cedula} ya pertenece a ${est.nombre} ${est.apellido} (${est.carrera}${detalleExistente}). El Concurso Social es exclusivo para nuevos ingresos sin registro previo en el sistema.`,
+        });
       } else {
         setEstudianteExistente(false);
+        setBloqueadoParaRegistro(false);
         setFeedback({
-          tipo: 'warning',
-          mensaje: 'No existe usuario con esa cédula. Complete el formulario para crear su cuenta (1° trimestre) y aprobar su Beca Social Aprendizaje.',
+          tipo: 'success',
+          mensaje: 'Cédula disponible (sin registro previo). Complete el formulario para crear su cuenta (1° trimestre) y aprobar su Beca Social Aprendizaje.',
         });
       }
     } catch {
@@ -184,9 +178,17 @@ export function ModalConcursoSocial({
         setForm(ESTADO_INICIAL_FORM);
         setEstudianteExistente(false);
       } else {
+        const mensajeError = res.error || 'No se pudo completar el registro.';
+        if (
+          mensajeError.toLowerCase().includes('ya existe') ||
+          mensajeError.toLowerCase().includes('registro bloqueado')
+        ) {
+          setEstudianteExistente(true);
+          setBloqueadoParaRegistro(true);
+        }
         setFeedback({
           tipo: 'error',
-          mensaje: res.error || 'No se pudo completar el registro.',
+          mensaje: mensajeError,
         });
       }
     } catch {
@@ -216,7 +218,7 @@ export function ModalConcursoSocial({
                 Registro Directo — Concurso Beca Social Aprendizaje
               </h2>
               <p className="text-[10px] text-slate-300 font-semibold mt-1">
-                Art. 6, 11–13: Seleccionados aprobados por Secretaría General y Consejo Superior (Crea usuario si no existe)
+                Art. 6, 11–13: Seleccionados aprobados por Secretaría General y Consejo Superior (Exclusivo para nuevos ingresos sin registro previo)
               </p>
             </div>
           </div>
@@ -412,6 +414,7 @@ export function ModalConcursoSocial({
                 min={18}
                 max={20}
                 required
+                disabled={bloqueadoParaRegistro || estudianteExistente}
                 value={form.promedio_bachillerato}
                 onChange={(e) =>
                   setForm((prev) => ({ ...prev, promedio_bachillerato: parseFloat(e.target.value) || 0 }))
@@ -425,6 +428,7 @@ export function ModalConcursoSocial({
               <input
                 type="text"
                 required
+                disabled={bloqueadoParaRegistro || estudianteExistente}
                 value={form.ue_procedencia}
                 onChange={(e) => setForm((prev) => ({ ...prev, ue_procedencia: e.target.value }))}
                 placeholder="Ej: U.E.N. Dr. Francisco Antonio Rísquez"
@@ -438,6 +442,7 @@ export function ModalConcursoSocial({
               </label>
               <select
                 required
+                disabled={bloqueadoParaRegistro || estudianteExistente}
                 value={form.departamento_asignado}
                 onChange={(e) => setForm((prev) => ({ ...prev, departamento_asignado: e.target.value }))}
                 className={inputClass}
@@ -452,6 +457,7 @@ export function ModalConcursoSocial({
               <label className={labelClass}>Acta / Observaciones del Concurso (Opcional)</label>
               <input
                 type="text"
+                disabled={bloqueadoParaRegistro || estudianteExistente}
                 value={form.observaciones_concurso || ""}
                 onChange={(e) => setForm((prev) => ({ ...prev, observaciones_concurso: e.target.value }))}
                 placeholder="Ej: Acta Consejo Superior N° 012-2026"
@@ -470,8 +476,8 @@ export function ModalConcursoSocial({
             </button>
             <button
               type="submit"
-              disabled={guardando || bloqueadoParaRegistro}
-              className="w-full sm:w-auto h-12 md:h-9 px-5 rounded-lg bg-[#d4a843] hover:bg-[#c2973b] text-[#1e3a5f] text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm cursor-pointer disabled:opacity-50"
+              disabled={guardando || bloqueadoParaRegistro || estudianteExistente}
+              className="w-full sm:w-auto h-12 md:h-9 px-5 rounded-lg bg-[#d4a843] hover:bg-[#c2973b] text-[#1e3a5f] text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {guardando ? (
                 <>

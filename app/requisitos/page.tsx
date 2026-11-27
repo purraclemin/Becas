@@ -166,7 +166,7 @@ export default function RequisitosPage() {
             </p>
             <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link
-                href="/registro"
+                href="/postulacion"
                 className="flex items-center gap-2 rounded-md bg-[#d4a843] px-6 py-2.5 text-sm font-semibold text-[#1e3a5f] transition-colors hover:bg-[#c49a3a]"
               >
                 Iniciar Solicitud

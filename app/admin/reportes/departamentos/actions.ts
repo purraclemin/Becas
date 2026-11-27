@@ -2,7 +2,8 @@
 
 import type { RowDataPacket } from "mysql2/promise"
 import { queryFresh } from "@/lib/db"
-import { normalizarTipoBecaOficial } from "@/lib/RecordAcademicoUtils"
+import { normalizarTipoBecaOficial, SISTEMA_ADMIN_ID } from "@/lib/RecordAcademicoUtils"
+import { ejecutarRotacionExcelenciaEnPeriodo } from "@/lib/ActionsGestionEspecial"
 
 interface PeriodoOpcionSQLRow extends RowDataPacket {
   id: number
@@ -75,13 +76,15 @@ export interface PeriodoDepartamentoOption {
 
 export interface FiltrosReporteDepartamentos {
   search?: string
-  periodoId?: number | "todos"
+  fechaDesde?: string
+  fechaHasta?: string
 }
 
 export interface RespuestaReporteDepartamentos {
   success: boolean
   departamentos: DepartamentoAgrupadoReporte[]
   stats: StatsDepartamentosReporte
+  periodoActual: PeriodoDepartamentoOption | null
   periodos: PeriodoDepartamentoOption[]
   periodoSeleccionado: number | "todos"
   error?: string
@@ -93,50 +96,75 @@ function formatearDecimal(valor: number | string | null | undefined): string {
 }
 
 /**
- * Devuelve los becarios aprobados agrupados por departamento asignado
- * (normalizando variantes 'Aprobada'/'Aprobado' y filtro insensible a mayúsculas).
+ * Devuelve estrictamente los becarios con estatus 'Aprobada' del periodo académico
+ * actual (`es_actual = 1`), agrupados por departamento asignado y excluyendo
+ * rechazados, finalizados y periodos anteriores.
  */
 export async function obtenerReporteDepartamentos(
   filtros: FiltrosReporteDepartamentos = {}
 ): Promise<RespuestaReporteDepartamentos> {
   try {
+    try {
+      await ejecutarRotacionExcelenciaEnPeriodo(undefined, SISTEMA_ADMIN_ID)
+    } catch (rotErr) {
+      console.error("⚠️ Advertencia sincronizando Excelencia en departamentos:", rotErr)
+    }
+
     const periodosRows = await queryFresh<PeriodoOpcionSQLRow[]>(
       `
       SELECT id, codigo, nombre, es_actual
       FROM periodos_academicos
+      WHERE es_actual = 1
       ORDER BY fecha_inicio DESC, id DESC
+      LIMIT 1
       `
     )
 
-    const periodosFormateados: PeriodoDepartamentoOption[] = periodosRows.map((p) => ({
-      id: Number(p.id),
-      codigo: String(p.codigo),
-      nombre: String(p.nombre),
-      esActual: Number(p.es_actual) === 1,
-    }))
+    const periodoActual: PeriodoDepartamentoOption | null = periodosRows[0]
+      ? {
+          id: Number(periodosRows[0].id),
+          codigo: String(periodosRows[0].codigo),
+          nombre: String(periodosRows[0].nombre),
+          esActual: true,
+        }
+      : null
 
-    const periodoActualObj =
-      periodosFormateados.find((p) => p.esActual) ?? periodosFormateados[0]
-
-    let periodoSeleccionado: number | "todos" = "todos"
-    if (filtros.periodoId === "todos") {
-      periodoSeleccionado = "todos"
-    } else if (
-      filtros.periodoId !== undefined &&
-      Number.isInteger(Number(filtros.periodoId)) &&
-      Number(filtros.periodoId) > 0
-    ) {
-      periodoSeleccionado = Number(filtros.periodoId)
-    } else if (periodoActualObj) {
-      periodoSeleccionado = periodoActualObj.id
+    if (!periodoActual) {
+      return {
+        success: true,
+        departamentos: [],
+        stats: {
+          totalDepartamentosActivos: 0,
+          totalBecariosAsignados: 0,
+          totalSinDepartamento: 0,
+          totalBecarios: 0,
+        },
+        periodoActual: null,
+        periodos: [],
+        periodoSeleccionado: 0,
+      }
     }
 
-    let whereClause = ` WHERE LOWER(TRIM(s.estatus)) IN ('aprobada', 'aprobado')`
-    const params: Array<string | number> = []
+    let whereClause = `
+      WHERE p.es_actual = 1
+        AND s.periodo_id = ?
+        AND LOWER(TRIM(s.estatus)) = 'aprobada'
+    `
+    const params: Array<string | number> = [periodoActual.id]
 
-    if (periodoSeleccionado !== "todos") {
-      whereClause += ` AND s.periodo_id = ?`
-      params.push(periodoSeleccionado)
+    const desde = (filtros.fechaDesde || "").trim()
+    const hasta = (filtros.fechaHasta || "").trim()
+    const fechaExpr = `COALESCE(s.fecha_decision, s.fecha_registro)`
+
+    if (desde && hasta) {
+      whereClause += ` AND ${fechaExpr} BETWEEN ? AND ?`
+      params.push(`${desde} 00:00:00`, `${hasta} 23:59:59`)
+    } else if (desde) {
+      whereClause += ` AND ${fechaExpr} >= ?`
+      params.push(`${desde} 00:00:00`)
+    } else if (hasta) {
+      whereClause += ` AND ${fechaExpr} <= ?`
+      params.push(`${hasta} 23:59:59`)
     }
 
     const searchClean = (filtros.search || "").trim().toLowerCase()
@@ -175,14 +203,30 @@ export async function obtenerReporteDepartamentos(
         s.periodo_id,
         p.codigo AS periodo_codigo,
         p.nombre AS periodo_nombre,
-        s.fecha_decision
+        COALESCE(s.fecha_decision, s.fecha_registro) AS fecha_decision
       FROM solicitudes s
-      JOIN students st ON s.user_id = st.id
-      LEFT JOIN periodos_academicos p ON s.periodo_id = p.id
+      INNER JOIN periodos_academicos p ON s.periodo_id = p.id
+      INNER JOIN students st ON s.user_id = st.id
+      LEFT JOIN estudios_socioeconomicos e_adm
+        ON e_adm.id = (
+          SELECT MAX(es1.id)
+          FROM estudios_socioeconomicos es1
+          WHERE es1.student_id = st.id
+            AND es1.tipo = 'administrador'
+        )
+      LEFT JOIN estudios_socioeconomicos e_est
+        ON e_est.id = (
+          SELECT MAX(es2.id)
+          FROM estudios_socioeconomicos es2
+          WHERE es2.student_id = st.id
+            AND es2.tipo = 'estudiante'
+        )
       ${whereClause}
       ORDER BY
         CASE WHEN NULLIF(TRIM(s.departamento_asignado), '') IS NULL THEN 1 ELSE 0 END ASC,
         s.departamento_asignado ASC,
+        CAST(IFNULL(s.promedio_notas, 0) AS DECIMAL(10,2)) DESC,
+        IFNULL(COALESCE(e_adm.puntaje, e_est.puntaje), -1) DESC,
         st.apellido ASC,
         st.nombre ASC
       `,
@@ -220,8 +264,8 @@ export async function obtenerReporteDepartamentos(
           normalizarTipoBecaOficial(row.tipo_beca) || String(row.tipo_beca || "---"),
         promedioTrimestral: formatearDecimal(row.promedio_notas),
         indiceGlobal: formatearDecimal(row.indice_global),
-        periodoCodigo: String(row.periodo_codigo || "---"),
-        periodoNombre: String(row.periodo_nombre || "---"),
+        periodoCodigo: String(row.periodo_codigo || periodoActual.codigo),
+        periodoNombre: String(row.periodo_nombre || periodoActual.nombre),
         fechaDecision: fechaStr,
       }
 
@@ -282,8 +326,9 @@ export async function obtenerReporteDepartamentos(
         totalSinDepartamento,
         totalBecarios,
       },
-      periodos: periodosFormateados,
-      periodoSeleccionado,
+      periodoActual,
+      periodos: [periodoActual],
+      periodoSeleccionado: periodoActual.id,
     }
   } catch (error) {
     console.error("Error en obtenerReporteDepartamentos:", error)
@@ -296,8 +341,9 @@ export async function obtenerReporteDepartamentos(
         totalSinDepartamento: 0,
         totalBecarios: 0,
       },
+      periodoActual: null,
       periodos: [],
-      periodoSeleccionado: "todos",
+      periodoSeleccionado: 0,
       error: "No fue posible consultar el reporte de becarios por departamento.",
     }
   }

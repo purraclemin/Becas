@@ -2,8 +2,10 @@
 
 import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
-import { User, LayoutDashboard, LogOut } from "lucide-react"
+import { User, LayoutDashboard, LogOut, Building2 } from "lucide-react"
 import { logout } from "@/lib/ActionsAuth"
+
+const SEMESTRE_EGRESADO = 13
 
 export interface UserActionData {
   isLoggedIn?: boolean
@@ -11,8 +13,11 @@ export interface UserActionData {
   nombre?: string | null
   carrera?: string | null
   trimestre?: string | number | null
+  semestre?: string | number | null
+  esEgresado?: boolean
   estatus?: string | null
   status?: string | null
+  departamentoAsignado?: string | null
 }
 
 interface UserActionsProps {
@@ -47,27 +52,34 @@ export function UserActions({ user, loading }: UserActionsProps) {
     }
   }
 
-  // LÓGICA DE ESTILOS DINÁMICOS ACTUALIZADA
-  const getStatusStyles = (status: string | null) => {
+  // LÓGICA DE ESTILOS DINÁMICOS ACTUALIZADA (Incluye Convocado a Entrevista y Finalizada en teal)
+  const getStatusStyles = (status: string | null): string => {
     if (!status) return "bg-gray-50 text-gray-400 border-gray-100 font-black"
-    const s = status.toLowerCase().trim()
+    const s = status
+      .toLowerCase()
+      .trim()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
 
-    // 1. ESTADOS FIJOS
-    if (s === "aprobada" || s === "aprobado")
+    if (s === "aprobada" || s === "aprobado") {
       return "bg-emerald-50 text-emerald-700 border-emerald-200 font-black"
-    if (s === "rechazada" || s === "rechazado")
+    }
+    if (s === "rechazada" || s === "rechazado") {
       return "bg-red-50 text-red-700 border-red-200 font-black"
-
-    // 2. NUEVO ESTADO: RENOVACIÓN (VIOLETA)
-    if (s.includes("renovación") || s.includes("renovacion")) {
+    }
+    if (s.includes("finaliz")) {
+      return "bg-teal-50 text-teal-800 border-teal-200 font-black"
+    }
+    if (s.includes("convocad")) {
+      return "bg-orange-50 text-orange-800 border-orange-200 font-black animate-pulse shadow-[0_0_8px_rgba(249,115,22,0.25)]"
+    }
+    if (s.includes("renovacion")) {
       return "bg-violet-50 text-violet-700 border-violet-200 font-black animate-pulse shadow-[0_0_8px_rgba(139,92,246,0.3)]"
     }
-
-    // 3. ESTADOS TITILANTES
     if (s.includes("especial")) {
       return "bg-orange-50 text-orange-700 border-orange-200 font-black animate-pulse shadow-[0_0_8px_rgba(249,115,22,0.2)]"
     }
-    if (s.includes("revisión") || s.includes("revision")) {
+    if (s.includes("revision")) {
       return "bg-blue-50 text-blue-700 border-blue-200 font-black animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.2)]"
     }
     if (s === "pendiente") {
@@ -78,21 +90,25 @@ export function UserActions({ user, loading }: UserActionsProps) {
   }
 
   const userStatus = user?.estatus || user?.status || null
-  const s = userStatus?.toLowerCase().trim() || ""
+  const s =
+    userStatus
+      ?.toLowerCase()
+      .trim()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "") || ""
 
-  // Determinamos si debe mostrar el punto titilante (Añadimos renovación)
   const shouldPulse =
     s === "pendiente" ||
-    s.includes("revisión") ||
+    s.includes("convocad") ||
     s.includes("revision") ||
-    s.includes("renovacion")
+    s.includes("renovacion") ||
+    s.includes("especial")
 
-  // Colores dinámicos para el punto
   const dotColor = s.includes("renovacion")
     ? "bg-violet-600"
-    : s.includes("especial")
+    : s.includes("convocad") || s.includes("especial")
       ? "bg-orange-600"
-      : s.includes("revisión") || s.includes("revision")
+      : s.includes("revision")
         ? "bg-blue-600"
         : s === "pendiente"
           ? "bg-amber-600"
@@ -100,9 +116,9 @@ export function UserActions({ user, loading }: UserActionsProps) {
 
   const dotPingColor = s.includes("renovacion")
     ? "bg-violet-400"
-    : s.includes("especial")
+    : s.includes("convocad") || s.includes("especial")
       ? "bg-orange-400"
-      : s.includes("revisión") || s.includes("revision")
+      : s.includes("revision")
         ? "bg-blue-400"
         : s === "pendiente"
           ? "bg-amber-400"
@@ -110,13 +126,39 @@ export function UserActions({ user, loading }: UserActionsProps) {
 
   if (loading || !user || !user.isLoggedIn) return null
 
+  const semestreNum = Number(user.semestre ?? user.trimestre ?? 0)
+  const esEgresado =
+    Boolean(user.esEgresado) ||
+    (Number.isFinite(semestreNum) && semestreNum >= SEMESTRE_EGRESADO)
+  const nivelLabel = esEgresado ? "Egresado" : `${user.trimestre || user.semestre || "0"}° Trim.`
+  const esSecretaria = user.role === "secretaria"
+  const etiquetaRol =
+    user.role === "admin"
+      ? "Administrador"
+      : esSecretaria
+        ? "Secretaría General"
+        : "Estudiante"
+  const rutaPanel =
+    user.role === "admin"
+      ? "/admin/dashboard"
+      : esSecretaria
+        ? "/admin/validarBeca"
+        : "/postulacion"
+
+  const departamentoLimpio =
+    user.departamentoAsignado && user.departamentoAsignado.trim() !== ""
+      ? user.departamentoAsignado.trim()
+      : null
+  const mostrarDeptoEnMenu =
+    user.role === "estudiante" && (s === "aprobada" || s === "aprobado" || Boolean(departamentoLimpio))
+
   return (
     <div ref={menuRef} className="relative">
       <div className="flex items-center gap-2 md:gap-3">
-        {/* Información visible de fondo */}
+        {/* Información visible de fondo (actualizada en tiempo real) */}
         <div className="flex flex-col items-end text-right select-none border-y border-black py-0.5 px-1 md:px-1.5 min-w-[95px] md:min-w-[125px]">
           <p className="text-[6px] md:text-[8px] font-bold text-[#d4a843] uppercase tracking-[0.05em] leading-tight">
-            {user.role === "admin" ? "Administrador" : "Estudiante"}
+            {etiquetaRol}
           </p>
           <p className="text-[10px] md:text-[11px] font-black text-[#1e3a5f] uppercase leading-none my-0.5 truncate max-w-[85px] md:max-w-none">
             {user.nombre}
@@ -128,7 +170,7 @@ export function UserActions({ user, loading }: UserActionsProps) {
               </p>
               <div className="flex items-center gap-1 mt-0.5">
                 <span className="text-[6px] md:text-[7px] text-[#1e3a5f] font-black uppercase bg-gray-100 px-1 py-0.5 rounded leading-none">
-                  {user.trimestre || "0"}° Trim.
+                  {nivelLabel}
                 </span>
 
                 <div className="flex items-center gap-1">
@@ -145,7 +187,7 @@ export function UserActions({ user, loading }: UserActionsProps) {
                   <span
                     className={`text-[6px] md:text-[7px] uppercase px-1 py-0.5 rounded border ${getStatusStyles(userStatus)}`}
                   >
-                    {userStatus || "Pendiente"}
+                    {userStatus || "Sin Solicitud"}
                   </span>
                 </div>
               </div>
@@ -167,7 +209,7 @@ export function UserActions({ user, loading }: UserActionsProps) {
           <div className="absolute right-10 md:right-12 -top-1 w-56 md:w-64 bg-white/95 backdrop-blur-md rounded-xl shadow-[0_15px_50px_-10px_rgba(0,0,0,0.25)] border border-[#e2e8f0] overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200">
             <div className="px-4 py-3 bg-[#f8fafb]/80 border-b border-[#e2e8f0] text-center">
               <p className="text-[9px] font-black text-[#d4a843] uppercase tracking-[0.1em] mb-0.5">
-                {user.role === "admin" ? "Administrador" : "Estudiante"}
+                {etiquetaRol}
               </p>
               <p className="text-xs font-black text-[#1e3a5f] uppercase leading-tight truncate">
                 {user.nombre}
@@ -177,28 +219,36 @@ export function UserActions({ user, loading }: UserActionsProps) {
                   <p className="text-[10px] text-gray-500 font-bold uppercase truncate px-1">
                     {user.carrera}
                   </p>
-                  <div className="flex items-center justify-center gap-1.5 pt-0.5">
+                  <div className="flex items-center justify-center gap-1.5 pt-0.5 flex-wrap">
                     <span className="text-[9px] text-[#1e3a5f] font-bold uppercase bg-white border border-[#e2e8f0] px-2 py-0.5 rounded shadow-xs">
-                      {user.trimestre || "0"}° Trim.
+                      {nivelLabel}
                     </span>
                     <span
                       className={`text-[9px] font-black uppercase px-2 py-0.5 rounded border ${getStatusStyles(userStatus)}`}
                     >
-                      {userStatus || "Pendiente"}
+                      {userStatus || "Sin Solicitud"}
                     </span>
                   </div>
+                  {mostrarDeptoEnMenu && (
+                    <div className="pt-1 flex items-center justify-center gap-1 text-[9px] font-bold text-[#1e3a5f]">
+                      <Building2 className="h-3 w-3 text-[#d4a843] shrink-0" />
+                      <span className="truncate max-w-[190px]">
+                        {departamentoLimpio || "Depto: Por asignar"}
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
             <div className="p-2 space-y-1">
               <Link
-                href={user.role === "admin" ? "/admin/dashboard" : "/postulacion"}
+                href={rutaPanel}
                 className="flex items-center gap-3 px-3.5 py-2 text-xs text-[#1e3a5f] hover:bg-[#f1f5f9] rounded-lg font-bold transition-colors group"
                 onClick={() => setIsProfileOpen(false)}
               >
                 <LayoutDashboard className="h-4 w-4 text-[#d4a843] group-hover:scale-110 transition-transform" />
-                {user.role === "estudiante" ? "Solicitud" : "Dashboard"}
+                {user.role === "estudiante" ? "Solicitud" : "Panel Institucional"}
               </Link>
               <Link
                 href="/perfil"

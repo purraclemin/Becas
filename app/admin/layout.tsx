@@ -115,8 +115,8 @@ export default function AdminLayout({
   const subtituloMostrado = esSecretariaGeneral ? "Autoridad de Dictamen" : adminSubtitle
 
   return (
-    <div className="min-h-screen w-full bg-[#f8fafc] selection:bg-[#d4a843]/30 overflow-x-hidden font-sans text-slate-800">
-      <div className="flex min-h-screen">
+    <div className="min-h-screen w-full bg-[#f8fafc] selection:bg-[#d4a843]/30 overflow-x-hidden font-sans text-slate-800 print:min-h-0 print:h-auto print:overflow-visible print:bg-white">
+      <div className="flex min-h-screen print:block print:min-h-0 print:h-auto print:overflow-visible">
 
         {/* NAVEGACIÓN GLOBAL (SIDEBAR / BOTTOM NAV) */}
         <AdminSidebar
@@ -127,7 +127,7 @@ export default function AdminLayout({
         />
 
         {/* CONTENEDOR MAESTRO DE CONTENIDO */}
-        <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${isCollapsed ? 'md:ml-16' : 'md:ml-48'} print:ml-0 overflow-hidden pb-16 lg:pb-0 print:pb-0`}>
+        <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${isCollapsed ? 'md:ml-16' : 'md:ml-48'} print:block print:ml-0 overflow-hidden print:overflow-visible print:h-auto print:min-h-0 pb-16 lg:pb-0 print:pb-0`}>
 
           {/* CABECERA SUPERIOR EJECUTIVA */}
           <header className="bg-white px-4 md:px-6 h-16 shadow-sm flex items-center justify-between sticky top-0 z-40 border-b border-slate-200 shrink-0 print:hidden">
@@ -167,7 +167,9 @@ export default function AdminLayout({
                         onClick={() => {
                           setShowSearchDropdown(false)
                           setSearchQuery("")
-                          router.push(`/admin/validarBeca?search=${encodeURIComponent(item.cedula)}`)
+                          const cedulaLimpia = String(item.cedula || "").trim()
+                          if (!cedulaLimpia) return
+                          router.push(`/admin/validarBeca?abrirAuditoria=${encodeURIComponent(cedulaLimpia)}`)
                         }}
                         className="px-3 py-2.5 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-none transition-colors group flex items-center justify-between"
                       >
@@ -179,7 +181,13 @@ export default function AdminLayout({
                             Cédula: <span className="font-semibold text-slate-700">V-{item.cedula}</span> • <span className="text-slate-400">{item.carrera}</span>
                           </p>
                         </div>
-                        <span className="px-2 py-0.5 bg-slate-100 group-hover:bg-[#1e3a5f] group-hover:text-white rounded-md text-[9px] font-bold uppercase tracking-wider transition-colors">
+                        <span
+                          className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider transition-colors ${
+                            item.estatus === "Finalizada"
+                              ? "bg-teal-100 text-teal-800 group-hover:bg-teal-700 group-hover:text-white"
+                              : "bg-slate-100 group-hover:bg-[#1e3a5f] group-hover:text-white"
+                          }`}
+                        >
                           {item.estatus}
                         </span>
                       </div>
@@ -277,7 +285,7 @@ export default function AdminLayout({
           )}
 
           {/* ÁREA DE TRABAJO UNIFICADA */}
-          <main className="w-full max-w-[1400px] mx-auto px-4 py-3 md:px-6 lg:px-8 print:px-0 print:py-0 flex flex-col flex-1 relative">
+          <main className="w-full max-w-[1400px] mx-auto px-4 py-3 md:px-6 lg:px-8 print:block print:max-w-none print:px-0 print:py-0 print:h-auto print:overflow-visible flex flex-col flex-1 relative">
             {children}
           </main>
         </div>

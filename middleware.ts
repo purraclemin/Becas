@@ -8,6 +8,7 @@ const ROLES_ADMINISTRATIVOS: ReadonlyArray<string> = ['admin', 'secretaria']
  */
 const RUTAS_PERMITIDAS_SECRETARIA: ReadonlyArray<string> = [
   '/admin/validarBeca',
+  '/admin/estudiantes',
   '/admin/reportes',
 ]
 
@@ -47,9 +48,15 @@ export default function middleware(request: NextRequest) {
     }
   }
 
-  // --- 3. GESTIÓN DE PÁGINAS PÚBLICAS (Login/Registro) ---
+  // --- 2.5 MÓDULO DE REGISTRO OCULTO ---
+  // Redirige cualquier acceso directo por URL a /registro hacia /login sin eliminar archivos
+  if (pathname === '/registro' || pathname.startsWith('/registro/')) {
+    return NextResponse.redirect(new URL('/login', request.url))
+  }
+
+  // --- 3. GESTIÓN DE PÁGINAS PÚBLICAS (Login) ---
   // Si el usuario ya está logueado, lo redirigimos a su área correspondiente
-  const isPublicAuthPage = pathname === '/login' || pathname.startsWith('/registro')
+  const isPublicAuthPage = pathname === '/login'
 
   if (isPublicAuthPage && session) {
     const homeRedirect =
@@ -74,6 +81,7 @@ export const config = {
     '/admin/:path*',       // Cubre la zona administrativa y segrega Coordinación vs Secretaría
     '/postulacion/:path*', // Protege la página de solicitudes y sus subrutas
     '/login',
+    '/registro',
     '/registro/:path*',
   ],
 }

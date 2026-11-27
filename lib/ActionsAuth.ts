@@ -56,8 +56,6 @@ export async function login(formData: FormData): Promise<LoginActionResult> {
     return { error: "Debe ingresar su correo electrónico y contraseña." };
   }
 
-  let redirigirASecretaria = false;
-
   try {
     // 1. Buscar al usuario por su correo institucional en la tabla de credenciales
     const [rows] = await db.execute<UserAuthRow[]>(
@@ -112,30 +110,22 @@ export async function login(formData: FormData): Promise<LoginActionResult> {
       maxAge: 60 * 60 * 24,
     });
 
-    if (rolEfectivo === "secretaria") {
-      redirigirASecretaria = true;
-    } else {
-      return {
-        success: true,
-        role: rolEfectivo,
-        redirectTo: rolEfectivo === "admin" ? "/admin/dashboard" : "/postulacion",
-      };
-    }
+    const redirectTo =
+      rolEfectivo === "secretaria"
+        ? "/admin/validarBeca"
+        : rolEfectivo === "admin"
+          ? "/admin/dashboard"
+          : "/perfil";
+
+    return {
+      success: true,
+      role: rolEfectivo,
+      redirectTo,
+    };
   } catch (e: unknown) {
     console.error("Error en autenticación:", e);
     return { error: "Hubo un error al intentar iniciar sesión." };
   }
-
-  // 7. REDIRECCIÓN SERVIDOR FUERA DE TRY/CATCH PARA SECRETARÍA GENERAL
-  if (redirigirASecretaria) {
-    redirect("/admin/validarBeca");
-  }
-
-  return {
-    success: true,
-    role: "secretaria",
-    redirectTo: "/admin/validarBeca",
-  };
 }
 
 /**

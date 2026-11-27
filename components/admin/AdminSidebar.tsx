@@ -28,7 +28,7 @@ const ALL_LINKS: ReadonlyArray<SidebarLink> = [
   { href: "/admin/validarBeca", label: "Validar", icon: ClipboardCheck },
   { href: "/admin/analiticas", label: "Analíticas", icon: BarChart3, soloCoordinacion: true },
   { href: "/admin/estudio-socioeconomico", label: "Socioecon.", icon: ClipboardList, soloCoordinacion: true },
-  { href: "/admin/estudiantes", label: "Estudiantes.", icon: ClipboardList, soloCoordinacion: true },
+  { href: "/admin/estudiantes", label: "Estudiantes", icon: ClipboardList },
   { href: "/admin/reportes", label: "Reportes", icon: ClipboardList },
 ]
 

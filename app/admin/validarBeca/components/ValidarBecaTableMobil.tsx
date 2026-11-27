@@ -53,7 +53,7 @@ export function ValidarBecaCardItem({
       onView(s)
     } else if (value === "ver_historial") {
       onViewHistorial(s)
-    } else {
+    } else if (!esSecretariaGeneral) {
       setPendingAction(value)
       setIsConfirming(true)
     }
@@ -169,21 +169,13 @@ export function ValidarBecaCardItem({
             <option value="" disabled>{esSecretariaGeneral ? "Dictaminar..." : "Gestionar..."}</option>
             <option value="ver_detalles">👁️ Ver Expediente</option>
             <option value="ver_historial">📋 Historial Académico</option>
-            {esSecretariaGeneral ? (
-              s.estatus === 'En Revisión' && (
-                <>
-                  <option value="Aprobada">✅ Aprobar</option>
-                  <option value="Rechazada">❌ Rechazar</option>
-                </>
-              )
-            ) : (
+            {!esSecretariaGeneral &&
               s.estatus !== 'En Revisión' &&
               s.estatus !== 'Aprobada' &&
               s.estatus !== 'Rechazada' &&
               s.estatus !== 'Finalizada' && (
                 <option value="En Revisión">⏳ Enviar a Revisión</option>
-              )
-            )}
+              )}
           </select>
         )}
       </div>

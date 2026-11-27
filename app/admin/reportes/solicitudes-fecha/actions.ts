@@ -39,6 +39,8 @@ export interface ReporteSolicitudFechaItem {
 export interface FiltrosReporteSolicitudesFecha {
   inicio?: string
   fin?: string
+  fechaDesde?: string
+  fechaHasta?: string
   search?: string
 }
 
@@ -92,9 +94,18 @@ export async function obtenerReporteSolicitudesFecha(
 
     const params: Array<string | number> = []
 
-    if (filtros.inicio && filtros.fin) {
+    const desde = (filtros.fechaDesde || filtros.inicio || "").trim()
+    const hasta = (filtros.fechaHasta || filtros.fin || "").trim()
+
+    if (desde && hasta) {
       sql += ` AND s.fecha_registro BETWEEN ? AND ?`
-      params.push(`${filtros.inicio} 00:00:00`, `${filtros.fin} 23:59:59`)
+      params.push(`${desde} 00:00:00`, `${hasta} 23:59:59`)
+    } else if (desde) {
+      sql += ` AND s.fecha_registro >= ?`
+      params.push(`${desde} 00:00:00`)
+    } else if (hasta) {
+      sql += ` AND s.fecha_registro <= ?`
+      params.push(`${hasta} 23:59:59`)
     }
 
     const searchClean = (filtros.search || "").trim().toLowerCase()

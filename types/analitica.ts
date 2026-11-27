@@ -2,14 +2,16 @@
 
 /**
  * Datos para la Matriz de Justicia Social (Scatter Plot)
- * Muestra la relación entre el rendimiento académico y la situación económica.
+ * Muestra la relación entre el rendimiento académico y la situación socioeconómica.
  */
 export interface DatosMatriz {
+  cedula: string;
   nombre: string;
   apellido: string;
   carrera: string;
-  promedio: number;      // Nota del 0 al 20
-  vulnerabilidad: number; // Puntaje del 0 al 100
+  promedio_notas: number;        // Nota del 0 al 20
+  vulnerabilidad_puntos: number; // Puntaje del 0 al 100
+  [key: string]: unknown;
 }
 
 /**
@@ -19,20 +21,23 @@ export interface DatosMatriz {
 export interface DatosRadar {
   subject: string;   // Nombre de la carrera
   A: number;         // Promedio de notas (Eje del radar)
-  fullMark: number;  // El valor máximo posible (ej: 20)
+  fullMark: number;  // Valor máximo posible (20)
 }
 
 /**
- * Datos para el Embudo de Conversión (Funnel Chart)
- * Mide la eficiencia del proceso de selección de becas.
+ * Datos para el Monitor de Continuidad (Bar Chart)
+ * Mide la continuidad y evolución de beneficiarios entre periodos.
  */
 export interface DatosEmbudo {
-  name: string;      // Etapa del proceso (ej: "Solicitadas", "Aprobadas")
-  value: number;     // Cantidad de estudiantes en esa etapa
+  name: string;      // Indicador del monitor
+  value: number;     // Cantidad total de estudiantes en el indicador
+  viejos?: number;   // Becarios históricos (solo en BENEFICIARIOS TOTALES)
+  nuevos?: number;   // Nuevos ingresos (solo en BENEFICIARIOS TOTALES)
+  [key: string]: unknown;
 }
 
 /**
- * Objeto global que devuelve la Server Action de analiticas
+ * Objeto global que devuelve la Server Action de analíticas
  */
 export interface AnaliticasAvanzadas {
   matriz: DatosMatriz[];

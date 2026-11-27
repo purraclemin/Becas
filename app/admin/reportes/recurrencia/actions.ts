@@ -33,6 +33,7 @@ export interface ReporteRecurrenciaItem {
   periodos_beneficiados: string[]
   periodos_rechazados: string[]
   fue_rechazado: boolean
+  es_finalizado: boolean
   estatus_final: string
   tipo_beca_reciente: string
   motivo_rechazo: string | null
@@ -41,7 +42,14 @@ export interface ReporteRecurrenciaItem {
 export interface StatsRecurrenciaReporte {
   totalEvaluados: number
   totalActivos: number
+  totalFinalizados: number
   totalRechazados: number
+}
+
+export interface FiltrosReporteRecurrencia {
+  search?: string
+  fechaDesde?: string
+  fechaHasta?: string
 }
 
 export interface RespuestaReporteRecurrencia {
@@ -82,15 +90,83 @@ function combinarPeriodosUnicos(
 
 /**
  * Consulta la recurrencia trimestral completa por estudiante unificando
- * periodos aprobados y rechazados de `solicitudes` y `historial_aprobaciones`.
+ * periodos aprobados, finalizados y rechazados de `solicitudes` y `historial_aprobaciones`,
+ * separando claramente Activos, Finalizadas (sin sanción) y Rechazados (baja).
  */
 export async function obtenerReporteRecurrencia(
-  search?: string
+  entrada?: string | FiltrosReporteRecurrencia
 ): Promise<RespuestaReporteRecurrencia> {
   try {
-    const limpio = (search || "").trim().toLowerCase()
+    const filtros: FiltrosReporteRecurrencia =
+      typeof entrada === "string" ? { search: entrada } : entrada ?? {}
+
+    const limpio = (filtros.search || "").trim().toLowerCase()
+    const desde = (filtros.fechaDesde || "").trim()
+    const hasta = (filtros.fechaHasta || "").trim()
+
     const params: Array<string | number> = []
     let filtroSearchSql = ""
+    let filtroFechaSql = ""
+
+    if (desde && hasta) {
+      const inicioTs = `${desde} 00:00:00`
+      const finTs = `${hasta} 23:59:59`
+      filtroFechaSql = `
+        AND (
+          EXISTS (
+            SELECT 1
+            FROM solicitudes s_dt
+            WHERE s_dt.user_id = st.id
+              AND COALESCE(s_dt.fecha_decision, s_dt.fecha_registro) BETWEEN ? AND ?
+          )
+          OR EXISTS (
+            SELECT 1
+            FROM historial_aprobaciones h_dt
+            WHERE h_dt.user_id = st.id
+              AND h_dt.fecha_aprobacion BETWEEN ? AND ?
+          )
+        )
+      `
+      params.push(inicioTs, finTs, inicioTs, finTs)
+    } else if (desde) {
+      const inicioTs = `${desde} 00:00:00`
+      filtroFechaSql = `
+        AND (
+          EXISTS (
+            SELECT 1
+            FROM solicitudes s_dt
+            WHERE s_dt.user_id = st.id
+              AND COALESCE(s_dt.fecha_decision, s_dt.fecha_registro) >= ?
+          )
+          OR EXISTS (
+            SELECT 1
+            FROM historial_aprobaciones h_dt
+            WHERE h_dt.user_id = st.id
+              AND h_dt.fecha_aprobacion >= ?
+          )
+        )
+      `
+      params.push(inicioTs, inicioTs)
+    } else if (hasta) {
+      const finTs = `${hasta} 23:59:59`
+      filtroFechaSql = `
+        AND (
+          EXISTS (
+            SELECT 1
+            FROM solicitudes s_dt
+            WHERE s_dt.user_id = st.id
+              AND COALESCE(s_dt.fecha_decision, s_dt.fecha_registro) <= ?
+          )
+          OR EXISTS (
+            SELECT 1
+            FROM historial_aprobaciones h_dt
+            WHERE h_dt.user_id = st.id
+              AND h_dt.fecha_aprobacion <= ?
+          )
+        )
+      `
+      params.push(finTs, finTs)
+    }
 
     if (limpio !== "") {
       const term = `%${limpio}%`
@@ -216,7 +292,7 @@ export async function obtenerReporteRecurrencia(
             SELECT NULLIF(TRIM(s_mr.observaciones_admin), '')
             FROM solicitudes s_mr
             WHERE s_mr.user_id = st.id
-              AND LOWER(TRIM(s_mr.estatus)) IN ('rechazada', 'rechazado')
+              AND LOWER(TRIM(s_mr.estatus)) IN ('rechazada', 'rechazado', 'finalizada')
             ORDER BY s_mr.periodo_id DESC, s_mr.id DESC
             LIMIT 1
           ),
@@ -224,7 +300,7 @@ export async function obtenerReporteRecurrencia(
             SELECT NULLIF(TRIM(h_mr.observacion_admin), '')
             FROM historial_aprobaciones h_mr
             WHERE h_mr.user_id = st.id
-              AND LOWER(TRIM(h_mr.estatus_nuevo)) IN ('rechazada', 'rechazado')
+              AND LOWER(TRIM(h_mr.estatus_nuevo)) IN ('rechazada', 'rechazado', 'finalizada')
             ORDER BY h_mr.fecha_aprobacion DESC, h_mr.id DESC
             LIMIT 1
           ),
@@ -236,16 +312,17 @@ export async function obtenerReporteRecurrencia(
           SELECT 1
           FROM solicitudes s_ex
           WHERE s_ex.user_id = st.id
-            AND LOWER(TRIM(s_ex.estatus)) IN ('aprobada', 'aprobado', 'rechazada', 'rechazado')
+            AND LOWER(TRIM(s_ex.estatus)) IN ('aprobada', 'aprobado', 'rechazada', 'rechazado', 'finalizada')
         )
         OR EXISTS (
           SELECT 1
           FROM historial_aprobaciones h_ex
           WHERE h_ex.user_id = st.id
-            AND LOWER(TRIM(h_ex.estatus_nuevo)) IN ('aprobada', 'aprobado', 'rechazada', 'rechazado')
+            AND LOWER(TRIM(h_ex.estatus_nuevo)) IN ('aprobada', 'aprobado', 'rechazada', 'rechazado', 'finalizada')
         )
         OR IFNULL(st.beca_perdida, 0) = 1
       )
+      ${filtroFechaSql}
       ${filtroSearchSql}
       ORDER BY total_beneficios_sql DESC, fue_rechazado ASC, st.apellido ASC, st.nombre ASC
     `
@@ -266,9 +343,12 @@ export async function obtenerReporteRecurrencia(
           periodosAprobados.length,
           Number(row.total_beneficios_sql ?? 0)
         )
+        const estatusCrudo = String(row.estatus_final || "Aprobada").trim()
         const fueRechazado =
           Number(row.fue_rechazado) === 1 ||
-          String(row.estatus_final || "").toLowerCase().includes("rechaz")
+          estatusCrudo.toLowerCase().includes("rechaz")
+        const esFinalizado =
+          !fueRechazado && estatusCrudo.toLowerCase() === "finalizada"
 
         return {
           student_id: Number(row.student_id),
@@ -281,9 +361,12 @@ export async function obtenerReporteRecurrencia(
           periodos_beneficiados: periodosAprobados,
           periodos_rechazados: periodosRechazados,
           fue_rechazado: fueRechazado,
+          es_finalizado: esFinalizado,
           estatus_final: fueRechazado
             ? "Rechazada"
-            : String(row.estatus_final || "Aprobada"),
+            : esFinalizado
+              ? "Finalizada"
+              : estatusCrudo,
           tipo_beca_reciente:
             normalizarTipoBecaOficial(row.tipo_beca_reciente) ||
             String(row.tipo_beca_reciente || "No especificado"),
@@ -301,7 +384,8 @@ export async function obtenerReporteRecurrencia(
       })
 
     const totalRechazados = data.filter((r) => r.fue_rechazado).length
-    const totalActivos = data.length - totalRechazados
+    const totalFinalizados = data.filter((r) => r.es_finalizado).length
+    const totalActivos = data.length - totalRechazados - totalFinalizados
 
     return {
       success: true,
@@ -309,6 +393,7 @@ export async function obtenerReporteRecurrencia(
       stats: {
         totalEvaluados: data.length,
         totalActivos,
+        totalFinalizados,
         totalRechazados,
       },
     }
@@ -320,6 +405,7 @@ export async function obtenerReporteRecurrencia(
       stats: {
         totalEvaluados: 0,
         totalActivos: 0,
+        totalFinalizados: 0,
         totalRechazados: 0,
       },
       error: "No fue posible consultar el reporte de recurrencia trimestral.",

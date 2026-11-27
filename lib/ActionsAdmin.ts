@@ -1,48 +1,81 @@
 'use server'
 
-import { toggleModoPrueba, getModoPruebaStatus } from './ModoPrueba'
 import { revalidatePath } from 'next/cache'
+import {
+  toggleModoPrueba,
+  getModoPruebaStatus,
+  avanzarAlSiguientePeriodoSimulado,
+  restaurarPeriodoReal,
+  type ModoPruebaStatus,
+  type ResultadoAvancePeriodo,
+  type ResultadoRestaurarPeriodo,
+} from './ModoPrueba'
+
+function revalidarVistasAdmin(): void {
+  revalidatePath('/', 'layout');
+  revalidatePath('/admin/dashboard');
+  revalidatePath('/admin/validarBeca');
+  revalidatePath('/admin/reportes');
+  revalidatePath('/admin/estudiantes');
+  revalidatePath('/admin/analiticas');
+  revalidatePath('/perfil');
+}
 
 /**
- * Acción para actualizar la configuración del modo desarrollador
- * @param formData - Datos del formulario (estado del switch y mes seleccionado)
+ * Acción para activar/desactivar el bypass de reglas de pruebas.
  */
-export async function actualizarConfiguracionPruebas(formData: FormData) {
-  // 1. Obtenemos los valores del formulario
+export async function actualizarConfiguracionPruebas(formData: FormData): Promise<{
+  success: boolean;
+  message?: string;
+  error?: string;
+}> {
   const modoActivo = formData.get('modo_prueba') === 'on';
-  const mesSeleccionado = formData.get('mes_simulado') as string;
+  const mesRaw = formData.get('mes_simulado');
+  const mesSeleccionado = typeof mesRaw === 'string' && mesRaw.trim() !== '' ? mesRaw.trim() : undefined;
 
   try {
-    // 2. Ejecutamos la actualización en la base de datos
     await toggleModoPrueba(modoActivo, modoActivo ? mesSeleccionado : undefined);
+    revalidarVistasAdmin();
 
-    // 3. REVALIDACIÓN AGRESIVA
-    // Usamos el modo 'layout' para forzar a que todos los componentes hijos 
-    // (como los gráficos y el banner del estudiante) se enteren del cambio.
-    revalidatePath('/', 'layout'); 
-    
-    // Específicamente para las rutas donde el impacto es crítico
-    revalidatePath('/admin/dashboard');
-    revalidatePath('/perfil');
-
-    return { 
-      success: true, 
-      message: "Configuración de pruebas actualizada correctamente." 
+    return {
+      success: true,
+      message: 'Configuración de pruebas actualizada correctamente.',
     };
   } catch (error) {
-    console.error("❌ Error en ActionsAdmin:", error);
-    return { 
-      success: false, 
-      error: "No se pudo sincronizar la configuración con el servidor." 
+    console.error('❌ Error en ActionsAdmin:', error);
+    return {
+      success: false,
+      error: 'No se pudo sincronizar la configuración con el servidor.',
     };
   }
 }
 
 /**
- * Función auxiliar para obtener el estado actual
- * Usada por el useEffect del componente cliente para la carga inicial
+ * Avanza secuencialmente al siguiente periodo académico en el DEV PANEL
+ * (2026-III → 2027-I → 2027-II → 2027-III → ...).
  */
-export async function obtenerConfiguracionActual() {
-  // Forzamos que esta consulta no sea cacheada por la acción
+export async function avanzarSiguientePeriodoPruebas(): Promise<ResultadoAvancePeriodo> {
+  const res = await avanzarAlSiguientePeriodoSimulado();
+  if (res.success) {
+    revalidarVistasAdmin();
+  }
+  return res;
+}
+
+/**
+ * Restaura el periodo académico real según el calendario del servidor.
+ */
+export async function restaurarPeriodoRealPruebas(): Promise<ResultadoRestaurarPeriodo> {
+  const res = await restaurarPeriodoReal();
+  if (res.success) {
+    revalidarVistasAdmin();
+  }
+  return res;
+}
+
+/**
+ * Consulta la configuración vigente del DEV PANEL y el periodo activo/siguiente.
+ */
+export async function obtenerConfiguracionActual(): Promise<ModoPruebaStatus> {
   return await getModoPruebaStatus();
 }

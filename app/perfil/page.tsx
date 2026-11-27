@@ -20,6 +20,7 @@ import { ActionBanner, RenovationBanner, FinalistBanner } from "./components/Pro
 import { GradesHistory } from "./components/GradesHistory"
 import { HistoryTimeline } from "./components/HistoryTimeline"
 import { AlertaConvocatoria } from "./components/AlertaConvocatoria"
+import { PerfilRealtimeWatcher } from "./components/PerfilRealtimeWatcher"
 import type { IEvaluacionAcademica } from "@/lib/RecordAcademicoUtils"
 
 // CRÍTICO: Fuerza a Next.js a no cachear esta página para ver cambios de periodo y estatus al instante
@@ -38,6 +39,8 @@ interface PerfilSession {
   esEgresado?: boolean;
   puedePostular?: boolean;
   observacionesAdmin?: string | null;
+  departamentoAsignado?: string | null;
+  tipoBeca?: string | null;
   [key: string]: unknown;
 }
 
@@ -61,6 +64,10 @@ interface PerfilStatusData {
     unidades_credito: number;
   }>;
   evaluacionAcademica?: IEvaluacionAcademica | null;
+  lastSolicitud?: {
+    departamento_asignado?: string | null;
+    tipo_beca?: string | null;
+  } | null;
 }
 
 export default async function PerfilPage(props: {
@@ -122,12 +129,31 @@ export default async function PerfilPage(props: {
         (estatusFinal === "ninguna" || estatusFinal === "Finalizada"))
   )
 
+  const departamentoAsignadoFinal =
+    statusData.lastSolicitud?.departamento_asignado &&
+    String(statusData.lastSolicitud.departamento_asignado).trim() !== ""
+      ? String(statusData.lastSolicitud.departamento_asignado).trim()
+      : sessionUser.departamentoAsignado &&
+          String(sessionUser.departamentoAsignado).trim() !== ""
+        ? String(sessionUser.departamentoAsignado).trim()
+        : null
+
+  const tipoBecaFinal =
+    statusData.lastSolicitud?.tipo_beca &&
+    String(statusData.lastSolicitud.tipo_beca).trim() !== ""
+      ? String(statusData.lastSolicitud.tipo_beca).trim()
+      : sessionUser.tipoBeca && String(sessionUser.tipoBeca).trim() !== ""
+        ? String(sessionUser.tipoBeca).trim()
+        : null
+
   const academicStatus = {
     estatus: estatusFinal,
     becaPerdida: becaPerdidaFinal,
     esEgresado: esEgresadoFinal,
     puedePostular: puedePostularFinal,
     observacionesAdmin: observacionesAdminFinal,
+    departamentoAsignado: departamentoAsignadoFinal,
+    tipoBeca: tipoBecaFinal,
     materias: statusData.materias,
     periodoActual: statusData.periodoActual || "Sin Periodo Activo",
     periodoActualNombre: statusData.periodoActualNombre || "",
@@ -153,6 +179,21 @@ export default async function PerfilPage(props: {
 
   return (
     <div className="min-h-screen bg-[#f0f4f8] py-8 md:py-16">
+      {/* WATCHER EN TIEMPO REAL PARA ESTUDIANTES (SIN WEBSOCKETS, COMPATIBLE XAMPP/VERCEL) */}
+      {sessionUser.role === "estudiante" && (
+        <PerfilRealtimeWatcher
+          initialSnapshot={{
+            estatus: user.estatus,
+            observacionesAdmin: user.observacionesAdmin,
+            departamentoAsignado: departamentoAsignadoFinal,
+            semestre: user.semestre,
+            becaPerdida: user.becaPerdida,
+            periodoActual: user.periodoActual,
+            tipoBeca: tipoBecaFinal,
+          }}
+        />
+      )}
+
       {/* ALERTA MODAL EN TODA LA PANTALLA CON LAS INSTRUCCIONES DE CITACIÓN */}
       <AlertaConvocatoria
         estatus={user.estatus}
@@ -228,6 +269,8 @@ export default async function PerfilPage(props: {
                   : undefined
               }
               observacionesAdmin={user.observacionesAdmin}
+              departamentoAsignado={departamentoAsignadoFinal}
+              tipoBeca={tipoBecaFinal}
               becaPerdida={user.becaPerdida}
               esEgresado={user.esEgresado}
             />

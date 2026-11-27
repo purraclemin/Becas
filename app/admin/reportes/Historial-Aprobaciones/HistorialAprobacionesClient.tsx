@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useRef, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import {
   Search,
   Calendar,
@@ -11,7 +12,8 @@ import {
   X,
   RefreshCw,
   RotateCcw,
-  Award
+  Award,
+  Building2
 } from "lucide-react"
 import { PageHeader } from "@/components/admin/PageHeader"
 import { PrintReportLayout } from "@/components/imprimirReporte"
@@ -20,11 +22,17 @@ import {
   type ExportReportXLSXHandle,
   type CeldaXLSX
 } from "@/components/imprimirReporteXLSX"
+import { esEgresadoPorSemestre } from "@/app/admin/validarBeca/lib/ValidarBecaUtils"
 import {
   obtenerReporteHistorialAprobaciones,
   type HistorialAprobacionItem,
   type RespuestaHistorialAprobaciones
 } from "./actions"
+
+const formatearTrimestreHistorial = (trimestre: number): string => {
+  if (esEgresadoPorSemestre(trimestre)) return "Egresado"
+  return `${trimestre}° Trim.`
+}
 
 interface MateriaSnapshotItem {
   codigo?: string
@@ -70,6 +78,8 @@ const getStatusColor = (status: string): string => {
       return "bg-emerald-100 text-emerald-700 border-emerald-200"
     case "Rechazada":
       return "bg-rose-100 text-rose-700 border-rose-200"
+    case "Finalizada":
+      return "bg-teal-100 text-teal-800 border-teal-300"
     case "Convocado a Entrevista":
       return "bg-orange-100 text-orange-800 border-orange-300"
     case "En Revisión":
@@ -106,6 +116,7 @@ const parsearMateriasSnapshot = (raw: string | null): MateriasSnapshotParsed | n
 export function HistorialAprobacionesClient({
   initialData
 }: HistorialAprobacionesClientProps) {
+  const router = useRouter()
   const [historial, setHistorial] = useState<HistorialAprobacionItem[]>(initialData.data)
   const [actualizando, setActualizando] = useState<boolean>(false)
   const [exportandoXlsx, setExportandoXlsx] = useState<boolean>(false)
@@ -133,10 +144,8 @@ export function HistorialAprobacionesClient({
 
       try {
         const res = await obtenerReporteHistorialAprobaciones({
-          fechaInicio:
-            params.fechaInicio && params.fechaFin ? params.fechaInicio : undefined,
-          fechaFin:
-            params.fechaInicio && params.fechaFin ? params.fechaFin : undefined,
+          fechaDesde: params.fechaInicio || undefined,
+          fechaHasta: params.fechaFin || undefined,
           search: params.search || undefined
         })
 
@@ -162,12 +171,8 @@ export function HistorialAprobacionesClient({
       return
     }
 
-    const fechasIncompletas =
-      (filtros.fechaInicio !== "" && filtros.fechaFin === "") ||
-      (filtros.fechaInicio === "" && filtros.fechaFin !== "")
-
-    if (fechasIncompletas) {
-      setAvisoFecha("Seleccione ambas fechas (Desde y Hasta) para filtrar por rango.")
+    if (filtros.fechaInicio && filtros.fechaFin && filtros.fechaInicio > filtros.fechaFin) {
+      setAvisoFecha("La fecha 'Desde' no puede ser posterior a la fecha 'Hasta'.")
       return
     }
 
@@ -200,9 +205,26 @@ export function HistorialAprobacionesClient({
     await xlsxRef.current.exportar()
   }
 
+  const abrirAuditoria = useCallback(
+    (cedula: string) => {
+      const cedulaLimpia = String(cedula || "").trim()
+      if (!cedulaLimpia) return
+      router.push(
+        `/admin/validarBeca?abrirAuditoria=${encodeURIComponent(cedulaLimpia)}&origen=reportes-historial`
+      )
+    },
+    [router]
+  )
+
   const mapearFilaXLSX = useCallback((reg: HistorialAprobacionItem): CeldaXLSX[] => {
     const fecha = formatearFecha(reg.fecha_aprobacion)
     const hora = formatearHora(reg.fecha_aprobacion)
+    const etiquetaMovimiento = reg.es_cambio_departamento
+      ? reg.departamento_anterior && reg.departamento_nuevo
+        ? `CAMBIO DE DEPTO.: ${reg.departamento_anterior} → ${reg.departamento_nuevo}`
+        : "CAMBIO DE DEPARTAMENTO"
+      : `${reg.estatus_previo.toUpperCase()} → ${reg.estatus_nuevo.toUpperCase()}`
+
     return [
       `${fecha}${hora ? ` ${hora}` : ""}`,
       `${reg.nombre} ${reg.apellido}`.trim().toUpperCase(),
@@ -210,8 +232,8 @@ export function HistorialAprobacionesClient({
       reg.carrera.toUpperCase(),
       reg.tipo_beca_snapshot.toUpperCase(),
       `${reg.periodo_codigo} — ${reg.periodo_nombre}`,
-      reg.estatus_previo.toUpperCase(),
-      reg.estatus_nuevo.toUpperCase(),
+      reg.es_cambio_departamento ? "CAMBIO DE DEPTO." : reg.estatus_previo.toUpperCase(),
+      etiquetaMovimiento,
       Number(reg.promedio_ciclo),
       reg.puntaje_baremo,
       reg.observacion_admin || "---",
@@ -223,14 +245,21 @@ export function HistorialAprobacionesClient({
     filtros.fechaInicio !== "" ||
     filtros.fechaFin !== ""
 
-  const subtituloReporte = `Orden cronológico (más reciente primero) — Total: ${historial.length}${
+  const etiquetaRango =
     filtros.fechaInicio && filtros.fechaFin
       ? ` | Rango: ${filtros.fechaInicio} al ${filtros.fechaFin}`
-      : ""
-  }${filtros.search.trim() ? ` | Filtro: "${filtros.search.trim()}"` : ""}`
+      : filtros.fechaInicio
+        ? ` | Desde: ${filtros.fechaInicio}`
+        : filtros.fechaFin
+          ? ` | Hasta: ${filtros.fechaFin}`
+          : ""
+
+  const subtituloReporte = `Orden cronológico (más reciente primero) — Total: ${historial.length}${etiquetaRango}${
+    filtros.search.trim() ? ` | Filtro: "${filtros.search.trim()}"` : ""
+  }`
 
   return (
-    <div className="space-y-4 print:space-y-0 print:overflow-visible print:h-auto print:min-h-0">
+    <div className="space-y-4 print:block print:space-y-0 print:overflow-visible print:h-auto print:min-h-0">
       {/* CABECERA CON EXPORTACIÓN DUAL (PDF / EXCEL) */}
       <div className="print:hidden">
         <PageHeader
@@ -252,7 +281,7 @@ export function HistorialAprobacionesClient({
               className="h-4 flex items-center gap-1.5 text-[10px] md:text-[9px] font-black uppercase text-slate-500 tracking-widest"
             >
               <Search className="h-3 w-3 text-[#d4a843] shrink-0" />
-              <span>Buscar Estudiante, Estatus o Modalidad</span>
+              <span>Buscar Estudiante, Cédula, Estatus o Departamento</span>
             </label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 md:h-3.5 md:w-3.5 text-slate-400 pointer-events-none" />
@@ -263,7 +292,7 @@ export function HistorialAprobacionesClient({
                 onChange={(e) =>
                   setFiltros((prev) => ({ ...prev, search: e.target.value }))
                 }
-                placeholder="Nombre, cédula, estatus..."
+                placeholder="Nombre, apellido, cédula, estatus o departamento..."
                 className="w-full h-12 md:h-9 pl-9 pr-9 rounded-lg border border-slate-200 bg-[#f8fafc] text-sm md:text-xs font-bold text-[#1e3a5f] placeholder:text-slate-400 placeholder:font-medium outline-none focus:border-[#1e3a5f] focus:bg-white transition-all"
               />
               {filtros.search && (
@@ -371,7 +400,7 @@ export function HistorialAprobacionesClient({
                   <tr className="bg-[#1e3a5f] text-white text-[9px] font-black uppercase tracking-widest">
                     <th className="px-3.5 py-2.5">Estudiante</th>
                     <th className="px-3.5 py-2.5">Periodo / Modalidad</th>
-                    <th className="px-3.5 py-2.5">Cambio de Estatus</th>
+                    <th className="px-3.5 py-2.5">Movimiento / Estatus</th>
                     <th className="px-3.5 py-2.5 text-center">Prom. / Baremo</th>
                     <th className="px-3.5 py-2.5">Fecha y Hora</th>
                     <th className="px-3.5 py-2.5 text-right">Detalles</th>
@@ -385,7 +414,9 @@ export function HistorialAprobacionesClient({
                     return (
                       <React.Fragment key={reg.id}>
                         <tr
-                          className={`hover:bg-[#f8fafc] transition-colors ${
+                          onClick={() => abrirAuditoria(reg.cedula)}
+                          title="Abrir panel de auditoría del estudiante"
+                          className={`hover:bg-blue-50/40 transition-colors cursor-pointer ${
                             abierto ? "bg-blue-50/40" : ""
                           }`}
                         >
@@ -399,7 +430,7 @@ export function HistorialAprobacionesClient({
                                   {reg.nombre} {reg.apellido}
                                 </p>
                                 <p className="text-[10px] text-slate-500 font-mono font-bold mt-0.5">
-                                  V-{reg.cedula} • {reg.trimestre}° Trim.
+                                  V-{reg.cedula} • {formatearTrimestreHistorial(reg.trimestre)}
                                 </p>
                               </div>
                             </div>
@@ -416,23 +447,39 @@ export function HistorialAprobacionesClient({
                           </td>
 
                           <td className="px-3.5 py-2.5">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span
-                                className={`text-[9px] font-bold px-1.5 py-0.5 rounded border opacity-75 ${getStatusColor(
-                                  reg.estatus_previo
-                                )}`}
-                              >
-                                {reg.estatus_previo}
-                              </span>
-                              <span className="text-slate-400 font-bold">→</span>
-                              <span
-                                className={`text-[9px] font-black px-2 py-0.5 rounded-full border uppercase shadow-2xs ${getStatusColor(
-                                  reg.estatus_nuevo
-                                )}`}
-                              >
-                                {reg.estatus_nuevo}
-                              </span>
-                            </div>
+                            {reg.es_cambio_departamento ? (
+                              <div className="space-y-1">
+                                <span className="inline-flex items-center gap-1 text-[9px] font-black px-2 py-0.5 rounded-full border uppercase bg-indigo-50 text-indigo-800 border-indigo-200 shadow-2xs">
+                                  <Building2 className="h-3 w-3 text-[#d4a843]" />
+                                  <span>Cambio de Depto.</span>
+                                </span>
+                                {reg.departamento_anterior && reg.departamento_nuevo && (
+                                  <p className="text-[10px] font-bold text-[#1e3a5f] leading-snug max-w-[250px]">
+                                    <span className="text-slate-500">{reg.departamento_anterior}</span>
+                                    <span className="mx-1 text-[#d4a843] font-black">→</span>
+                                    <span>{reg.departamento_nuevo}</span>
+                                  </p>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span
+                                  className={`text-[9px] font-bold px-1.5 py-0.5 rounded border opacity-75 ${getStatusColor(
+                                    reg.estatus_previo
+                                  )}`}
+                                >
+                                  {reg.estatus_previo}
+                                </span>
+                                <span className="text-slate-400 font-bold">→</span>
+                                <span
+                                  className={`text-[9px] font-black px-2 py-0.5 rounded-full border uppercase shadow-2xs ${getStatusColor(
+                                    reg.estatus_nuevo
+                                  )}`}
+                                >
+                                  {reg.estatus_nuevo}
+                                </span>
+                              </div>
+                            )}
                           </td>
 
                           <td className="px-3.5 py-2.5 text-center">
@@ -457,23 +504,30 @@ export function HistorialAprobacionesClient({
                             <div className="flex items-center justify-end gap-1.5">
                               <button
                                 type="button"
-                                onClick={() => toggleRow(reg.id)}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  toggleRow(reg.id)
+                                }}
                                 className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${
                                   abierto
                                     ? "bg-[#1e3a5f] text-[#d4a843]"
                                     : "bg-slate-100 text-slate-500 hover:bg-slate-200"
                                 }`}
-                                title="Ver detalle académico y nota"
+                                title="Ver detalle académico y nota inline"
                               >
                                 <BookOpen className="h-3.5 w-3.5" />
                               </button>
                               <button
                                 type="button"
-                                onClick={() => toggleRow(reg.id)}
-                                className="h-8 w-8 rounded-lg bg-slate-100 text-slate-500 hover:bg-blue-100 hover:text-blue-700 flex items-center justify-center transition-colors cursor-pointer"
-                                title="Ver observación"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  abrirAuditoria(reg.cedula)
+                                }}
+                                className="h-8 px-2.5 rounded-lg bg-blue-50 text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white border border-blue-200/80 flex items-center justify-center gap-1 transition-colors cursor-pointer text-[10px] font-black uppercase"
+                                title="Ver observación en Panel de Auditoría"
                               >
                                 <FileText className="h-3.5 w-3.5" />
+                                <span className="hidden xl:inline">Ver Observación</span>
                               </button>
                             </div>
                           </td>
@@ -563,7 +617,8 @@ export function HistorialAprobacionesClient({
                 return (
                   <div
                     key={`mob-${reg.id}`}
-                    className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm space-y-2.5"
+                    onClick={() => abrirAuditoria(reg.cedula)}
+                    className="bg-white rounded-xl border border-slate-200 hover:border-[#1e3a5f]/50 p-4 shadow-sm space-y-2.5 cursor-pointer transition-colors"
                   >
                     <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-2">
                       <div className="min-w-0">
@@ -584,23 +639,39 @@ export function HistorialAprobacionesClient({
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded border opacity-75 ${getStatusColor(
-                          reg.estatus_previo
-                        )}`}
-                      >
-                        {reg.estatus_previo}
-                      </span>
-                      <span className="text-slate-400 font-bold">→</span>
-                      <span
-                        className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border uppercase ${getStatusColor(
-                          reg.estatus_nuevo
-                        )}`}
-                      >
-                        {reg.estatus_nuevo}
-                      </span>
-                    </div>
+                    {reg.es_cambio_departamento ? (
+                      <div className="space-y-1">
+                        <span className="inline-flex items-center gap-1.5 text-[10px] font-black px-2.5 py-0.5 rounded-full border uppercase bg-indigo-50 text-indigo-800 border-indigo-200">
+                          <Building2 className="h-3 w-3 text-[#d4a843]" />
+                          <span>Cambio de Departamento</span>
+                        </span>
+                        {reg.departamento_anterior && reg.departamento_nuevo && (
+                          <p className="text-xs font-bold text-[#1e3a5f]">
+                            <span className="text-slate-500">{reg.departamento_anterior}</span>
+                            <span className="mx-1.5 text-[#d4a843]">→</span>
+                            <span>{reg.departamento_nuevo}</span>
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded border opacity-75 ${getStatusColor(
+                            reg.estatus_previo
+                          )}`}
+                        >
+                          {reg.estatus_previo}
+                        </span>
+                        <span className="text-slate-400 font-bold">→</span>
+                        <span
+                          className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border uppercase ${getStatusColor(
+                            reg.estatus_nuevo
+                          )}`}
+                        >
+                          {reg.estatus_nuevo}
+                        </span>
+                      </div>
+                    )}
 
                     <div className="grid grid-cols-2 gap-2 text-center pt-1">
                       <div className="p-2 rounded-lg bg-[#f8fafc] border border-slate-200">
@@ -621,17 +692,36 @@ export function HistorialAprobacionesClient({
                       </div>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => toggleRow(reg.id)}
-                      className="w-full h-11 rounded-lg bg-[#f8fafc] border border-slate-200 text-xs font-black uppercase text-[#1e3a5f] flex items-center justify-center gap-2 cursor-pointer"
-                    >
-                      <BookOpen className="h-3.5 w-3.5 text-[#d4a843]" />
-                      <span>{abierto ? "Ocultar Detalles" : "Ver Materias y Nota"}</span>
-                    </button>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          toggleRow(reg.id)
+                        }}
+                        className="h-11 rounded-lg bg-[#f8fafc] border border-slate-200 text-xs font-black uppercase text-[#1e3a5f] flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <BookOpen className="h-3.5 w-3.5 text-[#d4a843]" />
+                        <span>{abierto ? "Ocultar" : "Materias"}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          abrirAuditoria(reg.cedula)
+                        }}
+                        className="h-11 rounded-lg bg-[#1e3a5f] text-white text-xs font-black uppercase flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <FileText className="h-3.5 w-3.5 text-[#d4a843]" />
+                        <span>Ver Observación</span>
+                      </button>
+                    </div>
 
                     {abierto && (
-                      <div className="pt-2 border-t border-slate-100 space-y-2">
+                      <div
+                        onClick={(e) => e.stopPropagation()}
+                        className="pt-2 border-t border-slate-100 space-y-2"
+                      >
                         {materiasData &&
                         Array.isArray(materiasData.materias) &&
                         materiasData.materias.length > 0 ? (
@@ -678,7 +768,7 @@ export function HistorialAprobacionesClient({
         columnas={[
           "Estudiante / Cédula",
           "Periodo / Modalidad",
-          "Cambio de Estatus",
+          "Movimiento / Estatus",
           "Prom. / Baremo",
           "Fecha y Hora"
         ]}
@@ -696,8 +786,23 @@ export function HistorialAprobacionesClient({
               <span className="text-[8px] text-slate-600 uppercase">{reg.tipo_beca_snapshot}</span>
             </td>
             <td className="p-1.5 border border-slate-400">
-              <span className="font-semibold text-slate-700">{reg.estatus_previo}</span> →{" "}
-              <span className="font-bold text-[#1e3a5f]">{reg.estatus_nuevo}</span>
+              {reg.es_cambio_departamento ? (
+                <div>
+                  <span className="font-bold text-indigo-800 uppercase block text-[8px]">
+                    CAMBIO DE DEPARTAMENTO
+                  </span>
+                  {reg.departamento_anterior && reg.departamento_nuevo && (
+                    <span className="text-[8px] text-slate-700">
+                      {reg.departamento_anterior} → {reg.departamento_nuevo}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <span className="font-semibold text-slate-700">{reg.estatus_previo}</span> →{" "}
+                  <span className="font-bold text-[#1e3a5f]">{reg.estatus_nuevo}</span>
+                </>
+              )}
             </td>
             <td className="p-1.5 border border-slate-400 text-center font-bold">
               <span className="block">{reg.promedio_ciclo}</span>
@@ -724,8 +829,8 @@ export function HistorialAprobacionesClient({
           "Carrera",
           "Modalidad",
           "Periodo",
-          "Estatus Previo",
-          "Estatus Nuevo",
+          "Tipo / Estatus Previo",
+          "Movimiento / Estatus Nuevo",
           "Promedio",
           "Baremo",
           "Observación"

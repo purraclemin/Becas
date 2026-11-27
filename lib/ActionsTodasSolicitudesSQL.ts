@@ -327,9 +327,9 @@ export async function fetchSolicitudesDesdeDB(filtros: FiltrosDB = {}): Promise<
       params.push(term, term, term, term);
     }
 
-    if (esSecretariaGeneral) {
+    if (esSecretariaGeneral && !filtros.cedulaExacta) {
       whereClause += ` AND s.estatus = 'En Revisión'`;
-    } else if (filtros.status && filtros.status !== 'Todas') {
+    } else if (!esSecretariaGeneral && filtros.status && filtros.status !== 'Todas') {
       whereClause += ` AND s.estatus = ?`;
       params.push(filtros.status);
     }

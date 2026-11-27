@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { Loader2 } from "lucide-react"
 import { ResultCard } from "@/components/admin/socioeconomico/ResultCard"
 import { buscarEstudianteConEstudio } from "@/lib/ActionsSocioeconomico"
@@ -26,6 +26,7 @@ export interface SolicitudAuditoriaPanelData {
 
 interface ValidarBecaAuditoriaPanelProps {
   solicitud: SolicitudAuditoriaPanelData;
+  initialExpedienteDetallado?: Record<string, unknown> | null;
   onStatusChange: (
     id: number,
     status: string,
@@ -39,16 +40,73 @@ interface ValidarBecaAuditoriaPanelProps {
   esSecretariaGeneral?: boolean;
 }
 
+export function construirExpedienteDetallado(
+  solicitud: SolicitudAuditoriaPanelData,
+  resultados: Array<Record<string, unknown>> | null | undefined
+): Record<string, unknown> {
+  const lista = Array.isArray(resultados) ? resultados : [];
+  const estudioAdmin = lista.find((r) => {
+    const tipo = r.tipo ? String(r.tipo).trim().toLowerCase() : "";
+    return (
+      tipo === "administrador" ||
+      (r.puntaje_admin !== null && r.puntaje_admin !== undefined) ||
+      (r.nivel_admin !== null && r.nivel_admin !== undefined)
+    );
+  });
+
+  const baseData = estudioAdmin || (lista.length > 0 ? lista[0] : {});
+
+  const tieneEstudioAdminReal = Boolean(
+    estudioAdmin &&
+    (String(estudioAdmin.tipo || "").trim().toLowerCase() === "administrador" ||
+      (estudioAdmin.puntaje_admin !== null && estudioAdmin.puntaje_admin !== undefined) ||
+      (estudioAdmin.puntaje !== null && estudioAdmin.puntaje !== undefined))
+  );
+
+  return {
+    ...solicitud,
+    ...baseData,
+    email: solicitud.email_institucional ?? baseData.email,
+    puntaje_admin: tieneEstudioAdminReal
+      ? ((estudioAdmin?.puntaje_admin ?? estudioAdmin?.puntaje) as number | null)
+      : null,
+    nivel_admin: tieneEstudioAdminReal
+      ? ((estudioAdmin?.nivel_admin ?? estudioAdmin?.nivel_riesgo) as string | null)
+      : null,
+    es_estudio_oficial: tieneEstudioAdminReal,
+  };
+}
+
 export function ValidarBecaAuditoriaPanel({
   solicitud,
+  initialExpedienteDetallado = null,
   onStatusChange,
   onClose,
   onViewAcademic,
   periodoActualId,
   esSecretariaGeneral = false
 }: ValidarBecaAuditoriaPanelProps) {
-  const [observaciones, setObservaciones] = useState(String(solicitud.observaciones_admin || ""))
-  const [departamentoAsignado, setDepartamentoAsignado] = useState(String(solicitud.departamento_asignado || ""))
+  const claveExpediente = `${String(solicitud.id)}:${String(solicitud.cedula || "").trim()}`;
+
+  const [observaciones, setObservaciones] = useState<string>(
+    String(solicitud.observaciones_admin || "")
+  );
+  const [departamentoAsignado, setDepartamentoAsignado] = useState<string>(
+    String(solicitud.departamento_asignado || "")
+  );
+
+  const [expedienteDetallado, setExpedienteDetallado] = useState<Record<string, unknown> | null>(
+    () => initialExpedienteDetallado
+  );
+  const [loading, setLoading] = useState<boolean>(() => !initialExpedienteDetallado);
+
+  const solicitudRef = useRef<SolicitudAuditoriaPanelData>(solicitud);
+  solicitudRef.current = solicitud;
+
+  const ultimaClaveCargadaRef = useRef<string | null>(
+    initialExpedienteDetallado ? claveExpediente : null
+  );
+  const requestIdRef = useRef<number>(0);
 
   useEffect(() => {
     setObservaciones(String(solicitud.observaciones_admin || ""));
@@ -58,8 +116,73 @@ export function ValidarBecaAuditoriaPanel({
     setDepartamentoAsignado(String(solicitud.departamento_asignado || ""));
   }, [solicitud.id, solicitud.departamento_asignado]);
 
-  const [expedienteDetallado, setExpedienteDetallado] = useState<Record<string, unknown> | null>(null)
-  const [loading, setLoading] = useState(true)
+  // Sincroniza cambios de estatus/observaciones/departamento en memoria sin desmontar ni disparar spinner
+  useEffect(() => {
+    setExpedienteDetallado((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        estatus: solicitud.estatus,
+        observaciones_admin: solicitud.observaciones_admin ?? null,
+        departamento_asignado: solicitud.departamento_asignado ?? prev.departamento_asignado,
+      };
+    });
+  }, [solicitud.estatus, solicitud.observaciones_admin, solicitud.departamento_asignado]);
+
+  // Carga el estudio socioeconómico únicamente cuando cambia de expediente (solicitud.id / solicitud.cedula)
+  useEffect(() => {
+    const cedulaLimpia = String(solicitud.cedula || "").trim();
+    const claveActual = `${String(solicitud.id)}:${cedulaLimpia}`;
+
+    if (ultimaClaveCargadaRef.current === claveActual) {
+      setLoading(false);
+      return;
+    }
+
+    if (!cedulaLimpia) {
+      ultimaClaveCargadaRef.current = claveActual;
+      setExpedienteDetallado({
+        ...solicitudRef.current,
+        email: solicitudRef.current.email_institucional,
+        es_estudio_oficial: false,
+      });
+      setLoading(false);
+      return;
+    }
+
+    const reqId = ++requestIdRef.current;
+    setLoading(true);
+
+    const cargarDetalleSocioeconomico = async () => {
+      try {
+        const resultados = (await buscarEstudianteConEstudio(cedulaLimpia)) as Array<
+          Record<string, unknown>
+        >;
+
+        if (reqId !== requestIdRef.current) return;
+
+        ultimaClaveCargadaRef.current = claveActual;
+        setExpedienteDetallado(
+          construirExpedienteDetallado(solicitudRef.current, resultados)
+        );
+      } catch (error) {
+        if (reqId !== requestIdRef.current) return;
+        console.error("Error al sincronizar expediente:", error);
+        ultimaClaveCargadaRef.current = claveActual;
+        setExpedienteDetallado({
+          ...solicitudRef.current,
+          email: solicitudRef.current.email_institucional,
+          es_estudio_oficial: false,
+        });
+      } finally {
+        if (reqId === requestIdRef.current) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void cargarDetalleSocioeconomico();
+  }, [solicitud.id, solicitud.cedula]);
 
   const periodoSolicitudNum = Number(solicitud.periodo_id || 0);
   const periodoActualNum = Number(periodoActualId || 0);
@@ -76,72 +199,25 @@ export function ValidarBecaAuditoriaPanel({
     departamento_asignado: departamentoAsignado,
   };
 
-  useEffect(() => {
-    async function cargarDetalleSocioeconomico() {
-      if (!solicitud.cedula) {
-        setLoading(false);
-        return;
-      }
-      setLoading(true);
-      try {
-        const resultados = await buscarEstudianteConEstudio(solicitud.cedula);
-
-        const estudioAdmin = (resultados as Array<Record<string, unknown>>)?.find((r) => {
-          const tipo = r.tipo ? String(r.tipo).trim().toLowerCase() : "";
-          return (
-            tipo === 'administrador' ||
-            (r.puntaje_admin !== null && r.puntaje_admin !== undefined) ||
-            (r.nivel_admin !== null && r.nivel_admin !== undefined)
-          );
-        });
-
-        const baseData = estudioAdmin || (resultados && resultados.length > 0 ? (resultados[0] as Record<string, unknown>) : {});
-
-        const estudioAdminTyped = estudioAdmin as Record<string, unknown> | undefined;
-        const tieneEstudioAdminReal = Boolean(
-          estudioAdminTyped &&
-          (String(estudioAdminTyped.tipo || "").trim().toLowerCase() === "administrador" ||
-            (estudioAdminTyped.puntaje_admin !== null && estudioAdminTyped.puntaje_admin !== undefined) ||
-            (estudioAdminTyped.puntaje !== null && estudioAdminTyped.puntaje !== undefined))
-        );
-
-        setExpedienteDetallado({
-          ...solicitud,
-          ...baseData,
-          email: solicitud.email_institucional,
-          puntaje_admin: tieneEstudioAdminReal
-            ? ((estudioAdminTyped?.puntaje_admin ?? estudioAdminTyped?.puntaje) as number | null)
-            : null,
-          nivel_admin: tieneEstudioAdminReal
-            ? ((estudioAdminTyped?.nivel_admin ?? estudioAdminTyped?.nivel_riesgo) as string | null)
-            : null,
-          es_estudio_oficial: tieneEstudioAdminReal
-        });
-      } catch (error) {
-        console.error("Error al sincronizar expediente:", error);
-        setExpedienteDetallado({ ...solicitud, email: solicitud.email_institucional });
-      } finally {
-        setLoading(false);
-      }
-    }
-    cargarDetalleSocioeconomico();
-  }, [solicitud]);
-
   // Exención normativa: Excelencia Académica (automática) y Concurso Social no exigen baremo previo
   const reglaModalidad = obtenerReglaPorTipoBeca(String(solicitud.tipo_beca || ""));
   const requiereEstudioSocioeconomico = reglaModalidad?.requiereEstudioSocioeconomico ?? true;
   const tieneEstudioAdmin = Boolean(expedienteDetallado?.es_estudio_oficial);
   const bloqueadoPorEstudio = requiereEstudioSocioeconomico && !tieneEstudioAdmin;
 
-  if (loading) return (
-    <div className="flex flex-col items-center justify-center py-20 bg-white rounded-[2rem] border border-slate-200 shadow-xl">
-      <Loader2 className="h-10 w-10 animate-spin text-[#d4a843] mb-4" />
-      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Sincronizando Expediente...</p>
-    </div>
-  );
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 bg-white rounded-[2rem] border border-slate-200 shadow-xl">
+        <Loader2 className="h-10 w-10 animate-spin text-[#d4a843] mb-4" />
+        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+          Sincronizando Expediente...
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 animate-in fade-in slide-in-from-right-8 duration-500 pb-10">
+    <div className="flex flex-col lg:flex-row gap-6 pb-10">
       <div className="flex-1 space-y-6">
         <ResultCard
           student={expedienteDetallado}
@@ -174,5 +250,5 @@ export function ValidarBecaAuditoriaPanel({
         <ValidarBecaTrace solicitud={solicitudParaHijos} />
       </div>
     </div>
-  )
+  );
 }

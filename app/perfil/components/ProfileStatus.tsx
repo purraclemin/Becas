@@ -14,6 +14,8 @@ import {
   Lock,
   Archive,
   GraduationCap,
+  Building2,
+  Award,
   type LucideIcon
 } from "lucide-react"
 
@@ -49,13 +51,15 @@ interface ProfileStatusProps {
   materias?: unknown;
   motivoRechazo?: string;
   observacionesAdmin?: string | null;
+  departamentoAsignado?: string | null;
+  tipoBeca?: string | null;
   becaPerdida?: boolean;
   esEgresado?: boolean;
 }
 
 /**
  * COMPONENTE: ESTATUS VISUAL DEL PERFIL
- * Muestra el estatus de la solicitud, despliega instrucciones de citación,
+ * Muestra el estatus de la solicitud, el departamento asignado, despliega instrucciones de citación,
  * refleja el cierre neutro 'Finalizada' (egreso o rotación sin sanción) y la inhabilitación por rechazo.
  */
 export function ProfileStatus({
@@ -63,6 +67,8 @@ export function ProfileStatus({
   materias,
   motivoRechazo,
   observacionesAdmin,
+  departamentoAsignado,
+  tipoBeca,
   becaPerdida = false,
   esEgresado = false,
 }: ProfileStatusProps) {
@@ -223,6 +229,15 @@ export function ProfileStatus({
   const c = config[key];
   const IconoEstado = c.icon;
 
+  const departamentoLimpio =
+    departamentoAsignado && departamentoAsignado.trim() !== ''
+      ? departamentoAsignado.trim()
+      : null;
+  const tipoBecaLimpio =
+    tipoBeca && tipoBeca.trim() !== '' ? tipoBeca.trim() : null;
+  const mostrarBloqueDepartamento =
+    key === 'aprobada' || Boolean(departamentoLimpio);
+
   return (
     <Card className={`border-none shadow-xl overflow-hidden relative transition-all duration-500 ${c.bg}`}>
       <div className={`absolute left-0 top-0 bottom-0 w-2 ${c.bar}`}></div>
@@ -244,6 +259,36 @@ export function ProfileStatus({
         <p className="mt-4 text-[11px] md:text-xs font-semibold text-gray-600 leading-relaxed italic border-t border-black/5 pt-4 whitespace-pre-line break-words">
           {c.msg}
         </p>
+
+        {mostrarBloqueDepartamento && (
+          <div className="mt-4 p-3.5 rounded-xl bg-white/90 border border-[#d4a843]/40 shadow-xs space-y-2">
+            {tipoBecaLimpio && (
+              <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-emerald-800 pb-1.5 border-b border-slate-100">
+                <Award className="h-3.5 w-3.5 text-[#d4a843] shrink-0" />
+                <span className="truncate">{tipoBecaLimpio}</span>
+              </div>
+            )}
+            <div className="flex items-start gap-2.5">
+              <div className="p-1.5 rounded-lg bg-[#1e3a5f]/10 text-[#1e3a5f] shrink-0 mt-0.5">
+                <Building2 className="h-4 w-4 text-[#1e3a5f]" />
+              </div>
+              <div className="min-w-0">
+                <span className="block text-[9px] font-black uppercase tracking-widest text-slate-400">
+                  Departamento Asignado
+                </span>
+                {departamentoLimpio ? (
+                  <p className="text-sm md:text-xs font-black text-[#1e3a5f] uppercase leading-snug mt-0.5 break-words">
+                    {departamentoLimpio}
+                  </p>
+                ) : (
+                  <span className="inline-block mt-1 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-[10px] font-black uppercase tracking-wider text-amber-800">
+                    Por asignar
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {key === 'rechazada' && (
           <div className="mt-4 p-3 rounded-xl bg-white/80 border border-red-200 flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-red-700">

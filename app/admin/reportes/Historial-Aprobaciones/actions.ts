@@ -47,6 +47,9 @@ export interface HistorialAprobacionItem {
   estatus_previo: string
   estatus_nuevo: string
   observacion_admin: string | null
+  es_cambio_departamento: boolean
+  departamento_anterior: string | null
+  departamento_nuevo: string | null
   materias_snapshot_json: string | null
   fecha_aprobacion: string
   ip_accion: string
@@ -62,6 +65,8 @@ export interface HistorialAprobacionItem {
 export interface FiltrosHistorialAprobaciones {
   fechaInicio?: string
   fechaFin?: string
+  fechaDesde?: string
+  fechaHasta?: string
   search?: string
 }
 
@@ -85,9 +90,51 @@ function serializarFechaISO(valor: Date | string | null | undefined): string {
   return Number.isNaN(parsed.getTime()) ? String(valor) : parsed.toISOString()
 }
 
+function extraerCambioDepartamento(
+  estatusPrevio: string,
+  estatusNuevo: string,
+  observacion: string | null
+): {
+  esCambio: boolean
+  departamentoAnterior: string | null
+  departamentoNuevo: string | null
+} {
+  const obs = (observacion || "").trim()
+  const match = /^Reasignaci[oó]n de Departamento:\s*(.+?)\s*(?:→|->)\s*([^|\r\n]+)/i.exec(obs)
+
+  if (match) {
+    return {
+      esCambio: true,
+      departamentoAnterior: match[1].trim(),
+      departamentoNuevo: match[2].trim(),
+    }
+  }
+
+  const esAprobadaAAprobada =
+    estatusPrevio.trim().toLowerCase() === "aprobada" &&
+    estatusNuevo.trim().toLowerCase() === "aprobada" &&
+    (obs.toLowerCase().includes("departamento") || obs === "")
+
+  if (esAprobadaAAprobada) {
+    return {
+      esCambio: true,
+      departamentoAnterior: null,
+      departamentoNuevo: null,
+    }
+  }
+
+  return {
+    esCambio: false,
+    departamentoAnterior: null,
+    departamentoNuevo: null,
+  }
+}
+
 /**
  * Obtiene la bitácora completa de decisiones ordenada estrictamente
- * por fecha y hora más reciente primero (DESC).
+ * por fecha y hora más reciente primero (DESC), con detección explícita
+ * de cambios de departamento y soporte de búsqueda insensible a mayúsculas
+ * y rango de fechas (Desde / Hasta).
  */
 export async function obtenerReporteHistorialAprobaciones(
   filtros: FiltrosHistorialAprobaciones = {}
@@ -129,9 +176,18 @@ export async function obtenerReporteHistorialAprobaciones(
 
     const params: Array<string | number> = []
 
-    if (filtros.fechaInicio && filtros.fechaFin) {
+    const desde = (filtros.fechaDesde || filtros.fechaInicio || "").trim()
+    const hasta = (filtros.fechaHasta || filtros.fechaFin || "").trim()
+
+    if (desde && hasta) {
       sql += ` AND h.fecha_aprobacion BETWEEN ? AND ?`
-      params.push(`${filtros.fechaInicio} 00:00:00`, `${filtros.fechaFin} 23:59:59`)
+      params.push(`${desde} 00:00:00`, `${hasta} 23:59:59`)
+    } else if (desde) {
+      sql += ` AND h.fecha_aprobacion >= ?`
+      params.push(`${desde} 00:00:00`)
+    } else if (hasta) {
+      sql += ` AND h.fecha_aprobacion <= ?`
+      params.push(`${hasta} 23:59:59`)
     }
 
     const searchClean = (filtros.search || "").trim().toLowerCase()
@@ -145,53 +201,70 @@ export async function obtenerReporteHistorialAprobaciones(
           OR LOWER(st.cedula) LIKE ?
           OR LOWER(IFNULL(h.estatus_nuevo, '')) LIKE ?
           OR LOWER(IFNULL(h.tipo_beca_snapshot, '')) LIKE ?
+          OR LOWER(IFNULL(h.observacion_admin, '')) LIKE ?
         )
       `
-      params.push(term, term, term, term, term, term)
+      params.push(term, term, term, term, term, term, term)
     }
 
     sql += ` ORDER BY h.fecha_aprobacion DESC, h.id DESC`
 
     const rows = await queryFresh<HistorialAprobacionSQLRow[]>(sql, params)
 
-    const data: HistorialAprobacionItem[] = rows.map((row) => ({
-      id: Number(row.id),
-      solicitud_id: Number(row.solicitud_id),
-      user_id: Number(row.user_id),
-      periodo_id: Number(row.periodo_id),
-      admin_id: Number(row.admin_id),
-      promedio_ciclo: formatearDecimal(row.promedio_ciclo),
-      indice_global_snapshot: formatearDecimal(row.indice_global_snapshot),
-      trimestre: Number(row.trimestre ?? 1),
-      puntaje_baremo: Number(row.puntaje_baremo_ ?? 0),
-      nivel_riesgo: String(row.nivel_riesgo || "Bajo"),
-      tipo_beca_snapshot:
-        normalizarTipoBecaOficial(row.tipo_beca_snapshot) ||
-        String(row.tipo_beca_snapshot || "No especificado"),
-      estatus_previo: String(row.estatus_previo || "---"),
-      estatus_nuevo: String(row.estatus_nuevo || "---"),
-      observacion_admin: row.observacion_admin ? String(row.observacion_admin).trim() : null,
-      materias_snapshot_json: row.materias_snapshot_json
-        ? String(row.materias_snapshot_json)
-        : null,
-      fecha_aprobacion: serializarFechaISO(row.fecha_aprobacion),
-      ip_accion: String(row.ip_accion || "127.0.0.1"),
-      email_institucional: String(row.email_institucional || "---"),
-      nombre: String(row.nombre || ""),
-      apellido: String(row.apellido || ""),
-      cedula: String(row.cedula || ""),
-      carrera: String(row.carrera || "---"),
-      periodo_nombre: String(row.periodo_nombre || "Periodo no registrado"),
-      periodo_codigo: String(row.periodo_codigo || "S/P"),
-    }))
+    const data: HistorialAprobacionItem[] = rows.map((row) => {
+      const estatusPrevio = String(row.estatus_previo || "---")
+      const estatusNuevo = String(row.estatus_nuevo || "---")
+      const observacionLimpia = row.observacion_admin
+        ? String(row.observacion_admin).trim()
+        : null
+      const cambioDepto = extraerCambioDepartamento(
+        estatusPrevio,
+        estatusNuevo,
+        observacionLimpia
+      )
+
+      return {
+        id: Number(row.id),
+        solicitud_id: Number(row.solicitud_id),
+        user_id: Number(row.user_id),
+        periodo_id: Number(row.periodo_id),
+        admin_id: Number(row.admin_id),
+        promedio_ciclo: formatearDecimal(row.promedio_ciclo),
+        indice_global_snapshot: formatearDecimal(row.indice_global_snapshot),
+        trimestre: Number(row.trimestre ?? 1),
+        puntaje_baremo: Number(row.puntaje_baremo_ ?? 0),
+        nivel_riesgo: String(row.nivel_riesgo || "Bajo"),
+        tipo_beca_snapshot:
+          normalizarTipoBecaOficial(row.tipo_beca_snapshot) ||
+          String(row.tipo_beca_snapshot || "No especificado"),
+        estatus_previo: estatusPrevio,
+        estatus_nuevo: estatusNuevo,
+        observacion_admin: observacionLimpia,
+        es_cambio_departamento: cambioDepto.esCambio,
+        departamento_anterior: cambioDepto.departamentoAnterior,
+        departamento_nuevo: cambioDepto.departamentoNuevo,
+        materias_snapshot_json: row.materias_snapshot_json
+          ? String(row.materias_snapshot_json)
+          : null,
+        fecha_aprobacion: serializarFechaISO(row.fecha_aprobacion),
+        ip_accion: String(row.ip_accion || "127.0.0.1"),
+        email_institucional: String(row.email_institucional || "---"),
+        nombre: String(row.nombre || ""),
+        apellido: String(row.apellido || ""),
+        cedula: String(row.cedula || ""),
+        carrera: String(row.carrera || "No definida"),
+        periodo_nombre: String(row.periodo_nombre || "Periodo no registrado"),
+        periodo_codigo: String(row.periodo_codigo || "S/P"),
+      }
+    })
 
     return { success: true, data }
   } catch (error) {
-    console.error("Error en obtenerReporteHistorialAprobaciones:", error)
+    console.error("❌ Error en obtenerReporteHistorialAprobaciones:", error)
     return {
       success: false,
       data: [],
-      error: "No fue posible sincronizar el historial de decisiones.",
+      error: "No se pudo consultar el historial de decisiones.",
     }
   }
 }

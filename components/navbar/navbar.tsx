@@ -1,10 +1,15 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { Menu, X, LogIn, UserPlus } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Menu, X, LogIn } from "lucide-react"
 import { getSession } from "@/lib/ActionsSession"
+import {
+  verificarEstadoLigeroEstudiante,
+  type EstadoLigeroEstudianteResponse,
+} from "@/lib/ActionsStudent"
 import { UserActions, type UserActionData } from "./UserActions"
 import { NavMenu } from "./NavMenu"
 
@@ -13,6 +18,9 @@ type NavbarSession = Awaited<ReturnType<typeof getSession>>
 interface NavbarProps {
   initialUser?: NavbarSession
 }
+
+const INTERVALO_POLLING_NAVBAR_MS = 4000
+const EVENTO_ESTATUS_ESTUDIANTE = "unimar:estudiante-estatus-actualizado"
 
 let cachedSession: NavbarSession | null = null
 let hasResolvedSession = false
@@ -26,7 +34,71 @@ function isLoggedSession(session: NavbarSession | null): boolean {
   )
 }
 
+function isStudentSession(session: NavbarSession | null): boolean {
+  return Boolean(
+    isLoggedSession(session) &&
+      session &&
+      "role" in session &&
+      session.role === "estudiante"
+  )
+}
+
+function fusionarEstadoEstudianteEnSesion(
+  prev: NavbarSession | null,
+  estado: EstadoLigeroEstudianteResponse
+): { cambiado: boolean; siguiente: NavbarSession | null } {
+  if (!prev || !isStudentSession(prev)) {
+    return { cambiado: false, siguiente: prev }
+  }
+
+  const prevRecord = prev as Record<string, unknown>
+  const prevEstatus = String(prevRecord.estatus ?? "ninguna").trim()
+  const prevSemestre = Number(prevRecord.semestre ?? prevRecord.trimestre ?? 0)
+  const prevDepto = String(prevRecord.departamentoAsignado ?? "").trim()
+  const prevObs = String(prevRecord.observacionesAdmin ?? "").trim()
+  const prevPerdida = Boolean(prevRecord.becaPerdida)
+
+  const nextEstatus = String(estado.estatus ?? "ninguna").trim()
+  const nextSemestre = Number(estado.semestre ?? prevSemestre)
+  const nextDepto = String(estado.departamentoAsignado ?? "").trim()
+  const nextObs = String(estado.observacionesAdmin ?? "").trim()
+  const nextPerdida = Boolean(estado.becaPerdida)
+
+  const cambiado =
+    prevEstatus !== nextEstatus ||
+    prevSemestre !== nextSemestre ||
+    prevDepto !== nextDepto ||
+    prevObs !== nextObs ||
+    prevPerdida !== nextPerdida
+
+  if (!cambiado) {
+    return { cambiado: false, siguiente: prev }
+  }
+
+  const puedePostular =
+    !nextPerdida &&
+    !estado.esEgresado &&
+    (nextEstatus === "ninguna" || nextEstatus === "Finalizada")
+
+  const siguiente = {
+    ...prev,
+    estatus: nextEstatus,
+    estatusBeca: nextEstatus,
+    semestre: nextSemestre,
+    trimestre: nextSemestre,
+    esEgresado: estado.esEgresado,
+    becaPerdida: nextPerdida,
+    puedePostular,
+    departamentoAsignado: estado.departamentoAsignado,
+    observacionesAdmin: estado.observacionesAdmin,
+    tipoBeca: estado.tipoBeca,
+  } as NavbarSession
+
+  return { cambiado: true, siguiente }
+}
+
 export function Navbar({ initialUser }: NavbarProps = {}) {
+  const router = useRouter()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [user, setUser] = useState<NavbarSession | null>(() => {
     if (initialUser !== undefined) {
@@ -40,6 +112,13 @@ export function Navbar({ initialUser }: NavbarProps = {}) {
     if (initialUser !== undefined) return false
     return !hasResolvedSession
   })
+
+  const userRef = useRef<NavbarSession | null>(user)
+  const pollingInFlightRef = useRef<boolean>(false)
+
+  useEffect(() => {
+    userRef.current = user
+  }, [user])
 
   useEffect(() => {
     if (initialUser !== undefined) {
@@ -74,12 +153,90 @@ export function Navbar({ initialUser }: NavbarProps = {}) {
       }
     }
 
-    checkSession()
+    void checkSession()
 
     return () => {
       isMounted = false
     }
   }, [])
+
+  const esEstudianteAutenticado = isStudentSession(user)
+
+  // Sincronización en tiempo real del estatus del estudiante en el Navbar / NavMenu (escritorio y móvil)
+  useEffect(() => {
+    if (!esEstudianteAutenticado) return
+
+    let desmontado = false
+
+    const aplicarActualizacion = (
+      estado: EstadoLigeroEstudianteResponse,
+      dispararRefresh: boolean
+    ) => {
+      if (desmontado || !estado.ok) return
+      const { cambiado, siguiente } = fusionarEstadoEstudianteEnSesion(
+        userRef.current,
+        estado
+      )
+      if (cambiado && siguiente) {
+        cachedSession = siguiente
+        userRef.current = siguiente
+        setUser(siguiente)
+        if (dispararRefresh) {
+          router.refresh()
+        }
+      }
+    }
+
+    const verificarEstatusNavbar = async () => {
+      if (desmontado || pollingInFlightRef.current) return
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+        return
+      }
+
+      pollingInFlightRef.current = true
+      try {
+        const res = await verificarEstadoLigeroEstudiante()
+        aplicarActualizacion(res, true)
+      } catch {
+        // Reintentará silenciosamente en el siguiente intervalo
+      } finally {
+        pollingInFlightRef.current = false
+      }
+    }
+
+    const timer = setInterval(() => {
+      void verificarEstatusNavbar()
+    }, INTERVALO_POLLING_NAVBAR_MS)
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void verificarEstatusNavbar()
+      }
+    }
+
+    const handleFocus = () => {
+      void verificarEstatusNavbar()
+    }
+
+    const handleCustomEvent = (event: Event) => {
+      const customEvt = event as CustomEvent<EstadoLigeroEstudianteResponse>
+      if (customEvt.detail && customEvt.detail.ok) {
+        aplicarActualizacion(customEvt.detail, false)
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+    window.addEventListener("focus", handleFocus)
+    window.addEventListener(EVENTO_ESTATUS_ESTUDIANTE, handleCustomEvent)
+
+    return () => {
+      desmontado = true
+      clearInterval(timer)
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+      window.removeEventListener("focus", handleFocus)
+      window.removeEventListener(EVENTO_ESTATUS_ESTUDIANTE, handleCustomEvent)
+    }
+  }, [esEstudianteAutenticado, router])
 
   const isAuthenticated = isLoggedSession(user)
 
@@ -134,15 +291,9 @@ export function Navbar({ initialUser }: NavbarProps = {}) {
               <div className="flex items-center gap-2">
                 <Link
                   href="/login"
-                  className="hidden sm:flex items-center gap-1 rounded-md border border-[#1e3a5f] px-3 py-1.5 text-xs font-bold text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white transition-colors"
+                  className="flex items-center gap-1 rounded-md border border-[#1e3a5f] px-3 py-1.5 text-xs font-bold text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white transition-colors"
                 >
                   <LogIn className="h-4 w-4" /> <span>Entrar</span>
-                </Link>
-                <Link
-                  href="/registro"
-                  className="flex items-center gap-1 rounded-md bg-[#d4a843] px-3 py-1.5 text-xs font-bold text-[#1e3a5f] hover:bg-[#c49a3a] shadow-sm transition-colors"
-                >
-                  <UserPlus className="h-4 w-4" /> <span>Registrarse</span>
                 </Link>
               </div>
             )}

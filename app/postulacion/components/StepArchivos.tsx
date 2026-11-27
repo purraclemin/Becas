@@ -113,31 +113,31 @@ export function StepArchivos({
 
     const extraDocs: Record<string, DocumentoRequisito[]> = {
       "BECA APRENDIZAJE": [
-        { id: "constancia_notas", label: "Constancia de Notas", desc: "Emitida por Control de Estudios (Art. 10)" }
+        { id: "constancia_notas", label: "Constancia de Notas", desc: "Emitida por Control de Estudios " }
       ],
       "BECA SOCIAL APRENDIZAJE": [
         ...(esPrimerTrimestre
-          ? [{ id: "notas_certificadas", label: "Notas Certificadas", desc: "7to, 8to, 9no y 1er año de Media General (Art. 12)" }]
+          ? [{ id: "notas_certificadas", label: "Notas Certificadas", desc: "7to, 8to, 9no y 1er año de Media General " }]
           : [])
       ],
       "BECA POR DISCAPACIDAD": [
         ...(esPrimerTrimestre
-          ? [{ id: "notas_certificadas", label: "Notas Certificadas", desc: "7to a 1er año — Promedio mínimo 16 pts (Art. 15)" }]
+          ? [{ id: "notas_certificadas", label: "Notas Certificadas", desc: "7to a 1er año — Promedio mínimo 16 pts " }]
           : []),
-        { id: "informe_medico", label: "Informe Médico", desc: "Emitido por especialista de salud (Art. 15)" },
-        { id: "carnet_discapacidad", label: "Carnet de Discapacidad", desc: "Documento oficial vigente (Art. 15)" }
+        { id: "informe_medico", label: "Informe Médico", desc: "Emitido por especialista de salud " },
+        { id: "carnet_discapacidad", label: "Carnet de Discapacidad", desc: "Documento oficial vigente " }
       ],
       "BECA A LA EXCELENCIA ACADÉMICA": [
-        { id: "constancia_notas", label: "Constancia de Notas Acumuladas", desc: "Emitida por Control de Estudios (Art. 8)" }
+        { id: "constancia_notas", label: "Constancia de Notas Acumuladas", desc: "Emitida por Control de Estudios " }
       ],
       "AYUDA ECONÓMICA PARA ESTUDIANTES CON FAMILIARES": [
-        { id: "documentos_filiacion", label: "Documentos de Filiación", desc: "Partida de nacimiento o nexo familiar (Art. 20)" }
+        { id: "documentos_filiacion", label: "Documentos de Filiación", desc: "Partida de nacimiento o nexo familiar " }
       ],
       "AYUDA ECONÓMICA PARA HIJOS DE TRABAJADORES": [
-        { id: "documentos_filiacion", label: "Documentos de Filiación", desc: "Comprobante de parentesco directo (Art. 19)" }
+        { id: "documentos_filiacion", label: "Documentos de Filiación", desc: "Comprobante de parentesco directo " }
       ],
       "AYUDA ECONÓMICA POR ACTIVIDADES DEPORTIVAS, CULTURALES Y ORFEÓN": [
-        { id: "constancia_club", label: "Constancia de Pertenencia", desc: "Avalada por club deportivo, cultura u orfeón (Art. 21)" }
+        { id: "constancia_club", label: "Constancia de Pertenencia", desc: "Avalada por club deportivo, cultura u orfeón " }
       ]
     };
 

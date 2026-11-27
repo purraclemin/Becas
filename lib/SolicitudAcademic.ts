@@ -22,6 +22,66 @@ export interface MateriaNotaEntrada {
   nota: number | string;
 }
 
+interface MetadatosPeriodo {
+  codigo: string;
+  nombre: string;
+  inicio: string;
+  fin: string;
+}
+
+function construirMetadatosPorCodigo(codigoRaw: string): MetadatosPeriodo | null {
+  const limpio = String(codigoRaw || '').trim().toUpperCase();
+  const match = /^(\d{4})-(I|II|III)$/.exec(limpio);
+  if (!match) return null;
+
+  const anio = parseInt(match[1], 10);
+  const lapso = match[2];
+
+  if (!Number.isInteger(anio) || anio < 2000 || anio > 2100) return null;
+
+  const mesesDesc =
+    lapso === 'I' ? 'Ene-Abr' : lapso === 'II' ? 'May-Ago' : 'Sep-Dic';
+  const mesInicio =
+    lapso === 'I' ? '01-01' : lapso === 'II' ? '05-01' : '09-01';
+  const mesFin =
+    lapso === 'I' ? '04-30' : lapso === 'II' ? '08-31' : '12-31';
+
+  return {
+    codigo: `${anio}-${lapso}`,
+    nombre: `Periodo ${lapso} ${anio} (${mesesDesc})`,
+    inicio: `${anio}-${mesInicio}`,
+    fin: `${anio}-${mesFin}`,
+  };
+}
+
+function construirMetadatosPorCalendario(mes: number, anio: number): MetadatosPeriodo {
+  if (mes === 12 || mes <= 3) {
+    const targetAnio = mes === 12 ? anio + 1 : anio;
+    return {
+      codigo: `${targetAnio}-I`,
+      nombre: `Periodo I ${targetAnio} (Ene-Abr)`,
+      inicio: `${targetAnio}-01-01`,
+      fin: `${targetAnio}-04-30`,
+    };
+  }
+
+  if (mes >= 4 && mes <= 7) {
+    return {
+      codigo: `${anio}-II`,
+      nombre: `Periodo II ${anio} (May-Ago)`,
+      inicio: `${anio}-05-01`,
+      fin: `${anio}-08-31`,
+    };
+  }
+
+  return {
+    codigo: `${anio}-III`,
+    nombre: `Periodo III ${anio} (Sep-Dic)`,
+    inicio: `${anio}-09-01`,
+    fin: `${anio}-12-31`,
+  };
+}
+
 /**
  * Recalcula students.indice_global priorizando siempre `record_academico`
  * como Única Fuente de Verdad. Solo recurre a `solicitudes.materias_json`
@@ -119,47 +179,39 @@ export async function actualizarIndiceGlobal(
 }
 
 /**
- * Determina, crea o activa el periodo académico correspondiente al calendario real
- * o al mes simulado en Modo Prueba.
+ * Determina, crea o activa el periodo académico objetivo:
+ * 1) Si existe un periodo cronológico simulado activo (`periodo_simulado_codigo`, ej. 2027-I, 2027-II...),
+ *    lo respeta sin retroceder al año calendario del servidor.
+ * 2) Compatibilidad con `mes_simulado` heredado si no hay código secuencial definido.
+ * 3) En modo normal, activa el periodo real correspondiente al calendario actual.
  */
 export async function obtenerOCrearPeriodoObjetivo(): Promise<number> {
-  const { activo, mesSimulado } = await getModoPruebaStatus();
+  const { activo, mesSimulado, periodoSimuladoCodigo } = await getModoPruebaStatus();
   const fecha = new Date();
 
-  const mes = activo && mesSimulado ? parseInt(mesSimulado, 10) : fecha.getMonth() + 1;
-  const anio = fecha.getFullYear();
+  let meta: MetadatosPeriodo | null = null;
 
-  let codigo = '';
-  let nombre = '';
-  let fInicio = '';
-  let fFin = '';
-
-  if (mes === 12 || mes <= 3) {
-    const targetAnio = mes === 12 ? anio + 1 : anio;
-    codigo = `${targetAnio}-I`;
-    nombre = `Periodo I ${targetAnio} (Ene-Abr)`;
-    fInicio = `${targetAnio}-01-01`;
-    fFin = `${targetAnio}-04-30`;
-  } else if (mes >= 4 && mes <= 7) {
-    codigo = `${anio}-II`;
-    nombre = `Periodo II ${anio} (May-Ago)`;
-    fInicio = `${anio}-05-01`;
-    fFin = `${anio}-08-31`;
-  } else {
-    codigo = `${anio}-III`;
-    nombre = `Periodo III ${anio} (Sep-Dic)`;
-    fInicio = `${anio}-09-01`;
-    fFin = `${anio}-12-31`;
+  if (activo && periodoSimuladoCodigo) {
+    meta = construirMetadatosPorCodigo(periodoSimuladoCodigo);
   }
 
-  const fechaInicioObj = new Date(`${fInicio}T00:00:00`);
+  if (!meta) {
+    const mes =
+      activo && mesSimulado ? parseInt(mesSimulado, 10) : fecha.getMonth() + 1;
+    const mesValido = Number.isInteger(mes) && mes >= 1 && mes <= 12
+      ? mes
+      : fecha.getMonth() + 1;
+    meta = construirMetadatosPorCalendario(mesValido, fecha.getFullYear());
+  }
+
+  const fechaInicioObj = new Date(`${meta.inicio}T00:00:00`);
   const fechaLimiteObj = new Date(fechaInicioObj);
   fechaLimiteObj.setDate(fechaInicioObj.getDate() + 14);
   const fLimite = fechaLimiteObj.toISOString().split('T')[0];
 
   const [rows] = await db.execute<PeriodoExistenteRow[]>(
     'SELECT id, es_actual FROM periodos_academicos WHERE codigo = ? LIMIT 1',
-    [codigo]
+    [meta.codigo]
   );
 
   let periodId = 0;
@@ -181,7 +233,7 @@ export async function obtenerOCrearPeriodoObjetivo(): Promise<number> {
         (codigo, nombre, fecha_inicio, fecha_fin, fecha_limite_solicitud, es_actual)
       VALUES (?, ?, ?, ?, ?, 1)
       `,
-      [codigo, nombre, fInicio, fFin, fLimite]
+      [meta.codigo, meta.nombre, meta.inicio, meta.fin, fLimite]
     );
     periodId = Number(result.insertId);
   }
@@ -200,8 +252,9 @@ export async function obtenerSiguientePeriodoData(codigoActual: string): Promise
 }> {
   const [anioStr, lapso] = codigoActual.split('-');
   const anio = parseInt(anioStr, 10);
+  const anioBase = Number.isInteger(anio) && anio > 0 ? anio : new Date().getFullYear();
   let nuevoLapso = '';
-  let nuevoAnio = anio;
+  let nuevoAnio = anioBase;
 
   if (lapso === 'I') {
     nuevoLapso = 'II';
@@ -209,7 +262,7 @@ export async function obtenerSiguientePeriodoData(codigoActual: string): Promise
     nuevoLapso = 'III';
   } else if (lapso === 'III') {
     nuevoLapso = 'I';
-    nuevoAnio = anio + 1;
+    nuevoAnio = anioBase + 1;
   } else {
     nuevoLapso = 'I';
   }

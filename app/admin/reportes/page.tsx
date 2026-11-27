@@ -30,19 +30,17 @@ interface ReporteCardConfig {
 const reportes: ReadonlyArray<ReporteCardConfig> = [
   {
     titulo: "Expedientes En Revisión",
-    descripcion: "Listado con ambos baremos (Estudiante/Admin), PDF, Excel y envío directo a Secretaría General.",
+    descripcion: "Listado Estudiantes en , PDF, Excel y envío directo a Secretaría General.",
     icon: FileSearch,
     color: "bg-[#1e3a5f]",
     link: "/admin/reportes/en-revision",
-    badge: "Secretaría Gral."
   },
   {
     titulo: "Becarios por Departamento",
-    descripcion: "Distribución desplegable de beneficiarios asignados por cada dependencia universitaria.",
+    descripcion: "Distribución desplegable de beneficiarios aprobados del periodo actual por dependencia.",
     icon: Building2,
     color: "bg-[#d4a843]",
     link: "/admin/reportes/departamentos",
-    badge: "Por Área"
   },
   {
     titulo: "Solicitudes por Fecha",
@@ -60,17 +58,18 @@ const reportes: ReadonlyArray<ReporteCardConfig> = [
   },
   {
     titulo: "Becas Aprobadas",
-    descripcion: "Reporte histórico de fechas de aprobación y activación.",
+    descripcion: "Reporte por periodo vigente e histórico de fechas de aprobación y activación.",
     icon: CheckCircle2,
     color: "bg-emerald-500",
     link: "/admin/reportes/aprobadas"
   },
   {
-    titulo: "Becas Rechazadas",
-    descripcion: "Motivos y fechas de rechazo de solicitudes.",
+    titulo: "Rechazadas / Finalizadas",
+    descripcion: "Cierres de expedientes: solicitudes rechazadas, bajas y finalizaciones por egreso o ciclo académico.",
     icon: XCircle,
     color: "bg-rose-500",
-    link: "/admin/reportes/rechazadas"
+    link: "/admin/reportes/rechazadas",
+
   },
   {
     titulo: "Auditoría de Administradores",
@@ -88,17 +87,18 @@ const reportes: ReadonlyArray<ReporteCardConfig> = [
   },
   {
     titulo: "Distribución por Carreras",
-    descripcion: "Análisis demográfico de becados agrupados por carrera.",
+    descripcion: "Análisis demográfico Sde estudiantes agrupados por carrera.",
     icon: GraduationCap,
     color: "bg-cyan-500",
-    link: "/admin/reportes/carreras"
+    link: "/admin/reportes/carreras",
+  
   },
   {
     titulo: "Tipos de Beca",
-    descripcion: "Desglose operativo por categoría de beca.",
+    descripcion: "Estudiantes Becado por modalidad y periodo (aprobados vigentes e histórico por ciclo).",
     icon: Award,
     color: "bg-violet-500",
-    link: "/admin/reportes/tipos-beca"
+    link: "/admin/reportes/tipos-beca",
   }
 ]
 

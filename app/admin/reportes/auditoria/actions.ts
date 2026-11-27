@@ -16,12 +16,19 @@ interface AuditoriaSQLRow extends RowDataPacket {
   fecha_aprobacion: Date | string | null
   estatus_previo: string | null
   estatus_nuevo: string | null
+  observacion_admin: string | null
   ip_accion: string | null
   admin_email: string | null
   admin_role: string | null
   alumno_nombre: string
   alumno_apellido: string
   alumno_cedula: string
+}
+
+export interface FiltrosReporteAuditoria {
+  search?: string
+  fechaDesde?: string
+  fechaHasta?: string
 }
 
 export interface ReporteAuditoriaItem {
@@ -32,6 +39,10 @@ export interface ReporteAuditoriaItem {
   admin_email: string
   estatus_previo: string
   estatus_nuevo: string
+  observacion_admin: string | null
+  es_cambio_departamento: boolean
+  departamento_anterior: string | null
+  departamento_nuevo: string | null
   ip_accion: string
   fecha_aprobacion: string
   alumno_nombre: string
@@ -90,20 +101,64 @@ function resolverActorAuditoria(
   }
 }
 
+function extraerCambioDepartamento(
+  estatusPrevio: string,
+  estatusNuevo: string,
+  observacion: string | null
+): {
+  esCambio: boolean
+  departamentoAnterior: string | null
+  departamentoNuevo: string | null
+} {
+  const obs = (observacion || "").trim()
+  const match = /^Reasignaci[oó]n de Departamento:\s*(.+?)\s*(?:→|->)\s*([^|\r\n]+)/i.exec(obs)
+
+  if (match) {
+    return {
+      esCambio: true,
+      departamentoAnterior: match[1].trim(),
+      departamentoNuevo: match[2].trim(),
+    }
+  }
+
+  const esAprobadaAAprobada =
+    estatusPrevio.trim().toLowerCase() === "aprobada" &&
+    estatusNuevo.trim().toLowerCase() === "aprobada" &&
+    (obs.toLowerCase().includes("departamento") || obs === "")
+
+  if (esAprobadaAAprobada) {
+    return {
+      esCambio: true,
+      departamentoAnterior: null,
+      departamentoNuevo: null,
+    }
+  }
+
+  return {
+    esCambio: false,
+    departamentoAnterior: null,
+    departamentoNuevo: null,
+  }
+}
+
 /**
- * Consulta la bitácora completa de auditoría (incluyendo acciones automáticas con admin_id = 0)
- * clasificando explícitamente al responsable en:
- * - Secretaría General
- * - Sistema
- * - Bienestar Estudiantil
+ * Consulta la bitácora completa de auditoría (incluyendo acciones automáticas con admin_id = 0
+ * y trazabilidad de reasignaciones de departamento) con búsqueda insensible a mayúsculas
+ * y filtro de rango de fechas (Desde / Hasta).
  */
 export async function obtenerReporteAuditoria(
-  search?: string
+  entrada?: string | FiltrosReporteAuditoria
 ): Promise<RespuestaReporteAuditoria> {
   try {
-    const limpio = (search || "").trim().toLowerCase()
+    const filtros: FiltrosReporteAuditoria =
+      typeof entrada === "string" ? { search: entrada } : entrada || {}
+
+    const limpio = (filtros.search || "").trim().toLowerCase()
+    const desde = (filtros.fechaDesde || "").trim()
+    const hasta = (filtros.fechaHasta || "").trim()
+
+    const condiciones: string[] = []
     const params: Array<string | number> = []
-    let whereClause = ""
 
     const actorSqlExpr = `
       CASE
@@ -113,20 +168,32 @@ export async function obtenerReporteAuditoria(
       END
     `
 
+    if (desde && hasta) {
+      condiciones.push(`h.fecha_aprobacion BETWEEN ? AND ?`)
+      params.push(`${desde} 00:00:00`, `${hasta} 23:59:59`)
+    } else if (desde) {
+      condiciones.push(`h.fecha_aprobacion >= ?`)
+      params.push(`${desde} 00:00:00`)
+    } else if (hasta) {
+      condiciones.push(`h.fecha_aprobacion <= ?`)
+      params.push(`${hasta} 23:59:59`)
+    }
+
     if (limpio !== "") {
       const term = `%${limpio}%`
-      whereClause = `
-        WHERE (
-          LOWER(st.nombre) LIKE ?
-          OR LOWER(st.apellido) LIKE ?
-          OR LOWER(CONCAT(st.nombre, ' ', st.apellido)) LIKE ?
-          OR LOWER(st.cedula) LIKE ?
-          OR LOWER(IFNULL(u.email, 'sistema@unimar.edu.ve')) LIKE ?
-          OR ${actorSqlExpr} LIKE ?
-        )
-      `
-      params.push(term, term, term, term, term, term)
+      condiciones.push(`(
+        LOWER(st.nombre) LIKE ?
+        OR LOWER(st.apellido) LIKE ?
+        OR LOWER(CONCAT(st.nombre, ' ', st.apellido)) LIKE ?
+        OR LOWER(st.cedula) LIKE ?
+        OR LOWER(IFNULL(u.email, 'sistema@unimar.edu.ve')) LIKE ?
+        OR LOWER(IFNULL(h.observacion_admin, '')) LIKE ?
+        OR ${actorSqlExpr} LIKE ?
+      )`)
+      params.push(term, term, term, term, term, term, term)
     }
+
+    const whereClause = condiciones.length > 0 ? `WHERE ${condiciones.join(" AND ")}` : ""
 
     const sql = `
       SELECT
@@ -135,6 +202,7 @@ export async function obtenerReporteAuditoria(
         h.fecha_aprobacion,
         h.estatus_previo,
         h.estatus_nuevo,
+        h.observacion_admin,
         h.ip_accion,
         u.email AS admin_email,
         u.role AS admin_role,
@@ -157,6 +225,16 @@ export async function obtenerReporteAuditoria(
         row.admin_email,
         row.admin_role
       )
+      const estatusPrevio = String(row.estatus_previo || "---")
+      const estatusNuevo = String(row.estatus_nuevo || "---")
+      const observacionLimpia = row.observacion_admin
+        ? String(row.observacion_admin).trim()
+        : null
+      const cambioDepto = extraerCambioDepartamento(
+        estatusPrevio,
+        estatusNuevo,
+        observacionLimpia
+      )
 
       return {
         id: Number(row.id),
@@ -164,8 +242,12 @@ export async function obtenerReporteAuditoria(
         actor_nombre: actor.actor_nombre,
         actor_tipo: actor.actor_tipo,
         admin_email: actor.admin_email,
-        estatus_previo: String(row.estatus_previo || "---"),
-        estatus_nuevo: String(row.estatus_nuevo || "---"),
+        estatus_previo: estatusPrevio,
+        estatus_nuevo: estatusNuevo,
+        observacion_admin: observacionLimpia,
+        es_cambio_departamento: cambioDepto.esCambio,
+        departamento_anterior: cambioDepto.departamentoAnterior,
+        departamento_nuevo: cambioDepto.departamentoNuevo,
         ip_accion: String(row.ip_accion || "127.0.0.1"),
         fecha_aprobacion: serializarFechaISO(row.fecha_aprobacion),
         alumno_nombre: String(row.alumno_nombre || ""),
@@ -176,11 +258,11 @@ export async function obtenerReporteAuditoria(
 
     return { success: true, data }
   } catch (error) {
-    console.error("Error en obtenerReporteAuditoria:", error)
+    console.error("❌ Error en obtenerReporteAuditoria:", error)
     return {
       success: false,
       data: [],
-      error: "No fue posible consultar la bitácora de auditoría.",
+      error: "No se pudo consultar la bitácora de auditoría.",
     }
   }
 }

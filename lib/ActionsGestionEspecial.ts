@@ -731,7 +731,7 @@ async function otorgarExcelenciaAGanador(
   }
 
   const detalleDesempate = notaDesempate ? ` (${notaDesempate})` : '';
-  const observacion = `Asignación automática de Beca a la Excelencia Académica (Art. 8 y 32): mayor Índice Académico Acumulado (${indiceGlobalReal.toFixed(
+  const observacion = `Asignación automática de Beca a la Excelencia Académica : mayor Índice Académico Acumulado (${indiceGlobalReal.toFixed(
     2
   )} pts) en ${ganador.carrera}${detalleDesempate}.${textoRespaldo}`;
 
@@ -767,7 +767,7 @@ async function otorgarExcelenciaAGanador(
         fecha_registro, fecha_decision, revisado_por
       ) VALUES (
         ?, ?, ?, 'BECA A LA EXCELENCIA ACADÉMICA',
-        ?, 'Asignación automática por mayor Índice Académico Acumulado de la carrera (Art. 8 y 32).',
+        ?, 'Asignación automática por mayor Índice Académico Acumulado de la carrera.',
         ?, 'Aprobada',
         ?, NULL,
         NOW(), NOW(), ?
@@ -920,22 +920,66 @@ export async function ejecutarRotacionExcelenciaEnPeriodo(
       };
     }
 
-    // 1. Mantener sincronizado el veto Art. 28 y los récords faltantes antes de calcular el ranking
-    await db.execute<ResultSetHeader>(
+    // 1. Verificación ligera antes de sincronizar veto Art. 28 o récords faltantes (fast-path idempotente)
+    const [chequeoSyncRows] = await db.execute<
+      Array<RowDataPacket & { hay_vetos: number; hay_sin_record: number }>
+    >(
       `
-      UPDATE students st
-      SET st.beca_perdida = 1
-      WHERE IFNULL(st.beca_perdida, 0) = 0
-        AND EXISTS (
+      SELECT
+        EXISTS (
           SELECT 1
-          FROM solicitudes s_rej
-          WHERE s_rej.user_id = st.id
-            AND LOWER(TRIM(s_rej.estatus)) IN ('rechazada', 'rechazado')
-        )
-      `
+          FROM students st
+          WHERE IFNULL(st.beca_perdida, 0) = 0
+            AND EXISTS (
+              SELECT 1
+              FROM solicitudes s_rej
+              WHERE s_rej.user_id = st.id
+                AND LOWER(TRIM(s_rej.estatus)) IN ('rechazada', 'rechazado')
+            )
+        ) AS hay_vetos,
+        EXISTS (
+          SELECT 1
+          FROM students st
+          JOIN carreras c ON LOWER(TRIM(st.carrera)) = LOWER(TRIM(c.nombre))
+          WHERE st.semestre >= ?
+            AND st.semestre < 13
+            AND IFNULL(st.beca_perdida, 0) = 0
+            AND EXISTS (
+              SELECT 1
+              FROM pensum_materias pm
+              WHERE pm.carrera_id = c.id
+                AND pm.trimestre_ubicacion = LEAST(12, st.semestre - 1)
+            )
+            AND NOT EXISTS (
+              SELECT 1
+              FROM record_academico ra
+              WHERE ra.student_id = st.id
+                AND ra.trimestre_cursado = LEAST(12, st.semestre - 1)
+            )
+        ) AS hay_sin_record
+      `,
+      [TRIMESTRE_MINIMO_EXCELENCIA]
     );
 
-    await sincronizarTodosLosRecordsFaltantes(300);
+    if (Number(chequeoSyncRows[0]?.hay_vetos ?? 0) === 1) {
+      await db.execute<ResultSetHeader>(
+        `
+        UPDATE students st
+        SET st.beca_perdida = 1
+        WHERE IFNULL(st.beca_perdida, 0) = 0
+          AND EXISTS (
+            SELECT 1
+            FROM solicitudes s_rej
+            WHERE s_rej.user_id = st.id
+              AND LOWER(TRIM(s_rej.estatus)) IN ('rechazada', 'rechazado')
+          )
+        `
+      );
+    }
+
+    if (Number(chequeoSyncRows[0]?.hay_sin_record ?? 0) === 1) {
+      await sincronizarTodosLosRecordsFaltantes(300);
+    }
 
     const variantesExcelencia = obtenerVariantesTipoBeca('BECA A LA EXCELENCIA ACADÉMICA');
     const placeholdersEx = variantesExcelencia.map(() => '?').join(', ');
@@ -1462,7 +1506,7 @@ export async function registrarBecarioConcursoSocial(
   if (!Number.isFinite(promedioBachillerato) || promedioBachillerato < 18 || promedioBachillerato > 20) {
     return {
       success: false,
-      error: 'La Beca Social Aprendizaje exige promedio de bachillerato entre 18.00 y 20.00 puntos (Art. 6 y 11).',
+      error: 'La Beca Social Aprendizaje exige promedio de bachillerato entre 18.00 y 20.00 puntos.',
     };
   }
   if (ueProcedencia.length < 3) {
@@ -1501,7 +1545,7 @@ export async function registrarBecarioConcursoSocial(
     if (Number(activosRows[0]?.total || 0) >= 60) {
       return {
         success: false,
-        error: 'Cupo máximo alcanzado: ya existen 60 beneficiarios activos de Beca Social Aprendizaje en este periodo (Art. 6 Par. 2°).',
+        error: 'Cupo máximo alcanzado: ya existen 60 beneficiarios activos de Beca Social Aprendizaje en este periodo.',
       };
     }
 
@@ -1529,7 +1573,7 @@ export async function registrarBecarioConcursoSocial(
     if (Number(nuevosAnioRows[0]?.total || 0) >= 10) {
       return {
         success: false,
-        error: `Cupo anual de concurso agotado: ya se registraron 10 nuevas Becas Sociales Aprendizaje en ${anioActual} (Art. 6 Par. 2°).`,
+        error: `Cupo anual de concurso agotado: ya se registraron 10 nuevas Becas Sociales Aprendizaje en ${anioActual}.`,
       };
     }
 
@@ -1561,26 +1605,11 @@ export async function registrarBecarioConcursoSocial(
 
       if (existStRows.length > 0) {
         const st = existStRows[0];
-        if (Number(st.beca_perdida) === 1) {
-          await connection.rollback();
-          return {
-            success: false,
-            error: 'El estudiante posee una suspensión definitiva previa (Art. 28) y no puede ser registrado.',
-          };
-        }
-        if (st.solicitud_actual_id !== null) {
-          await connection.rollback();
-          return {
-            success: false,
-            error: `El estudiante ya posee una solicitud en el periodo vigente (${st.tipo_beca_actual} — ${st.estatus_actual}).`,
-          };
-        }
-        studentId = Number(st.id);
-
-        await connection.execute<ResultSetHeader>(
-          `UPDATE students SET ha_tenido_beca = 1 WHERE id = ?`,
-          [studentId]
-        );
+        await connection.rollback();
+        return {
+          success: false,
+          error: `Registro bloqueado: la cédula V-${st.cedula} ya existe en la base de datos (${st.nombre} ${st.apellido} — ${st.carrera}). El Concurso Social es exclusivo para nuevos ingresos sin registro previo.`,
+        };
       } else {
         const [emailDup] = await connection.execute<ExistingIdRow[]>(
           `SELECT id FROM users WHERE LOWER(TRIM(email)) = ? LIMIT 1`,
@@ -1630,8 +1659,8 @@ export async function registrarBecarioConcursoSocial(
 
       const observacionConcurso =
         input.observaciones_concurso && input.observaciones_concurso.trim() !== ''
-          ? `Concurso Anual Beca Social Aprendizaje (Art. 6): ${input.observaciones_concurso.trim()} | Plantel: ${ueProcedencia} | Prom. Bachillerato: ${promedioBachillerato.toFixed(2)} pts.`
-          : `Beneficiario seleccionado por Concurso Anual de Beca Social Aprendizaje (Art. 6, aprobado por Secretaría General y Consejo Superior). Plantel de procedencia: ${ueProcedencia}. Promedio de bachillerato: ${promedioBachillerato.toFixed(2)} pts.`;
+          ? `Concurso Anual Beca Social Aprendizaje (A: ${input.observaciones_concurso.trim()} | Plantel: ${ueProcedencia} | Prom. Bachillerato: ${promedioBachillerato.toFixed(2)} pts.`
+          : `Beneficiario seleccionado por Concurso Anual de Beca Social Aprendizaje, aprobado por Secretaría General y Consejo Superior). Plantel de procedencia: ${ueProcedencia}. Promedio de bachillerato: ${promedioBachillerato.toFixed(2)} pts.`;
 
       const materiasJson = JSON.stringify({
         trimestre: 1,

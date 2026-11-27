@@ -1,7 +1,7 @@
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { GraduationCap, Mail, IdCard, CalendarDays, BookOpen, Clock, User2, Trophy, LucideIcon } from "lucide-react"
+import { GraduationCap, Mail, IdCard, CalendarDays, BookOpen, Clock, User2, Trophy, Building2, LucideIcon } from "lucide-react"
 
 const SEMESTRE_EGRESADO = 13
 
@@ -16,6 +16,8 @@ export interface IAcademicInfoUser {
   esEgresado?: boolean;
   periodoActual?: string;
   indiceGlobal?: number | string | null;
+  estatus?: string | null;
+  departamentoAsignado?: string | null;
 }
 
 interface IAcademicInfoProps {
@@ -36,6 +38,14 @@ export function AcademicInfo({ user }: IAcademicInfoProps) {
   const nivelAcademicoTexto = esEgresado
     ? "Egresado"
     : `${user.trimestre || user.semestre || "0"}° Trimestre`;
+
+  const estatusNorm = String(user.estatus || "").trim().toLowerCase();
+  const departamentoLimpio =
+    user.departamentoAsignado && user.departamentoAsignado.trim() !== ""
+      ? user.departamentoAsignado.trim()
+      : null;
+  const mostrarDepartamento =
+    estatusNorm.includes("aprob") || Boolean(departamentoLimpio);
 
   return (
     <Card className="border-none shadow-2xl bg-white overflow-hidden">
@@ -100,6 +110,15 @@ export function AcademicInfo({ user }: IAcademicInfoProps) {
             value={user.id ? user.id.toString().slice(0, 8).toUpperCase() : "---"}
             isUppercase
           />
+
+          {mostrarDepartamento && (
+            <InfoItem
+              icon={Building2}
+              label="Departamento Asignado"
+              value={departamentoLimpio || "Por asignar"}
+              isUppercase
+            />
+          )}
         </div>
       </CardContent>
     </Card>

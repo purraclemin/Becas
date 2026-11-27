@@ -60,6 +60,8 @@ export interface FiltrosReporteEnRevision {
   search?: string
   carrera?: string
   tipoBeca?: string
+  fechaDesde?: string
+  fechaHasta?: string
 }
 
 export interface ExpedienteEnRevisionItem {
@@ -110,12 +112,96 @@ export interface RespuestaEnvioSecretaria {
   success: boolean
   destinatario?: string
   totalEnviados?: number
+  totalDisponibles?: number
+  totalModalidadesEnviadas?: number
+  maxPorTipoBeca?: number
+  limiteAplicado?: boolean
   fechaEnvio?: string
   message?: string
   error?: string
 }
 
+interface ResumenEnvioModalidad {
+  modalidad: string
+  enviados: number
+  totalEnRevision: number
+}
+
 const EMAIL_SECRETARIA_DEFECTO = "SecretariaGeneral@unimar.edu.ve"
+const MAX_EXPEDIENTES_POR_TIPO_BECA = 5
+
+/**
+ * Regla estricta UNIMAR:
+ * 1° Mejor Promedio Trimestral (DESC)
+ * 2° Mayor Puntaje de Baremo Socioeconómico (Admin, respaldo Estudiante, DESC)
+ * 3° Mayor Índice Global (DESC)
+ * 4° Apellido y Nombre (ASC)
+ */
+function compararPrioridadEnRevision(
+  a: ExpedienteEnRevisionItem,
+  b: ExpedienteEnRevisionItem
+): number {
+  const promDiff = (parseFloat(b.promedio_notas) || 0) - (parseFloat(a.promedio_notas) || 0)
+  if (Math.abs(promDiff) >= 0.005) return promDiff
+
+  const baremoA = a.puntaje_admin ?? a.puntaje_estudiante ?? -1
+  const baremoB = b.puntaje_admin ?? b.puntaje_estudiante ?? -1
+  if (baremoB !== baremoA) return baremoB - baremoA
+
+  const globalDiff = (parseFloat(b.indice_global) || 0) - (parseFloat(a.indice_global) || 0)
+  if (Math.abs(globalDiff) >= 0.005) return globalDiff
+
+  const apDiff = a.apellido.localeCompare(b.apellido, "es")
+  if (apDiff !== 0) return apDiff
+  return a.nombre.localeCompare(b.nombre, "es")
+}
+
+/**
+ * Selecciona los primeros N expedientes (Top 5) por cada tipo de beca
+ * respetando estrictamente 1° Promedio DESC y 2° Puntaje de Baremo DESC.
+ */
+function seleccionarTopPorModalidad(
+  items: ExpedienteEnRevisionItem[],
+  maxPorModalidad: number = MAX_EXPEDIENTES_POR_TIPO_BECA
+): {
+  seleccionados: ExpedienteEnRevisionItem[]
+  resumenPorModalidad: ResumenEnvioModalidad[]
+  totalModalidades: number
+  limiteAplicado: boolean
+} {
+  const grupos = new Map<string, ExpedienteEnRevisionItem[]>()
+  for (const item of items) {
+    const clave = item.tipo_beca || "No especificado"
+    const lista = grupos.get(clave) ?? []
+    lista.push(item)
+    grupos.set(clave, lista)
+  }
+
+  const modalidadesOrdenadas = Array.from(grupos.entries()).sort((a, b) =>
+    a[0].localeCompare(b[0], "es")
+  )
+
+  const seleccionados: ExpedienteEnRevisionItem[] = []
+  const resumenPorModalidad: ResumenEnvioModalidad[] = []
+
+  for (const [modalidad, lista] of modalidadesOrdenadas) {
+    const ordenados = [...lista].sort(compararPrioridadEnRevision)
+    const top = ordenados.slice(0, maxPorModalidad)
+    seleccionados.push(...top)
+    resumenPorModalidad.push({
+      modalidad,
+      enviados: top.length,
+      totalEnRevision: lista.length,
+    })
+  }
+
+  return {
+    seleccionados,
+    resumenPorModalidad,
+    totalModalidades: resumenPorModalidad.length,
+    limiteAplicado: seleccionados.length < items.length,
+  }
+}
 
 function escaparHtml(texto: string): string {
   return texto
@@ -196,6 +282,21 @@ export async function obtenerReporteEnRevision(
     let whereClause = ` WHERE LOWER(TRIM(s.estatus)) IN ('en revisión', 'en revision')`
     const params: Array<string | number> = []
 
+    const desde = (filtros.fechaDesde || "").trim()
+    const hasta = (filtros.fechaHasta || "").trim()
+    const fechaExpr = `COALESCE(s.fecha_revision, s.fecha_registro)`
+
+    if (desde && hasta) {
+      whereClause += ` AND ${fechaExpr} BETWEEN ? AND ?`
+      params.push(`${desde} 00:00:00`, `${hasta} 23:59:59`)
+    } else if (desde) {
+      whereClause += ` AND ${fechaExpr} >= ?`
+      params.push(`${desde} 00:00:00`)
+    } else if (hasta) {
+      whereClause += ` AND ${fechaExpr} <= ?`
+      params.push(`${hasta} 23:59:59`)
+    }
+
     const searchClean = (filtros.search || "").trim().toLowerCase()
     if (searchClean !== "") {
       const term = `%${searchClean}%`
@@ -268,7 +369,12 @@ export async function obtenerReporteEnRevision(
         p.nombre AS periodo_origen_nombre,
         s.fecha_registro
       FROM solicitudes s
-      JOIN students st ON s.user_id = st.id
+      INNER JOIN (
+        SELECT user_id, MAX(id) AS last_id
+        FROM solicitudes
+        GROUP BY user_id
+      ) ult ON s.id = ult.last_id
+      INNER JOIN students st ON s.user_id = st.id
       LEFT JOIN periodos_academicos p ON s.periodo_id = p.id
       LEFT JOIN estudios_socioeconomicos e_est
         ON e_est.id = (
@@ -396,7 +502,8 @@ export async function obtenerReporteEnRevision(
 
 async function construirBufferExcelEnRevision(
   rows: ExpedienteEnRevisionItem[],
-  periodoLabel: string
+  periodoLabel: string,
+  notaSeleccion: string
 ): Promise<Buffer> {
   const moduloImportado = (await import("exceljs")) as unknown as ExcelJSModuleShape
   const WorkbookConstructor =
@@ -467,7 +574,7 @@ async function construirBufferExcelEnRevision(
 
   const fechaEmision = new Date().toLocaleDateString("es-VE")
   const f3 = ws.addRow([
-    `PERIODO VIGENTE: ${periodoLabel.toUpperCase()}   |   TOTAL EXPEDIENTES: ${rows.length}   |   EMISIÓN: ${fechaEmision}`,
+    `PERIODO VIGENTE: ${periodoLabel.toUpperCase()}   |   ${notaSeleccion.toUpperCase()}   |   TOTAL EXPEDIENTES: ${rows.length}   |   EMISIÓN: ${fechaEmision}`,
   ])
   ws.mergeCells(3, 1, 3, totalCols)
   f3.height = 18
@@ -506,7 +613,7 @@ async function construirBufferExcelEnRevision(
       `V-${r.cedula}`,
       r.tipo_beca.toUpperCase(),
       r.carrera.toUpperCase(),
-      `${r.semestre}°`,
+      r.semestre >= 13 ? "EGRESADO" : `${r.semestre}°`,
       Number(r.promedio_notas),
       Number(r.indice_global),
       pEst !== null ? pEst : "Sin estudio",
@@ -584,11 +691,29 @@ export async function enviarReporteEnRevisionSecretaria(
       destinatario = secRows[0]?.email?.trim() || EMAIL_SECRETARIA_DEFECTO
     }
 
+    const totalDisponibles = reporte.data.length
+    const {
+      seleccionados: expedientesEnvio,
+      resumenPorModalidad,
+      totalModalidades,
+      limiteAplicado,
+    } = seleccionarTopPorModalidad(reporte.data, MAX_EXPEDIENTES_POR_TIPO_BECA)
+
+    const mapaEnviadosPorModalidad = new Map<string, number>()
+    for (const item of resumenPorModalidad) {
+      mapaEnviadosPorModalidad.set(item.modalidad, item.enviados)
+    }
+
     const periodoLabel = reporte.periodoActual
       ? `${reporte.periodoActual.codigo} — ${reporte.periodoActual.nombre}`
       : "Periodo Vigente"
 
-    const excelBuffer = await construirBufferExcelEnRevision(reporte.data, periodoLabel)
+    const notaSeleccionExcel = `Top ${MAX_EXPEDIENTES_POR_TIPO_BECA} por tipo de beca (1° Promedio, 2° Baremo)`
+    const excelBuffer = await construirBufferExcelEnRevision(
+      expedientesEnvio,
+      periodoLabel,
+      notaSeleccionExcel
+    )
     const fechaIsoArchivo = new Date().toISOString().slice(0, 10)
     const fechaLegible = new Date().toLocaleString("es-VE", {
       day: "2-digit",
@@ -600,20 +725,21 @@ export async function enviarReporteEnRevisionSecretaria(
     })
 
     const filasCuposHtml = reporte.cuposResumen
-      .map(
-        (c) => `
+      .map((c) => {
+        const enviadosMod = mapaEnviadosPorModalidad.get(c.modalidad) ?? 0
+        return `
           <tr>
             <td style="padding: 6px 10px; border: 1px solid #cbd5e1; font-weight: bold; color: #1e3a5f;">${escaparHtml(c.modalidad)}</td>
-            <td style="padding: 6px 10px; border: 1px solid #cbd5e1; text-align: center; font-weight: bold;">${c.enRevisionLote}</td>
+            <td style="padding: 6px 10px; border: 1px solid #cbd5e1; text-align: center; font-weight: bold; color: #1e3a5f;">${enviadosMod} / ${c.enRevisionLote}</td>
             <td style="padding: 6px 10px; border: 1px solid #cbd5e1; text-align: center;">${c.aprobadosPeriodoActual}</td>
             <td style="padding: 6px 10px; border: 1px solid #cbd5e1; text-align: center;">${c.cupoMaximo !== null ? c.cupoMaximo : "Según pres."}</td>
             <td style="padding: 6px 10px; border: 1px solid #cbd5e1; text-align: center; font-weight: bold; color: ${c.disponibles === 0 ? "#be123c" : "#047857"};">${c.disponibles !== null ? c.disponibles : "Disponible"}</td>
           </tr>
         `
-      )
+      })
       .join("")
 
-    const filasExpedientesHtml = reporte.data
+    const filasExpedientesHtml = expedientesEnvio
       .map((r, i) => {
         const bg = i % 2 === 0 ? "#ffffff" : "#f8fafc"
         const pEst = r.puntaje_estudiante !== null ? `${r.puntaje_estudiante} pts` : "N/A"
@@ -626,7 +752,7 @@ export async function enviarReporteEnRevisionSecretaria(
             </td>
             <td style="padding: 6px 8px; border: 1px solid #cbd5e1; font-size: 11px;">${escaparHtml(r.tipo_beca)}</td>
             <td style="padding: 6px 8px; border: 1px solid #cbd5e1; font-size: 11px;">${escaparHtml(r.carrera)}</td>
-            <td style="padding: 6px 8px; border: 1px solid #cbd5e1; text-align: center; font-weight: bold;">${r.semestre}°</td>
+            <td style="padding: 6px 8px; border: 1px solid #cbd5e1; text-align: center; font-weight: bold;">${r.semestre >= 13 ? "Egresado" : `${r.semestre}°`}</td>
             <td style="padding: 6px 8px; border: 1px solid #cbd5e1; text-align: center; font-weight: bold;">
               ${escaparHtml(r.promedio_notas)}<br />
               <span style="font-size: 10px; color: #b8860b;">G: ${escaparHtml(r.indice_global)}</span>
@@ -640,26 +766,32 @@ export async function enviarReporteEnRevisionSecretaria(
       })
       .join("")
 
+    const avisoLimiteHtml = `<p style="font-size: 12px; background-color: #fffbeb; border: 1px solid #fde68a; color: #92400e; padding: 10px 12px; border-radius: 6px; margin: 0 0 14px 0;">
+          <strong>Criterio de selección:</strong> Se incluyen los <strong>${MAX_EXPEDIENTES_POR_TIPO_BECA} primeros expedientes por cada tipo de beca</strong> (${expedientesEnvio.length} de ${totalDisponibles} en revisión, abarcando ${totalModalidades} modalidad(es)), priorizados estrictamente por <strong>1° mejor promedio académico</strong> y <strong>2° mayor puntaje de baremo</strong>. El universo completo está disponible en el panel de Secretaría General.
+        </p>`
+
     await transporter.sendMail({
       from: `"Bienestar Estudiantil — UNIMAR" <${smtpUser}>`,
       to: destinatario,
-      subject: `Expedientes En Revisión (${reporte.data.length}) — Becas UNIMAR ${reporte.periodoActual?.codigo || ""}`,
+      subject: `Expedientes En Revisión — Top ${MAX_EXPEDIENTES_POR_TIPO_BECA} por Modalidad (${expedientesEnvio.length}${limiteAplicado ? ` de ${totalDisponibles}` : ""}) — Becas UNIMAR ${reporte.periodoActual?.codigo || ""}`,
       html: `
         <div style="font-family: Arial, sans-serif; color: #1e293b; max-width: 820px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden;">
           <div style="background-color: #1e3a5f; padding: 20px 24px; border-bottom: 4px solid #d4a843;">
             <h2 style="margin: 0; color: #ffffff; font-size: 18px;">Universidad de Margarita — Secretaría General</h2>
             <p style="margin: 6px 0 0 0; color: #d4a843; font-size: 12px; font-weight: bold; text-transform: uppercase;">
-              Remisión Oficial de Expedientes En Revisión • ${escaparHtml(periodoLabel)}
+              Remisión Oficial de Expedientes En Revisión (Top ${MAX_EXPEDIENTES_POR_TIPO_BECA} por Tipo de Beca) • ${escaparHtml(periodoLabel)}
             </p>
           </div>
 
           <div style="padding: 20px 24px;">
             <p style="font-size: 13px; line-height: 1.5; margin-top: 0;">
               Estimada <strong>Secretaría General</strong>,<br />
-              El Departamento de Bienestar Estudiantil remite el listado actualizado de
-              <strong>${reporte.data.length} expediente(s) en estatus En Revisión</strong> (priorizados por mejor promedio académico y puntaje de baremo) listos para su evaluación y dictamen final.
-              Se adjunta el archivo en formato Excel (<code>.xlsx</code>) con el detalle completo.
+              El Departamento de Bienestar Estudiantil remite la selección de
+              <strong>${expedientesEnvio.length} expediente(s) en estatus En Revisión</strong> (Top ${MAX_EXPEDIENTES_POR_TIPO_BECA} por cada tipo de beca, priorizados por 1° mejor promedio académico y 2° mayor puntaje de baremo) listos para su evaluación y dictamen final.
+              Se adjunta el archivo en formato Excel (<code>.xlsx</code>) con esta misma selección.
             </p>
+
+            ${avisoLimiteHtml}
 
             ${
               reporte.cuposResumen.length > 0
@@ -671,7 +803,7 @@ export async function enviarReporteEnRevisionSecretaria(
                     <thead>
                       <tr style="background-color: #1e3a5f; color: #ffffff;">
                         <th style="padding: 7px 10px; border: 1px solid #1e3a5f; text-align: left;">Modalidad</th>
-                        <th style="padding: 7px 10px; border: 1px solid #1e3a5f;">En Revisión</th>
+                        <th style="padding: 7px 10px; border: 1px solid #1e3a5f;">Enviados / En Rev.</th>
                         <th style="padding: 7px 10px; border: 1px solid #1e3a5f;">Aprobados</th>
                         <th style="padding: 7px 10px; border: 1px solid #1e3a5f;">Cupo Máx.</th>
                         <th style="padding: 7px 10px; border: 1px solid #1e3a5f;">Disponibles</th>
@@ -686,7 +818,7 @@ export async function enviarReporteEnRevisionSecretaria(
             }
 
             <h3 style="color: #1e3a5f; font-size: 13px; text-transform: uppercase; margin: 18px 0 8px 0;">
-              Listado de Expedientes En Revisión (${reporte.data.length})
+              Selección Remitida — Top ${MAX_EXPEDIENTES_POR_TIPO_BECA} por Tipo de Beca (${expedientesEnvio.length}${limiteAplicado ? ` de ${totalDisponibles}` : ""})
             </h3>
             <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
               <thead>
@@ -712,7 +844,7 @@ export async function enviarReporteEnRevisionSecretaria(
       `,
       attachments: [
         {
-          filename: `expedientes_en_revision_unimar_${fechaIsoArchivo}.xlsx`,
+          filename: `expedientes_en_revision_top${MAX_EXPEDIENTES_POR_TIPO_BECA}_unimar_${fechaIsoArchivo}.xlsx`,
           content: excelBuffer,
           contentType:
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -723,9 +855,15 @@ export async function enviarReporteEnRevisionSecretaria(
     return {
       success: true,
       destinatario,
-      totalEnviados: reporte.data.length,
+      totalEnviados: expedientesEnvio.length,
+      totalDisponibles,
+      totalModalidadesEnviadas: totalModalidades,
+      maxPorTipoBeca: MAX_EXPEDIENTES_POR_TIPO_BECA,
+      limiteAplicado,
       fechaEnvio: fechaLegible,
-      message: `Reporte con ${reporte.data.length} expediente(s) y archivo Excel adjunto enviado correctamente a ${destinatario}.`,
+      message: limiteAplicado
+        ? `Reporte con el Top ${MAX_EXPEDIENTES_POR_TIPO_BECA} por tipo de beca (${expedientesEnvio.length} de ${totalDisponibles} expedientes en ${totalModalidades} modalidad(es)) y archivo Excel adjunto enviado correctamente a ${destinatario}.`
+        : `Reporte con ${expedientesEnvio.length} expediente(s) (${totalModalidades} modalidad(es), máx. ${MAX_EXPEDIENTES_POR_TIPO_BECA} por tipo) y archivo Excel adjunto enviado correctamente a ${destinatario}.`,
     }
   } catch (error: unknown) {
     const errMsg = error instanceof Error ? error.message : "Error de envío SMTP."

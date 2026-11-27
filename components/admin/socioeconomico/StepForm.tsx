@@ -53,13 +53,13 @@ export function StepForm({
             </p>
           </div>
         </div>
-        <button
+        {/* <button
           type="button"
           onClick={copiarTodoParaPrueba}
           className="flex items-center gap-2 px-4 py-2 bg-slate-200 hover:bg-[#d4a843] hover:text-[#1e3a5f] text-slate-700 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all shadow-xs cursor-pointer"
         >
           <ClipboardCheck className="h-4 w-4" /> Modo Prueba: Copiar Todo
-        </button>
+        </button> */}
       </div>
 
       <form onSubmit={(e) => handleValidateAndSubmit(e, handleSubmit)} className="p-0">

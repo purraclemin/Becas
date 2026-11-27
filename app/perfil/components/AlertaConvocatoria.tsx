@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { CalendarDays, Building2, AlertTriangle, X, MessageSquareText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -16,6 +16,17 @@ export function AlertaConvocatoria({ estatus, instrucciones }: AlertaConvocatori
   const s = estatus?.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || '';
   const esConvocado = s.includes('convocad');
   const mensajeInstrucciones = instrucciones && instrucciones.trim() !== '' ? instrucciones.trim() : null;
+
+  const claveAnteriorRef = useRef<string>(`${esConvocado}::${mensajeInstrucciones ?? ''}`);
+
+  // Si el estudiante ya estaba en /perfil y pasa en tiempo real a Convocado (o cambian las instrucciones), reabre el aviso
+  useEffect(() => {
+    const claveActual = `${esConvocado}::${mensajeInstrucciones ?? ''}`;
+    if (esConvocado && claveActual !== claveAnteriorRef.current) {
+      setIsOpen(true);
+    }
+    claveAnteriorRef.current = claveActual;
+  }, [esConvocado, mensajeInstrucciones]);
 
   // Si el estudiante no ha sido convocado o ya cerró el aviso en su sesión actual, no se renderiza nada
   if (!esConvocado || !isOpen) return null;

@@ -164,7 +164,7 @@ export function EmbudoProceso({ data }: EmbudoProcesoProps) {
 
   const handleBarClick = (entry: BarClickData) => {
     const targetName = entry.payload?.name ?? entry.name;
-    const baseUrl = "/admin/solicitudes";
+    const baseUrl = "/admin/validarBeca";
     let params = "";
 
     switch (targetName) {
@@ -263,7 +263,7 @@ export function EmbudoProceso({ data }: EmbudoProcesoProps) {
               onClick={handleBarClick}
               className="cursor-pointer"
             >
-              {data.map((entry, index) => (
+              {data.map((_, index) => (
                 <Cell key={`cell-n-${index}`} fill="#10b981" />
               ))}
               <LabelList

@@ -1,82 +1,124 @@
 'use server'
 
-import { db } from './db'
+import type { RowDataPacket } from 'mysql2/promise'
 import { unstable_noStore as noStore } from 'next/cache'
+import { queryFresh } from './db'
 
-interface FiltrosRanking {
+export interface FiltrosRanking {
   carrera?: string;
   tipoBeca?: string;
 }
 
-export async function obtenerRankingPrioridad(filtros: FiltrosRanking = {}) {
+export interface EstudianteRankingRow {
+  id: number;
+  cedula: string;
+  nombre: string;
+  apellido: string;
+  carrera: string;
+  tipo_beca: string;
+  promedio_notas: number;
+  vulnerabilidad_puntos: number;
+  origen_puntaje: 'admin' | 'estudiante';
+  indice_merito: number;
+}
+
+interface RankingPrioridadSQLRow extends RowDataPacket {
+  id: number;
+  nombre: string | null;
+  apellido: string | null;
+  cedula: string | number | null;
+  carrera: string | null;
+  tipo_beca: string | null;
+  promedio_notas: number | string | null;
+  vulnerabilidad_puntos: number | string | null;
+  origen_puntaje: 'admin' | 'estudiante' | null;
+  indice_merito: number | string | null;
+}
+
+export async function obtenerRankingPrioridad(
+  filtros: FiltrosRanking = {}
+): Promise<EstudianteRankingRow[]> {
   noStore();
 
   try {
-    const condiciones: string[] = [];
-    const parametros: any[] = [];
+    const condiciones: string[] = [
+      "(s.estatus = 'Pendiente' OR s.estatus = 'En Revisión')",
+      "s.promedio_notas >= 16.49"
+    ];
+    const parametros: Array<string | number> = [];
 
-    condiciones.push("(s.estatus = 'Pendiente' OR s.estatus = 'En Revisión')");
-
-    if (filtros.carrera && filtros.carrera !== "") {
-      condiciones.push("st.carrera = ?");
-      parametros.push(filtros.carrera);
+    if (filtros.carrera && filtros.carrera.trim() !== "") {
+      condiciones.push("LOWER(TRIM(st.carrera)) = ?");
+      parametros.push(filtros.carrera.trim().toLowerCase());
     }
 
-    if (filtros.tipoBeca && filtros.tipoBeca !== "") {
-      condiciones.push("s.tipo_beca = ?");
-      parametros.push(filtros.tipoBeca);
+    if (filtros.tipoBeca && filtros.tipoBeca.trim() !== "") {
+      condiciones.push("LOWER(TRIM(s.tipo_beca)) = ?");
+      parametros.push(filtros.tipoBeca.trim().toLowerCase());
     }
 
-    condiciones.push("s.promedio_notas >= 16.49"); 
-
-    const whereClause = condiciones.length > 0 ? `WHERE ${condiciones.join(' AND ')}` : '';
+    const whereClause = `WHERE ${condiciones.join(' AND ')}`;
 
     const query = `
-      SELECT 
+      SELECT
         s.id,
         st.nombre,
         st.apellido,
         st.cedula,
-        st.carrera,
-        s.tipo_beca,
+        COALESCE(NULLIF(TRIM(st.carrera), ''), 'Sin Asignar') AS carrera,
+        COALESCE(NULLIF(TRIM(s.tipo_beca), ''), 'No especificado') AS tipo_beca,
         s.promedio_notas,
-        
-        /* Determinamos el puntaje aplicando la regla de prioridad */
-        COALESCE(
-          (SELECT puntaje FROM estudios_socioeconomicos WHERE student_id = st.id AND tipo = 'administrador' LIMIT 1),
-          (SELECT puntaje FROM estudios_socioeconomicos WHERE student_id = st.id AND tipo = 'estudiante' LIMIT 1),
-          0
-        ) as vulnerabilidad_puntos,
-
-        /* Identificamos visualmente el origen para colorearlo en el frontend */
-        CASE 
-          WHEN (SELECT id FROM estudios_socioeconomicos WHERE student_id = st.id AND tipo = 'administrador' LIMIT 1) IS NOT NULL THEN 'admin'
+        COALESCE(e_adm.puntaje, e_est.puntaje, 0) AS vulnerabilidad_puntos,
+        CASE
+          WHEN e_adm.id IS NOT NULL THEN 'admin'
           ELSE 'estudiante'
-        END as origen_puntaje,
-        
+        END AS origen_puntaje,
         (
-          (CAST(s.promedio_notas AS DECIMAL(10,2)) * 100) + 
-          (COALESCE(
-            (SELECT puntaje FROM estudios_socioeconomicos WHERE student_id = st.id AND tipo = 'administrador' LIMIT 1),
-            (SELECT puntaje FROM estudios_socioeconomicos WHERE student_id = st.id AND tipo = 'estudiante' LIMIT 1),
-            0
-          ) * 1.5)
-        ) as indice_merito
-
+          (CAST(s.promedio_notas AS DECIMAL(10,2)) * 100) +
+          (COALESCE(e_adm.puntaje, e_est.puntaje, 0) * 1.5)
+        ) AS indice_merito
       FROM solicitudes s
-      JOIN students st ON s.user_id = st.id
-      
+      INNER JOIN (
+        SELECT user_id, MAX(id) AS last_id
+        FROM solicitudes
+        GROUP BY user_id
+      ) ult ON s.id = ult.last_id
+      INNER JOIN students st ON s.user_id = st.id
+      LEFT JOIN estudios_socioeconomicos e_adm
+        ON e_adm.id = (
+          SELECT MAX(es1.id)
+          FROM estudios_socioeconomicos es1
+          WHERE es1.student_id = st.id
+            AND es1.tipo = 'administrador'
+        )
+      LEFT JOIN estudios_socioeconomicos e_est
+        ON e_est.id = (
+          SELECT MAX(es2.id)
+          FROM estudios_socioeconomicos es2
+          WHERE es2.student_id = st.id
+            AND es2.tipo = 'estudiante'
+        )
       ${whereClause}
-      
       ORDER BY indice_merito DESC
       LIMIT 6
     `;
 
-    const [rows]: any = await db.execute(query, parametros);
-    return rows;
+    const rows = await queryFresh<RankingPrioridadSQLRow[]>(query, parametros);
 
+    return rows.map((row) => ({
+      id: Number(row.id),
+      cedula: String(row.cedula ?? '').trim(),
+      nombre: String(row.nombre ?? '').trim(),
+      apellido: String(row.apellido ?? '').trim(),
+      carrera: String(row.carrera ?? 'Sin Asignar').trim(),
+      tipo_beca: String(row.tipo_beca ?? 'No especificado').trim(),
+      promedio_notas: Number(row.promedio_notas) || 0,
+      vulnerabilidad_puntos: Number(row.vulnerabilidad_puntos) || 0,
+      origen_puntaje: row.origen_puntaje === 'admin' ? 'admin' : 'estudiante',
+      indice_merito: Number(row.indice_merito) || 0,
+    }));
   } catch (error) {
-    console.error("❌ Error calculando Ranking de Prioridad:", error);
+    console.error('❌ Error calculando Ranking de Prioridad:', error);
     return [];
   }
 }

@@ -12,6 +12,10 @@ import {
 import { registrarDecisionEnHistorial } from './ActionsEstatusBecaSQL'
 import { ejecutarRotacionExcelenciaEnPeriodo } from './ActionsGestionEspecial'
 import {
+  enviarCorreoCambioEstatusPorSolicitudId,
+  type ParamsCorreoCambioEstatusSolicitud,
+} from './EmailNotificacionesBeca'
+import {
   PROMEDIO_MINIMO_BECA,
   PROMEDIO_MINIMO_EXCELENCIA,
   SISTEMA_ADMIN_ID,
@@ -121,6 +125,7 @@ export interface ResultadoTransicionPeriodo {
   nuevoSemestre?: number;
   trimestreAuditado?: number;
   reason?: string;
+  notificacionCorreo?: ParamsCorreoCambioEstatusSolicitud;
 }
 
 function normalizarFechaSql(fecha: Date | string | null | undefined): string {
@@ -375,7 +380,8 @@ export async function avanzarTodosLosEstudiantesEnCambioPeriodo(
  */
 export async function evaluarYRenovarEstudianteEnCambioPeriodo(
   studentIdInput: number | string,
-  periodoActualIdInput?: number
+  periodoActualIdInput?: number,
+  diferirCorreo: boolean = false
 ): Promise<ResultadoTransicionPeriodo> {
   const studentId = Number(studentIdInput);
   if (!Number.isInteger(studentId) || studentId <= 0) {
@@ -551,6 +557,9 @@ export async function evaluarYRenovarEstudianteEnCambioPeriodo(
       const nivelRiesgo = String(baremoRows[0]?.nivel_riesgo || 'Bajo');
 
       const connection = await db.getConnection();
+      let resultadoRamaA: ResultadoTransicionPeriodo | null = null;
+      let correoPendienteRamaA: ParamsCorreoCambioEstatusSolicitud | null = null;
+
       try {
         await connection.beginTransaction();
 
@@ -621,7 +630,13 @@ export async function evaluarYRenovarEstudianteEnCambioPeriodo(
           );
 
           await connection.commit();
-          return {
+          correoPendienteRamaA = {
+            solicitudId: Number(ultimaSol.id),
+            nuevoEstatus: 'Finalizada',
+            estatusPrevio,
+            observaciones: OBSERVACION_EGRESADO,
+          };
+          resultadoRamaA = {
             processed: true,
             estatus: 'Finalizada',
             becaPerdida: false,
@@ -629,9 +644,7 @@ export async function evaluarYRenovarEstudianteEnCambioPeriodo(
             trimestreAuditado,
             reason: 'EGRESADO_TRIMESTRE_12',
           };
-        }
-
-        if (evaluacionTrim.apto) {
+        } else if (evaluacionTrim.apto) {
           await connection.execute<ResultSetHeader>(
             `
             UPDATE solicitudes
@@ -679,89 +692,105 @@ export async function evaluarYRenovarEstudianteEnCambioPeriodo(
           );
 
           await connection.commit();
-          return {
+          resultadoRamaA = {
             processed: true,
             estatus: estatusPrevio,
             becaPerdida: false,
             nuevoSemestre,
             trimestreAuditado,
           };
-        }
+        } else {
+          const motivoRechazo =
+            evaluacionTrim.motivoRechazo ||
+            `Rechazo automático en auditoría del Trimestre ${trimestreAuditado} por incumplimiento académico.`;
 
-        const motivoRechazo =
-          evaluacionTrim.motivoRechazo ||
-          `Rechazo automático en auditoría del Trimestre ${trimestreAuditado} por incumplimiento académico.`;
+          await connection.execute<ResultSetHeader>(
+            `
+            UPDATE solicitudes
+            SET estatus = 'Rechazada',
+                periodo_id = ?,
+                promedio_notas = ?,
+                materias_json = ?,
+                tipo_beca = ?,
+                observaciones_admin = ?,
+                departamento_asignado = NULL,
+                fecha_decision = NOW(),
+                revisado_por = 0
+            WHERE id = ?
+            `,
+            [
+              periodoActualId,
+              evaluacionTrim.promedioTrimestre.toFixed(2),
+              materiasJson,
+              tipoBecaOficial,
+              motivoRechazo,
+              ultimaSol.id,
+            ]
+          );
 
-        await connection.execute<ResultSetHeader>(
-          `
-          UPDATE solicitudes
-          SET estatus = 'Rechazada',
-              periodo_id = ?,
-              promedio_notas = ?,
-              materias_json = ?,
-              tipo_beca = ?,
-              observaciones_admin = ?,
-              departamento_asignado = NULL,
-              fecha_decision = NOW(),
-              revisado_por = 0
-          WHERE id = ?
-          `,
-          [
-            periodoActualId,
-            evaluacionTrim.promedioTrimestre.toFixed(2),
-            materiasJson,
-            tipoBecaOficial,
-            motivoRechazo,
-            ultimaSol.id,
-          ]
-        );
+          await connection.execute<ResultSetHeader>(
+            `UPDATE students SET beca_perdida = 1 WHERE id = ?`,
+            [studentId]
+          );
 
-        await connection.execute<ResultSetHeader>(
-          `UPDATE students SET beca_perdida = 1 WHERE id = ?`,
-          [studentId]
-        );
+          await connection.execute<ResultSetHeader>(
+            `
+            INSERT INTO historial_aprobaciones (
+              solicitud_id, user_id, periodo_id, admin_id,
+              promedio_ciclo, trimestre, puntaje_baremo_, nivel_riesgo,
+              tipo_beca_snapshot, estatus_previo, estatus_nuevo,
+              observacion_admin, materias_snapshot_json, indice_global_snapshot,
+              fecha_aprobacion, token_verificacion, ip_accion
+            ) VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?, ?, 'Rechazada', ?, ?, ?, NOW(), ?, '127.0.0.1')
+            `,
+            [
+              ultimaSol.id,
+              studentId,
+              periodoActualId,
+              evaluacionTrim.promedioTrimestre.toFixed(2),
+              nuevoSemestre,
+              puntajeBaremo,
+              nivelRiesgo,
+              tipoBecaOficial,
+              estatusPrevio,
+              motivoRechazo,
+              materiasJson,
+              expediente.indiceGlobal.toFixed(2),
+              randomUUID(),
+            ]
+          );
 
-        await connection.execute<ResultSetHeader>(
-          `
-          INSERT INTO historial_aprobaciones (
-            solicitud_id, user_id, periodo_id, admin_id,
-            promedio_ciclo, trimestre, puntaje_baremo_, nivel_riesgo,
-            tipo_beca_snapshot, estatus_previo, estatus_nuevo,
-            observacion_admin, materias_snapshot_json, indice_global_snapshot,
-            fecha_aprobacion, token_verificacion, ip_accion
-          ) VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?, ?, 'Rechazada', ?, ?, ?, NOW(), ?, '127.0.0.1')
-          `,
-          [
-            ultimaSol.id,
-            studentId,
-            periodoActualId,
-            evaluacionTrim.promedioTrimestre.toFixed(2),
-            nuevoSemestre,
-            puntajeBaremo,
-            nivelRiesgo,
-            tipoBecaOficial,
+          await connection.commit();
+          correoPendienteRamaA = {
+            solicitudId: Number(ultimaSol.id),
+            nuevoEstatus: 'Rechazada',
             estatusPrevio,
-            motivoRechazo,
-            materiasJson,
-            expediente.indiceGlobal.toFixed(2),
-            randomUUID(),
-          ]
-        );
-
-        await connection.commit();
-        return {
-          processed: true,
-          estatus: 'Rechazada',
-          becaPerdida: true,
-          nuevoSemestre,
-          trimestreAuditado,
-        };
+            observaciones: motivoRechazo,
+          };
+          resultadoRamaA = {
+            processed: true,
+            estatus: 'Rechazada',
+            becaPerdida: true,
+            nuevoSemestre,
+            trimestreAuditado,
+          };
+        }
       } catch (sqlErr) {
         await connection.rollback();
         throw sqlErr;
       } finally {
         connection.release();
       }
+
+      if (correoPendienteRamaA) {
+        if (diferirCorreo) {
+          resultadoRamaA.notificacionCorreo = correoPendienteRamaA;
+        } else {
+          await enviarCorreoCambioEstatusPorSolicitudId(correoPendienteRamaA);
+        }
+      }
+
+      return resultadoRamaA;
     }
 
     // =========================================================================
@@ -939,7 +968,7 @@ export async function evaluarYRenovarEstudianteEnCambioPeriodo(
         tipoBecaDestino = 'BECA A LA EXCELENCIA ACADÉMICA';
         estatusFinal = 'Aprobada';
         departamentoFinal = null;
-        observacionSistema = `Renovación automática de Beca a la Excelencia Académica (Art. 8): mantiene el mayor Índice Global Acumulado (${expediente.indiceGlobal.toFixed(
+        observacionSistema = `Renovación automática de Beca a la Excelencia Académica: mantiene el mayor Índice Global Acumulado (${expediente.indiceGlobal.toFixed(
           2
         )} pts) en ${st.carrera} sin asignaturas reprobadas en el Trimestre ${trimestreAuditado}.`;
       } else if (st.beca_base_respaldo) {
@@ -1115,6 +1144,8 @@ export async function evaluarYRenovarEstudianteEnCambioPeriodo(
       connection.release();
     }
 
+    let notificacionRamaB: ParamsCorreoCambioEstatusSolicitud | undefined = undefined;
+
     if (nuevaSolicitudId > 0) {
       await registrarDecisionEnHistorial(
         nuevaSolicitudId,
@@ -1125,6 +1156,20 @@ export async function evaluarYRenovarEstudianteEnCambioPeriodo(
         'Aprobada',
         departamentoFinal ?? undefined
       );
+
+      const correoPayload: ParamsCorreoCambioEstatusSolicitud = {
+        solicitudId: nuevaSolicitudId,
+        nuevoEstatus: estatusFinal,
+        estatusPrevio: 'Aprobada',
+        observaciones: observacionSistema,
+        departamentoAsignado: departamentoFinal,
+      };
+
+      if (diferirCorreo) {
+        notificacionRamaB = correoPayload;
+      } else {
+        await enviarCorreoCambioEstatusPorSolicitudId(correoPayload);
+      }
     }
 
     return {
@@ -1134,6 +1179,7 @@ export async function evaluarYRenovarEstudianteEnCambioPeriodo(
       nuevoSemestre,
       trimestreAuditado,
       reason: esEgresado ? 'EGRESADO_TRIMESTRE_12' : undefined,
+      notificacionCorreo: notificacionRamaB,
     };
   } catch (error) {
     console.error('❌ Error en evaluarYRenovarEstudianteEnCambioPeriodo:', error);
@@ -1247,18 +1293,32 @@ export async function procesarTransicionMasivaDePeriodo(
     let rechazados = 0;
     let finalizados = 0;
     let esperaActualizados = 0;
+    const correosPendientes: ParamsCorreoCambioEstatusSolicitud[] = [];
 
     for (const row of candidatos) {
       const res = await evaluarYRenovarEstudianteEnCambioPeriodo(
         Number(row.user_id),
-        periodoActualId
+        periodoActualId,
+        true
       );
       if (res.processed) {
         if (res.estatus === 'Aprobada') aprobados += 1;
         else if (res.estatus === 'Rechazada') rechazados += 1;
         else if (res.estatus === 'Finalizada') finalizados += 1;
         else esperaActualizados += 1;
+        if (res.notificacionCorreo) {
+          correosPendientes.push(res.notificacionCorreo);
+        }
       }
+    }
+
+    // Despacho en lotes paralelos de 5 correos para rapidez sin perder notificaciones
+    const TAMANO_LOTE_SMTP = 5;
+    for (let i = 0; i < correosPendientes.length; i += TAMANO_LOTE_SMTP) {
+      const lote = correosPendientes.slice(i, i + TAMANO_LOTE_SMTP);
+      await Promise.allSettled(
+        lote.map((payload) => enviarCorreoCambioEstatusPorSolicitudId(payload))
+      );
     }
 
     // 4. Rotación automática de Beca a la Excelencia Académica para las 8 carreras
@@ -1362,8 +1422,8 @@ export async function renovarBeca(formData: FormData) {
       estatusFinal === 'Aprobada'
         ? `Renovación aprobada automáticamente (promedio trimestral ${nuevoPromedio.toFixed(2)} pts >= ${minimoExigido.toFixed(2)} pts sin reprobadas).`
         : tieneReprobadas
-          ? 'Suspensión definitiva del beneficio (Art. 28): se detectaron materias reprobadas (< 10 pts) en el trimestre.'
-          : `Suspensión definitiva del beneficio (Art. 26 y 28): promedio trimestral (${nuevoPromedio.toFixed(2)} pts) inferior al mínimo exigido (${minimoExigido.toFixed(2)} pts).`;
+          ? 'Suspensión definitiva del beneficio : se detectaron materias reprobadas (< 10 pts) en el trimestre.'
+          : `Suspensión definitiva del beneficio : promedio trimestral (${nuevoPromedio.toFixed(2)} pts) inferior al mínimo exigido (${minimoExigido.toFixed(2)} pts).`;
 
     connection = await db.getConnection();
     await connection.beginTransaction();
@@ -1405,6 +1465,15 @@ export async function renovarBeca(formData: FormData) {
       'Renovacion',
       estatusFinal === 'Aprobada' ? (solicitudActual.departamento_asignado ?? undefined) : undefined
     );
+
+    await enviarCorreoCambioEstatusPorSolicitudId({
+      solicitudId: Number(solicitudActual.id),
+      nuevoEstatus: estatusFinal,
+      estatusPrevio: 'Renovacion',
+      observaciones: observacion,
+      departamentoAsignado:
+        estatusFinal === 'Aprobada' ? (solicitudActual.departamento_asignado ?? null) : null,
+    });
 
     await ejecutarRotacionExcelenciaEnPeriodo(periodoIdActual, SISTEMA_ADMIN_ID);
 

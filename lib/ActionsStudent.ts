@@ -1,7 +1,8 @@
 'use server'
 
 import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise'
-import { db } from './db'
+import { db, queryFresh } from './db'
+import { getSession } from './ActionsSession'
 import { obtenerOCrearPeriodoObjetivo } from './SolicitudAcademic'
 import { getModoPruebaStatus } from './ModoPrueba'
 import { sincronizarYObtenerRecordAcademico } from './ActionsRecordAcademico'
@@ -52,6 +53,33 @@ interface SolicitudRecienteRow extends RowDataPacket {
 interface RechazoPrevioRow extends RowDataPacket {
   id: number;
   observaciones_admin: string | null;
+}
+
+interface EstadoLigeroSQLRow extends RowDataPacket {
+  semestre: number | null;
+  beca_perdida: number | null;
+  solicitud_id: number | null;
+  estatus: string | null;
+  tipo_beca: string | null;
+  observaciones_admin: string | null;
+  departamento_asignado: string | null;
+  periodo_id: number | null;
+  periodo_actual_id: number | null;
+  periodo_actual_codigo: string | null;
+  tiene_rechazo_historico: number | null;
+  observacion_rechazo: string | null;
+}
+
+export interface EstadoLigeroEstudianteResponse {
+  ok: boolean;
+  estatus: string;
+  observacionesAdmin: string | null;
+  departamentoAsignado: string | null;
+  semestre: number;
+  becaPerdida: boolean;
+  esEgresado: boolean;
+  periodoActual: string;
+  tipoBeca: string | null;
 }
 
 function obtenerNombrePeriodoAnterior(codigo: string): string {
@@ -309,5 +337,140 @@ export async function getStudentAcademicStatus(userId: string | number, trimestr
       materiasSugeridas: [],
       lastSolicitud: null,
     };
+  }
+}
+
+/**
+ * Consulta ultraligera de solo lectura para polling en tiempo real en `/perfil`
+ * (compatible con Next.js + XAMPP + Vercel sin WebSockets externos).
+ * Valida la sesión del propio estudiante en el servidor y ejecuta un único SELECT rápido.
+ */
+export async function verificarEstadoLigeroEstudiante(): Promise<EstadoLigeroEstudianteResponse> {
+  const vacio: EstadoLigeroEstudianteResponse = {
+    ok: false,
+    estatus: 'ninguna',
+    observacionesAdmin: null,
+    departamentoAsignado: null,
+    semestre: 0,
+    becaPerdida: false,
+    esEgresado: false,
+    periodoActual: 'S/N',
+    tipoBeca: null,
+  };
+
+  try {
+    const session = await getSession();
+    if (!session.isLoggedIn || session.role !== 'estudiante') {
+      return vacio;
+    }
+
+    const studentId = Number('id' in session ? session.id : 0);
+    if (!Number.isInteger(studentId) || studentId <= 0) {
+      return vacio;
+    }
+
+    const rows = await queryFresh<EstadoLigeroSQLRow[]>(
+      `
+      SELECT
+        IFNULL(st.semestre, 0) AS semestre,
+        IFNULL(st.beca_perdida, 0) AS beca_perdida,
+        s.id AS solicitud_id,
+        s.estatus,
+        s.tipo_beca,
+        s.observaciones_admin,
+        NULLIF(TRIM(s.departamento_asignado), '') AS departamento_asignado,
+        s.periodo_id,
+        (SELECT p_a.id FROM periodos_academicos p_a WHERE p_a.es_actual = 1 LIMIT 1) AS periodo_actual_id,
+        (SELECT p_c.codigo FROM periodos_academicos p_c WHERE p_c.es_actual = 1 LIMIT 1) AS periodo_actual_codigo,
+        EXISTS (
+          SELECT 1 FROM solicitudes s_rj
+          WHERE s_rj.user_id = st.id
+            AND LOWER(TRIM(s_rj.estatus)) IN ('rechazada', 'rechazado')
+        ) AS tiene_rechazo_historico,
+        (
+          SELECT s_ro.observaciones_admin
+          FROM solicitudes s_ro
+          WHERE s_ro.user_id = st.id
+            AND LOWER(TRIM(s_ro.estatus)) IN ('rechazada', 'rechazado')
+          ORDER BY s_ro.id DESC
+          LIMIT 1
+        ) AS observacion_rechazo
+      FROM students st
+      LEFT JOIN solicitudes s
+        ON s.id = (
+          SELECT s_u.id
+          FROM solicitudes s_u
+          LEFT JOIN periodos_academicos p_u ON s_u.periodo_id = p_u.id
+          WHERE s_u.user_id = st.id
+            AND (
+              p_u.fecha_inicio IS NULL
+              OR p_u.fecha_inicio <= IFNULL(
+                (SELECT p_lim.fecha_inicio FROM periodos_academicos p_lim WHERE p_lim.es_actual = 1 LIMIT 1),
+                '9999-12-31'
+              )
+            )
+          ORDER BY s_u.periodo_id DESC, s_u.fecha_registro DESC, s_u.id DESC
+          LIMIT 1
+        )
+      WHERE st.id = ?
+      LIMIT 1
+      `,
+      [studentId]
+    );
+
+    if (rows.length === 0) {
+      return vacio;
+    }
+
+    const row = rows[0];
+    const semestre = Number(row.semestre ?? 0);
+    const esEgresado = semestre >= SEMESTRE_EGRESADO;
+    const becaPerdida =
+      Number(row.beca_perdida ?? 0) === 1 || Number(row.tiene_rechazo_historico ?? 0) === 1;
+    const periodoActualId = Number(row.periodo_actual_id ?? 0);
+
+    let estatusFinal = row.estatus ? String(row.estatus).trim() : 'ninguna';
+    const esExcelenciaDePeriodoPasado =
+      estatusFinal === 'Aprobada' &&
+      esBecaExcelenciaAcademica(row.tipo_beca) &&
+      row.periodo_id !== null &&
+      periodoActualId > 0 &&
+      Number(row.periodo_id) !== periodoActualId;
+
+    if (becaPerdida) {
+      estatusFinal = 'Rechazada';
+    } else if (esExcelenciaDePeriodoPasado) {
+      estatusFinal = 'Finalizada';
+    }
+
+    let observacionesAdmin =
+      row.observaciones_admin && String(row.observaciones_admin).trim() !== ''
+        ? String(row.observaciones_admin).trim()
+        : row.observacion_rechazo && String(row.observacion_rechazo).trim() !== ''
+          ? String(row.observacion_rechazo).trim()
+          : null;
+
+    if (!observacionesAdmin && esEgresado && estatusFinal === 'Finalizada') {
+      observacionesAdmin = OBSERVACION_EGRESADO;
+    }
+
+    return {
+      ok: true,
+      estatus: estatusFinal,
+      observacionesAdmin,
+      departamentoAsignado: row.departamento_asignado
+        ? String(row.departamento_asignado).trim()
+        : null,
+      semestre,
+      becaPerdida,
+      esEgresado,
+      periodoActual: row.periodo_actual_codigo
+        ? String(row.periodo_actual_codigo).trim()
+        : 'S/N',
+      tipoBeca: row.tipo_beca ? String(row.tipo_beca).trim() : null,
+    };
+  } catch (error) {
+    console.error('⚠️ Error en verificarEstadoLigeroEstudiante:', error);
+    return vacio;
   }
 }

@@ -5,6 +5,13 @@ import { queryFresh } from "@/lib/db"
 import { ejecutarRotacionExcelenciaEnPeriodo } from "@/lib/ActionsGestionEspecial"
 import { SISTEMA_ADMIN_ID, normalizarTipoBecaOficial } from "@/lib/RecordAcademicoUtils"
 
+interface PeriodoOpcionSQLRow extends RowDataPacket {
+  id: number
+  codigo: string
+  nombre: string
+  es_actual: number
+}
+
 interface ReporteAprobadaSQLRow extends RowDataPacket {
   solicitud_id: number
   user_id: number
@@ -23,6 +30,13 @@ interface ReporteAprobadaSQLRow extends RowDataPacket {
   semestre: number
   periodo: string
   periodo_codigo: string
+}
+
+export interface PeriodoAprobadaOption {
+  id: number
+  codigo: string
+  nombre: string
+  esActual: boolean
 }
 
 export interface ReporteAprobadaItem {
@@ -47,12 +61,17 @@ export interface ReporteAprobadaItem {
 export interface FiltrosReporteAprobadas {
   inicio?: string
   fin?: string
+  fechaDesde?: string
+  fechaHasta?: string
   search?: string
+  periodoId?: number | "todos"
 }
 
 export interface RespuestaReporteAprobadas {
   success: boolean
   data: ReporteAprobadaItem[]
+  periodos: PeriodoAprobadaOption[]
+  periodoSeleccionado: number | "todos"
   error?: string
 }
 
@@ -71,8 +90,9 @@ function serializarFechaISO(valor: Date | string | null | undefined): string {
 }
 
 /**
- * Consulta TODAS las becas aprobadas desde la fuente oficial (`solicitudes`)
- * garantizando primero la sincronización automática de la Nómina de Excelencia.
+ * Consulta becas aprobadas desde la fuente oficial (`solicitudes`) filtrando por defecto
+ * al periodo vigente (`es_actual = 1`) para mantener paridad 1:1 con el Dashboard y Validar Beca,
+ * con opción de consultar cualquier periodo específico o el histórico completo ("todos").
  */
 export async function obtenerReporteAprobadas(
   filtros: FiltrosReporteAprobadas = {}
@@ -80,6 +100,36 @@ export async function obtenerReporteAprobadas(
   try {
     // Fast-path idempotente: sincroniza la Nómina Automática de Excelencia antes de listar aprobadas
     await ejecutarRotacionExcelenciaEnPeriodo(undefined, SISTEMA_ADMIN_ID)
+
+    const periodosRows = await queryFresh<PeriodoOpcionSQLRow[]>(
+      `
+      SELECT id, codigo, nombre, es_actual
+      FROM periodos_academicos
+      ORDER BY fecha_inicio DESC, id DESC
+      `
+    )
+
+    const periodos: PeriodoAprobadaOption[] = periodosRows.map((p) => ({
+      id: Number(p.id),
+      codigo: String(p.codigo),
+      nombre: String(p.nombre),
+      esActual: Number(p.es_actual) === 1,
+    }))
+
+    const periodoActualObj = periodos.find((p) => p.esActual) ?? periodos[0]
+
+    let periodoSeleccionado: number | "todos" = "todos"
+    if (filtros.periodoId === "todos") {
+      periodoSeleccionado = "todos"
+    } else if (
+      filtros.periodoId !== undefined &&
+      Number.isInteger(Number(filtros.periodoId)) &&
+      Number(filtros.periodoId) > 0
+    ) {
+      periodoSeleccionado = Number(filtros.periodoId)
+    } else if (periodoActualObj) {
+      periodoSeleccionado = periodoActualObj.id
+    }
 
     const fechaEfectivaExpr = `COALESCE(
       s.fecha_decision,
@@ -95,9 +145,23 @@ export async function obtenerReporteAprobadas(
     let whereClause = ` WHERE LOWER(TRIM(s.estatus)) IN ('aprobada', 'aprobado')`
     const params: Array<string | number> = []
 
-    if (filtros.inicio && filtros.fin) {
+    if (periodoSeleccionado !== "todos") {
+      whereClause += ` AND s.periodo_id = ?`
+      params.push(periodoSeleccionado)
+    }
+
+    const desde = (filtros.fechaDesde || filtros.inicio || "").trim()
+    const hasta = (filtros.fechaHasta || filtros.fin || "").trim()
+
+    if (desde && hasta) {
       whereClause += ` AND ${fechaEfectivaExpr} BETWEEN ? AND ?`
-      params.push(`${filtros.inicio} 00:00:00`, `${filtros.fin} 23:59:59`)
+      params.push(`${desde} 00:00:00`, `${hasta} 23:59:59`)
+    } else if (desde) {
+      whereClause += ` AND ${fechaEfectivaExpr} >= ?`
+      params.push(`${desde} 00:00:00`)
+    } else if (hasta) {
+      whereClause += ` AND ${fechaEfectivaExpr} <= ?`
+      params.push(`${hasta} 23:59:59`)
     }
 
     const searchClean = (filtros.search || "").trim().toLowerCase()
@@ -143,7 +207,7 @@ export async function obtenerReporteAprobadas(
         IFNULL(p.nombre, 'Periodo no registrado') AS periodo,
         IFNULL(p.codigo, 'S/P') AS periodo_codigo
       FROM solicitudes s
-      JOIN students st ON s.user_id = st.id
+      INNER JOIN students st ON s.user_id = st.id
       LEFT JOIN periodos_academicos p ON s.periodo_id = p.id
       LEFT JOIN estudios_socioeconomicos e_adm
         ON e_adm.id = (
@@ -206,12 +270,19 @@ export async function obtenerReporteAprobadas(
       }
     })
 
-    return { success: true, data }
+    return {
+      success: true,
+      data,
+      periodos,
+      periodoSeleccionado,
+    }
   } catch (error) {
     console.error("Error en obtenerReporteAprobadas:", error)
     return {
       success: false,
       data: [],
+      periodos: [],
+      periodoSeleccionado: "todos",
       error: "No fue posible consultar el reporte de becas aprobadas.",
     }
   }

@@ -9,19 +9,41 @@ export interface EstatusOperativoItem {
 }
 
 interface HealthStatusProps {
-  porEstatus: EstatusOperativoItem[];
-  total: number;
+  porEstatus?: EstatusOperativoItem[];
+  total?: number;
 }
 
-export function HealthStatus({ porEstatus, total }: HealthStatusProps) {
+const getStatusBarColor = (estatus: string): string => {
+  switch (estatus) {
+    case 'Aprobada':
+      return 'bg-emerald-500 group-hover:bg-emerald-400';
+    case 'Rechazada':
+      return 'bg-rose-500 group-hover:bg-rose-400';
+    case 'Finalizada':
+      return 'bg-teal-500 group-hover:bg-teal-400';
+    case 'En Revisión':
+      return 'bg-blue-500 group-hover:bg-blue-400';
+    case 'Convocado a Entrevista':
+      return 'bg-orange-500 group-hover:bg-orange-400';
+    default:
+      return 'bg-[#d4a843] group-hover:bg-amber-400';
+  }
+};
+
+export function HealthStatus({ porEstatus = [], total = 0 }: HealthStatusProps) {
   const router = useRouter()
+  const listaEstatus = Array.isArray(porEstatus) ? porEstatus : []
 
   const filtrarPorEstatus = (estatus: string) => {
     if (estatus === 'Todas') {
-      router.push('/admin/validarBeca')
-    } else {
-      router.push(`/admin/validarBeca?status=${encodeURIComponent(estatus)}`)
+      router.push('/admin/estudiantes')
+      return
     }
+    if (estatus === 'Rechazada' || estatus === 'Finalizada') {
+      router.push(`/admin/reportes/rechazadas?estatus=${encodeURIComponent(estatus)}`)
+      return
+    }
+    router.push(`/admin/validarBeca?status=${encodeURIComponent(estatus)}`)
   }
 
   return (
@@ -29,16 +51,16 @@ export function HealthStatus({ porEstatus, total }: HealthStatusProps) {
       <h3 className="font-black text-[#1e3a5f] text-[9px] sm:text-[10px] uppercase tracking-widest flex items-center gap-2 mb-3 shrink-0">
         <BarChart3 className="h-3.5 w-3.5 text-[#d4a843]" /> Salud Operativa
       </h3>
-      
+
       {/* Contenedor dinámico: crece según contenido, scroll solo si excede ~10 ítems */}
       <div className="space-y-3.5 overflow-y-auto max-h-[400px] custom-scrollbar pr-1">
-        {porEstatus && porEstatus.length > 0 ? (
-          porEstatus.map((item, idx) => {
-            const porcentaje = total > 0 ? ((item.total / total) * 100).toFixed(1) : "0";
-            
+        {listaEstatus.length > 0 ? (
+          listaEstatus.map((item) => {
+            const porcentaje = total > 0 ? ((item.total / total) * 100).toFixed(1) : "0"
+
             return (
-              <div 
-                key={idx} 
+              <div
+                key={item.estatus}
                 onClick={() => filtrarPorEstatus(item.estatus)}
                 className="space-y-1.5 cursor-pointer group"
               >
@@ -55,15 +77,10 @@ export function HealthStatus({ porEstatus, total }: HealthStatusProps) {
 
                 {/* Barra de progreso */}
                 <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden border border-slate-200/50 shadow-inner group-hover:shadow transition-all">
-                  <div 
-                    className={`h-full rounded-full transition-all duration-1000 ${
-                      item.estatus === 'Aprobada' ? 'bg-emerald-500 group-hover:bg-emerald-400' : 
-                      item.estatus === 'Rechazada' ? 'bg-rose-500 group-hover:bg-rose-400' : 
-                      item.estatus === 'En Revisión' ? 'bg-blue-500 group-hover:bg-blue-400' : 
-                      'bg-[#d4a843] group-hover:bg-amber-400'
-                    }`} 
+                  <div
+                    className={`h-full rounded-full transition-all duration-1000 ${getStatusBarColor(item.estatus)}`}
                     style={{ width: `${porcentaje}%` }}
-                  ></div>
+                  />
                 </div>
               </div>
             )

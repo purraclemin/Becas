@@ -815,7 +815,7 @@ export function evaluarElegibilidadTrimestre(
       totalReprobadas,
       materiasReprobadas,
       categoriaRechazo: "MATERIA_REPROBADA",
-      motivoRechazo: `Suspensión definitiva del beneficio (Art. 26 y 28) en auditoría del Trimestre ${trimestreAuditado}: reprobó ${totalReprobadas} asignatura(s) (${detalleMaterias}).${detallePromedio}`,
+      motivoRechazo: `Suspensión definitiva del beneficio en auditoría del Trimestre ${trimestreAuditado}: reprobó ${totalReprobadas} asignatura(s) (${detalleMaterias}).${detallePromedio}`,
     };
   }
 
@@ -832,7 +832,7 @@ export function evaluarElegibilidadTrimestre(
       totalReprobadas: 0,
       materiasReprobadas: [],
       categoriaRechazo: "PROMEDIO_BAJO",
-      motivoRechazo: `Suspensión definitiva del beneficio (Art. 26 y 28) en auditoría del Trimestre ${trimestreAuditado}: su ${
+      motivoRechazo: `Suspensión definitiva del beneficio en auditoría del Trimestre ${trimestreAuditado}: su ${
         usaIndiceAcumulado ? "índice académico acumulado" : "promedio del trimestre"
       } (${promedioEvaluado.toFixed(2)} pts) bajó del mínimo exigido de ${promedioMinimoRequerido.toFixed(
         2

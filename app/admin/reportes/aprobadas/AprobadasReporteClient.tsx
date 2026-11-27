@@ -1,6 +1,7 @@
 "use client"
 
-import React, { useState, useEffect, useRef, useCallback } from "react"
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import {
   Search,
   X,
@@ -19,10 +20,12 @@ import {
   type ExportReportXLSXHandle,
   type CeldaXLSX
 } from "@/components/imprimirReporteXLSX"
+import { esEgresadoPorSemestre } from "@/app/admin/validarBeca/lib/ValidarBecaUtils"
 import {
   obtenerReporteAprobadas,
   type ReporteAprobadaItem,
-  type RespuestaReporteAprobadas
+  type RespuestaReporteAprobadas,
+  type PeriodoAprobadaOption
 } from "./actions"
 
 interface AprobadasReporteClientProps {
@@ -40,10 +43,20 @@ const formatearFecha = (fechaIso: string): string => {
   })
 }
 
+const formatearTrimestre = (semestre: number, corto: boolean = false): string => {
+  if (esEgresadoPorSemestre(semestre)) return "Egresado"
+  return corto ? `${semestre}° Trim.` : `${semestre}° Trimestre`
+}
+
 export function AprobadasReporteClient({
   initialData
 }: AprobadasReporteClientProps) {
+  const router = useRouter()
   const [data, setData] = useState<ReporteAprobadaItem[]>(initialData.data)
+  const [periodos, setPeriodos] = useState<PeriodoAprobadaOption[]>(initialData.periodos)
+  const [periodoSeleccionado, setPeriodoSeleccionado] = useState<string>(
+    String(initialData.periodoSeleccionado)
+  )
   const [actualizando, setActualizando] = useState<boolean>(false)
   const [exportandoXlsx, setExportandoXlsx] = useState<boolean>(false)
   const [search, setSearch] = useState<string>("")
@@ -58,21 +71,30 @@ export function AprobadasReporteClient({
   const requestIdRef = useRef<number>(0)
 
   const cargarDatos = useCallback(
-    async (inicio: string, fin: string, termino: string) => {
+    async (inicio: string, fin: string, termino: string, periodoVal: string) => {
       const reqId = ++requestIdRef.current
       setActualizando(true)
 
       try {
+        const periodoParam: number | "todos" | undefined =
+          periodoVal === "todos"
+            ? "todos"
+            : periodoVal !== "" && Number(periodoVal) > 0
+              ? Number(periodoVal)
+              : undefined
+
         const res = await obtenerReporteAprobadas({
-          inicio: inicio && fin ? inicio : undefined,
-          fin: inicio && fin ? fin : undefined,
-          search: termino || undefined
+          fechaDesde: inicio || undefined,
+          fechaHasta: fin || undefined,
+          search: termino || undefined,
+          periodoId: periodoParam
         })
 
         if (reqId !== requestIdRef.current) return
 
         if (res.success) {
           setData(res.data)
+          setPeriodos(res.periodos)
         }
       } catch (error) {
         console.error("Error al actualizar becas aprobadas:", error)
@@ -85,34 +107,37 @@ export function AprobadasReporteClient({
     []
   )
 
-  // Evita consulta redundante al montar (datos precargados en SSR)
   useEffect(() => {
     if (isFirstMountRef.current) {
       isFirstMountRef.current = false
       return
     }
 
-    const fechasIncompletas =
-      (range.inicio !== "" && range.fin === "") ||
-      (range.inicio === "" && range.fin !== "")
-
-    if (fechasIncompletas) {
-      setAvisoFecha("Seleccione ambas fechas (Desde y Hasta) para filtrar por rango.")
+    if (range.inicio && range.fin && range.inicio > range.fin) {
+      setAvisoFecha("La fecha 'Desde' no puede ser posterior a la fecha 'Hasta'.")
       return
     }
 
     setAvisoFecha(null)
     const delay = search.trim() !== "" ? 300 : 0
     const timer = setTimeout(() => {
-      void cargarDatos(range.inicio, range.fin, search)
+      void cargarDatos(range.inicio, range.fin, search, periodoSeleccionado)
     }, delay)
 
     return () => clearTimeout(timer)
-  }, [search, range.inicio, range.fin, cargarDatos])
+  }, [search, range.inicio, range.fin, periodoSeleccionado, cargarDatos])
+
+  const etiquetaPeriodoActual = useMemo<string>(() => {
+    if (periodoSeleccionado === "todos") return "Todos los Periodos (Histórico)"
+    const encontrado = periodos.find((p) => String(p.id) === periodoSeleccionado)
+    return encontrado ? `${encontrado.codigo} — ${encontrado.nombre}` : "Periodo Vigente"
+  }, [periodoSeleccionado, periodos])
 
   const handleLimpiarFiltros = () => {
+    const periodoActual = periodos.find((p) => p.esActual) ?? periodos[0]
     setSearch("")
     setRange({ inicio: "", fin: "" })
+    setPeriodoSeleccionado(periodoActual ? String(periodoActual.id) : "todos")
     setAvisoFecha(null)
   }
 
@@ -127,13 +152,24 @@ export function AprobadasReporteClient({
     await xlsxRef.current.exportar()
   }
 
+  const abrirAuditoria = useCallback(
+    (cedula: string) => {
+      const cedulaLimpia = String(cedula || "").trim()
+      if (!cedulaLimpia) return
+      router.push(
+        `/admin/validarBeca?abrirAuditoria=${encodeURIComponent(cedulaLimpia)}&origen=reportes-aprobadas`
+      )
+    },
+    [router]
+  )
+
   const mapearFilaXLSX = useCallback((item: ReporteAprobadaItem): CeldaXLSX[] => {
     return [
       `${item.nombre} ${item.apellido}`.trim().toUpperCase(),
       `V-${item.cedula}`,
       item.tipo_beca.toUpperCase(),
       item.carrera.toUpperCase(),
-      `${item.semestre}°`,
+      formatearTrimestre(item.semestre, true).toUpperCase(),
       Number(item.promedio_notas),
       Number(item.indice_global),
       item.puntaje_baremo !== null ? item.puntaje_baremo : "Sin estudio",
@@ -145,21 +181,28 @@ export function AprobadasReporteClient({
   }, [])
 
   const hayFiltrosActivos =
-    search.trim() !== "" || range.inicio !== "" || range.fin !== ""
+    search.trim() !== "" ||
+    range.inicio !== "" ||
+    range.fin !== "" ||
+    periodoSeleccionado !== String(initialData.periodoSeleccionado)
 
-  const subtituloReporte = `${
+  const subtituloReporte = `${etiquetaPeriodoActual}${
     range.inicio && range.fin
-      ? `Periodo de aprobación: ${range.inicio} al ${range.fin}`
-      : "Listado completo de beneficios aprobados en el sistema"
+      ? ` | Rango: ${range.inicio} al ${range.fin}`
+      : range.inicio
+        ? ` | Desde: ${range.inicio}`
+        : range.fin
+          ? ` | Hasta: ${range.fin}`
+          : ""
   } — Total: ${data.length}${search.trim() ? ` | Filtro: "${search.trim()}"` : ""}`
 
   return (
-    <div className="space-y-4 print:space-y-0 print:overflow-visible print:h-auto print:min-h-0">
+    <div className="space-y-4 print:block print:space-y-0 print:overflow-visible print:h-auto print:min-h-0">
       {/* CABECERA CON BOTÓN ESTANDARIZADO DUAL (PDF / EXCEL) */}
       <div className="print:hidden">
         <PageHeader
           titulo="Reporte: Becas Aprobadas"
-          subtitulo={`Listado integral de beneficios otorgados y vigentes — Total: ${data.length}`}
+          subtitulo={`${etiquetaPeriodoActual} — Total: ${data.length}`}
           mostrarExportar={true}
           onExportPDF={handleImprimirPDF}
           onExportXLSX={handleExportarXLSX}
@@ -170,7 +213,7 @@ export function AprobadasReporteClient({
       {/* BARRA DE FILTROS ALINEADA (UF-Scale) */}
       <div className="bg-white p-3.5 md:p-3 rounded-xl border border-slate-200 shadow-sm space-y-2.5 print:hidden">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
-          <div className="lg:col-span-5 flex flex-col gap-1.5">
+          <div className="lg:col-span-3 flex flex-col gap-1.5">
             <label
               htmlFor="buscar-aprobadas"
               className="h-4 flex items-center gap-1.5 text-[10px] md:text-[9px] font-black uppercase text-slate-500 tracking-widest"
@@ -199,6 +242,29 @@ export function AprobadasReporteClient({
                 </button>
               )}
             </div>
+          </div>
+
+          <div className="lg:col-span-3 flex flex-col gap-1.5">
+            <label
+              htmlFor="selector-periodo-aprobadas"
+              className="h-4 flex items-center gap-1.5 text-[10px] md:text-[9px] font-black uppercase text-slate-500 tracking-widest"
+            >
+              <Calendar className="h-3 w-3 text-[#d4a843] shrink-0" />
+              <span>Periodo Académico</span>
+            </label>
+            <select
+              id="selector-periodo-aprobadas"
+              value={periodoSeleccionado}
+              onChange={(e) => setPeriodoSeleccionado(e.target.value)}
+              className="w-full h-12 md:h-9 px-3 rounded-lg border border-slate-200 bg-[#f8fafc] text-sm md:text-xs font-bold text-[#1e3a5f] outline-none focus:border-[#1e3a5f] focus:bg-white transition-all cursor-pointer"
+            >
+              {periodos.map((p) => (
+                <option key={p.id} value={String(p.id)}>
+                  {p.codigo} — {p.nombre} {p.esActual ? "(Actual)" : ""}
+                </option>
+              ))}
+              <option value="todos">Todos los Periodos (Histórico)</option>
+            </select>
           </div>
 
           <div className="lg:col-span-2 flex flex-col gap-1.5">
@@ -235,7 +301,7 @@ export function AprobadasReporteClient({
             />
           </div>
 
-          <div className="md:col-span-2 lg:col-span-3 flex items-center gap-2">
+          <div className="md:col-span-2 lg:col-span-2 flex items-center gap-2">
             {hayFiltrosActivos && (
               <button
                 type="button"
@@ -244,15 +310,14 @@ export function AprobadasReporteClient({
                 title="Restablecer filtros"
               >
                 <RotateCcw className="h-4 w-4 md:h-3.5 md:w-3.5" />
-                <span className="hidden sm:inline">Limpiar</span>
               </button>
             )}
 
             <button
               type="button"
               disabled={actualizando}
-              onClick={() => void cargarDatos(range.inicio, range.fin, search)}
-              className="flex-1 h-12 md:h-9 px-3.5 rounded-lg bg-[#1e3a5f] hover:bg-[#162c4a] text-white text-sm md:text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer disabled:opacity-50 transition-colors"
+              onClick={() => void cargarDatos(range.inicio, range.fin, search, periodoSeleccionado)}
+              className="flex-1 h-12 md:h-9 px-3 rounded-lg bg-[#1e3a5f] hover:bg-[#162c4a] text-white text-sm md:text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer disabled:opacity-50 transition-colors"
             >
               <RefreshCw
                 className={`h-4 w-4 md:h-3.5 md:w-3.5 text-[#d4a843] shrink-0 ${
@@ -308,7 +373,9 @@ export function AprobadasReporteClient({
                   {data.map((row) => (
                     <tr
                       key={row.solicitud_id}
-                      className="hover:bg-[#f8fafc] transition-colors"
+                      onClick={() => abrirAuditoria(row.cedula)}
+                      title="Abrir panel de auditoría del estudiante"
+                      className="hover:bg-blue-50/40 transition-colors cursor-pointer"
                     >
                       <td className="px-3.5 py-2.5">
                         <div className="flex items-center gap-2.5">
@@ -320,7 +387,7 @@ export function AprobadasReporteClient({
                               {row.nombre} {row.apellido}
                             </p>
                             <p className="text-[10px] text-slate-500 font-mono font-bold mt-0.5">
-                              V-{row.cedula} • {row.semestre}° Trim.
+                              V-{row.cedula} • {formatearTrimestre(row.semestre, true)}
                             </p>
                           </div>
                         </div>
@@ -386,7 +453,8 @@ export function AprobadasReporteClient({
               {data.map((row) => (
                 <div
                   key={`mob-${row.solicitud_id}`}
-                  className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm space-y-2.5"
+                  onClick={() => abrirAuditoria(row.cedula)}
+                  className="bg-white rounded-xl border border-slate-200 hover:border-[#1e3a5f]/50 p-4 shadow-sm space-y-2.5 cursor-pointer transition-colors"
                 >
                   <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-2">
                     <div className="min-w-0">
@@ -394,7 +462,7 @@ export function AprobadasReporteClient({
                         {row.nombre} {row.apellido}
                       </p>
                       <p className="text-xs font-mono font-bold text-slate-500 mt-0.5">
-                        V-{row.cedula} • {row.semestre}° Trimestre
+                        V-{row.cedula} • {formatearTrimestre(row.semestre, false)}
                       </p>
                     </div>
                     <span className="px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-black uppercase shrink-0">
@@ -464,7 +532,7 @@ export function AprobadasReporteClient({
                 {item.nombre} {item.apellido}
               </span>
               <span className="text-[8px] text-slate-500 font-semibold">
-                V-{item.cedula} • {item.semestre}° Trim.
+                V-{item.cedula} • {formatearTrimestre(item.semestre, true)}
               </span>
             </td>
             <td className="p-1.5 border border-slate-400">

@@ -1,14 +1,16 @@
 "use client"
 
-import { 
-  Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip 
+import {
+  Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip
 } from 'recharts'
 import { Crosshair } from "lucide-react"
+import type { DatosRadar } from "@/types/analitica"
 
-export function RadarCarreras({ data }: { data: any[] }) {
-  // Simulamos datos agrupados si no vienen listos (esto idealmente se hace en backend)
-  // Aquí asumimos que recibes un array con { subject: 'Sistemas', A: 120, B: 110, fullMark: 150 }
-  
+interface RadarCarrerasProps {
+  data: DatosRadar[];
+}
+
+export function RadarCarreras({ data }: RadarCarrerasProps) {
   return (
     <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-[400px] flex flex-col">
       <div className="flex justify-between items-center mb-2">
@@ -23,7 +25,7 @@ export function RadarCarreras({ data }: { data: any[] }) {
           <PolarGrid stroke="#e2e8f0" />
           <PolarAngleAxis dataKey="subject" tick={{ fill: '#000000', fontSize: 10, fontWeight: 'bold' }} />
           <PolarRadiusAxis angle={30} domain={[0, 20]} tick={false} axisLine={false} />
-          
+
           <Radar
             name="Promedio General"
             dataKey="A"
@@ -32,7 +34,7 @@ export function RadarCarreras({ data }: { data: any[] }) {
             fill="#000000"
             fillOpacity={0.4}
           />
-          <Tooltip 
+          <Tooltip
             contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
             itemStyle={{ color: '#01040a', fontWeight: 'bold', fontSize: '12px' }}
           />

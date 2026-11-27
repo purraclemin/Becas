@@ -276,7 +276,7 @@ export default function ProcesoPage() {
             </h2>
             <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row pointer-events-auto">
               <Link
-                href="/registro"
+                href="/postulacion"
                 className="group flex items-center justify-center gap-2 rounded-full bg-[#d4a843] px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-[#1e3a5f] transition-all hover:bg-[#e5bc55] hover:scale-105 hover:shadow-[0_0_20px_rgba(212,168,67,0.4)] active:scale-95 w-full sm:w-auto"
               >
                 Comenzar Solicitud

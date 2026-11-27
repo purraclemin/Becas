@@ -1,10 +1,22 @@
 'use server'
 
+import { randomUUID } from 'crypto'
 import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise'
 import { db } from './db'
 import { getSession } from './ActionsSession'
 import { obtenerOCrearPeriodoObjetivo } from './SolicitudAcademic'
 import { calcularPuntajeUnificado } from './MotorBaremoUnificado'
+import { enviarCorreoCambioEstatusPorSolicitudId } from './EmailNotificacionesBeca'
+
+interface SolicitudConvocadaRow extends RowDataPacket {
+  id: number;
+  periodo_id: number;
+  promedio_notas: number | string | null;
+  tipo_beca: string | null;
+  materias_json: string | null;
+  semestre: number | null;
+  indice_global: number | string | null;
+}
 
 export interface EstudioSocioeconomicoInput {
   student_id?: number | string | null;
@@ -417,13 +429,113 @@ export async function procesarGuardadoEstudio(data: EstudioSocioeconomicoInput) 
       valoresAdmin
     );
 
-    await connection.execute<ResultSetHeader>(
+    const [convocadasRows] = await connection.execute<SolicitudConvocadaRow[]>(
+      `
+      SELECT
+        s.id,
+        s.periodo_id,
+        s.promedio_notas,
+        s.tipo_beca,
+        s.materias_json,
+        st.semestre,
+        IFNULL(st.indice_global, 0.00) AS indice_global
+      FROM solicitudes s
+      JOIN students st ON s.user_id = st.id
+      WHERE s.user_id = ?
+        AND s.estatus = 'Convocado a Entrevista'
+      ORDER BY s.id DESC
+      `,
+      [studentIdNum]
+    );
+
+    const [updSolicitudRes] = await connection.execute<ResultSetHeader>(
       `UPDATE solicitudes SET estatus = 'En Revisión', fecha_revision = NOW() WHERE user_id = ? AND estatus = 'Convocado a Entrevista'`,
       [studentIdNum]
     );
 
+    const observacionTransicion =
+      'Estudio socioeconómico registrado en entrevista; expediente remitido a Secretaría General (En Revisión).';
+
+    if (convocadasRows.length > 0 && updSolicitudRes.affectedRows > 0) {
+      const sesionActual = await getSession();
+      const adminActorId =
+        sesionActual.isLoggedIn && 'id' in sesionActual && Number(sesionActual.id) > 0
+          ? Number(sesionActual.id)
+          : 0;
+      const periodoActualId = Number(await obtenerOCrearPeriodoObjetivo());
+
+      for (const solConv of convocadasRows) {
+        const materiasSnap =
+          typeof solConv.materias_json === 'string'
+            ? solConv.materias_json
+            : JSON.stringify(solConv.materias_json || []);
+
+        await connection.execute<ResultSetHeader>(
+          `
+          INSERT INTO historial_aprobaciones (
+            solicitud_id,
+            user_id,
+            periodo_id,
+            admin_id,
+            promedio_ciclo,
+            trimestre,
+            puntaje_baremo_,
+            nivel_riesgo,
+            tipo_beca_snapshot,
+            estatus_previo,
+            estatus_nuevo,
+            observacion_admin,
+            materias_snapshot_json,
+            indice_global_snapshot,
+            fecha_aprobacion,
+            token_verificacion,
+            ip_accion
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Convocado a Entrevista', 'En Revisión', ?, ?, ?, NOW(), ?, '127.0.0.1')
+          `,
+          [
+            Number(solConv.id),
+            studentIdNum,
+            periodoActualId > 0 ? periodoActualId : Number(solConv.periodo_id),
+            adminActorId,
+            solConv.promedio_notas,
+            solConv.semestre ?? 1,
+            puntaje,
+            nivel,
+            solConv.tipo_beca,
+            observacionTransicion,
+            materiasSnap,
+            solConv.indice_global ?? 0.0,
+            randomUUID(),
+          ]
+        );
+      }
+    }
+
     await connection.commit();
-    return { success: true, puntaje, nivel };
+
+    // Notificación automática por correo al pasar de Convocado a Entrevista -> En Revisión
+    let emailEnviado: boolean | undefined = undefined;
+    let emailError: string | undefined = undefined;
+
+    if (convocadasRows.length > 0 && updSolicitudRes.affectedRows > 0) {
+      const envio = await enviarCorreoCambioEstatusPorSolicitudId({
+        solicitudId: Number(convocadasRows[0].id),
+        nuevoEstatus: 'En Revisión',
+        estatusPrevio: 'Convocado a Entrevista',
+        observaciones: observacionTransicion,
+      });
+      emailEnviado = envio.emailEnviado;
+      emailError = envio.emailError;
+    }
+
+    return {
+      success: true,
+      puntaje,
+      nivel,
+      pasoARevision: convocadasRows.length > 0 && updSolicitudRes.affectedRows > 0,
+      emailEnviado,
+      emailError,
+    };
   } catch (error) {
     if (connection) await connection.rollback();
     console.error("❌ Error en procesarGuardadoEstudio:", error);

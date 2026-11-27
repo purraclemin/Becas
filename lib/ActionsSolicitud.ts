@@ -310,7 +310,7 @@ export async function enviarSolicitud(formData: FormData) {
       return { error: "No se encontró el registro académico del estudiante." };
     }
     if (Number(statusRows[0].beca_perdida) === 1) {
-      return { error: "Solicitud Denegada (Art. 28): Posee un rechazo o suspensión definitiva previa." };
+      return { error: "Solicitud Denegada: Posee un rechazo o suspensión definitiva previa." };
     }
 
     const semestreEstudiante = Number(statusRows[0].semestre || trimestreNum || 1);
@@ -548,7 +548,7 @@ export async function enviarSolicitud(formData: FormData) {
     if (solicitudPrevia) {
       const estatusPrevio = String(solicitudPrevia.estatus || "").trim();
       if (estatusPrevio === "Rechazada") {
-        return { error: "Solicitud Denegada (Art. 28): Posee un rechazo o suspensión definitiva previa." };
+        return { error: "Solicitud Denegada : Posee un rechazo o suspensión definitiva previa." };
       }
       if (ESTATUS_BLOQUEADOS_REENVIO.has(estatusPrevio)) {
         return { error: `Ya posee una solicitud activa en estatus "${estatusPrevio}" para el periodo vigente.` };

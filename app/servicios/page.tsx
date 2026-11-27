@@ -64,19 +64,19 @@ const adminFeatures = [
     icon: Gavel,
     title: "Potestad de Otorgamiento",
     description:
-      "Módulo de decisiones para el Consejo Superior basado en disponibilidad presupuestaria (Art. 3).",
+      "Módulo de decisiones para el Consejo Superior basado en disponibilidad presupuestaria .",
   },
   {
     icon: Users,
     title: "Control de Becarios",
     description:
-      "Supervisión de carga académica máxima y cumplimiento de las 15 horas de plan de actividades (Art. 17).",
+      "Supervisión de carga académica máxima y cumplimiento de las 15 horas de plan de actividades .",
   },
   {
     icon: Settings,
     title: "Planificación de Lapsos",
     description:
-      "Personalización de fechas de convocatoria y vigencia de beneficios por período académico (Art. 22).",
+      "Personalización de fechas de convocatoria y vigencia de beneficios por período académico .",
   },
   {
     icon: Database,

@@ -91,7 +91,7 @@ export async function validarCuposYRequisitos(
         apto: false,
         codigo: 'BECA_PERDIDA',
         mensaje:
-          "El estudiante registra una suspensión o rechazo definitivo previo (Art. 28) y no puede optar nuevamente por ninguna beca o ayuda económica.",
+          "El estudiante registra una suspensión o rechazo definitivo previo  y no puede optar nuevamente por ninguna beca o ayuda económica.",
       };
     }
 
@@ -115,7 +115,117 @@ export async function validarCuposYRequisitos(
     const trimestreMinimo = regla?.trimestreMinimo ?? 1;
     const cupoMaximo = regla?.cupoMaximo ?? null;
 
-    // 2. VALIDACIÓN DE TRIMESTRE MÍNIMO (ej. Art. 8: desde 4° trimestre)
+    // 2. VALIDACIÓN ESTRICTA DE CUPOS ANTES DE REGLAS EXCEPCIONABLES (bloqueo absoluto sin bypass)
+    if (cupoMaximo !== null) {
+      const variantes = obtenerVariantesTipoBeca(tipoBecaOficial);
+      const placeholders = variantes.map(() => '?').join(', ');
+
+      // 2A. TOPE ANUAL DE 10 NUEVOS INGRESOS EN BECA SOCIAL APRENDIZAJE (Art. 6, Par. 2°)
+      if (tipoBecaOficial === 'BECA SOCIAL APRENDIZAJE' && regla?.cupoAnualNuevos) {
+        const [anioRows] = await db.execute<PeriodoAnioRow[]>(
+          `SELECT YEAR(fecha_inicio) AS anio FROM periodos_academicos WHERE id = ? LIMIT 1`,
+          [Number(periodoId)]
+        );
+        const anioPeriodo = Number(anioRows[0]?.anio || new Date().getFullYear());
+
+        const [yaTuvoSocialAntes] = await db.execute<CupoTotalRow[]>(
+          `
+          SELECT COUNT(*) AS total
+          FROM solicitudes s
+          JOIN periodos_academicos p ON s.periodo_id = p.id
+          WHERE s.user_id = ?
+            AND LOWER(TRIM(s.tipo_beca)) IN (${placeholders})
+            AND s.estatus = 'Aprobada'
+            AND YEAR(p.fecha_inicio) < ?
+          `,
+          [Number(row.user_id), ...variantes, anioPeriodo]
+        );
+
+        const esNuevoIngresoAnual = Number(yaTuvoSocialAntes[0]?.total || 0) === 0;
+
+        if (esNuevoIngresoAnual) {
+          const [nuevosAnioRows] = await db.execute<CupoTotalRow[]>(
+            `
+            SELECT COUNT(DISTINCT s.user_id) AS total
+            FROM solicitudes s
+            JOIN periodos_academicos p ON s.periodo_id = p.id
+            WHERE LOWER(TRIM(s.tipo_beca)) IN (${placeholders})
+              AND s.estatus IN ('Aprobada', 'Renovacion', 'Renovación')
+              AND YEAR(p.fecha_inicio) = ?
+              AND s.user_id != ?
+              AND NOT EXISTS (
+                SELECT 1
+                FROM solicitudes s_prev
+                JOIN periodos_academicos p_prev ON s_prev.periodo_id = p_prev.id
+                WHERE s_prev.user_id = s.user_id
+                  AND LOWER(TRIM(s_prev.tipo_beca)) IN (${placeholders})
+                  AND s_prev.estatus = 'Aprobada'
+                  AND YEAR(p_prev.fecha_inicio) < ?
+              )
+            `,
+            [...variantes, anioPeriodo, Number(row.user_id), ...variantes, anioPeriodo]
+          );
+
+          const nuevosEsteAnio = Number(nuevosAnioRows[0]?.total || 0);
+          if (nuevosEsteAnio >= regla.cupoAnualNuevos) {
+            return {
+              apto: false,
+              codigo: 'CUPO_EXCEDIDO',
+              mensaje: `Cupos llenos : Ya existen ${nuevosEsteAnio} de ${regla.cupoAnualNuevos} nuevas Becas Sociales Aprendizaje otorgadas en ${anioPeriodo}. No es posible aprobar más ingresos en esta modalidad.`,
+              detalles: {
+                actual: nuevosEsteAnio,
+                maximo: regla.cupoAnualNuevos,
+                indiceRequerido: indiceMinimo,
+                indiceActual: indiceEvaluado,
+              },
+            };
+          }
+        }
+      }
+
+      // 2B. CONTEO DE CUPOS ACTIVOS EN EL PERIODO VIGENTE
+      let countQuery = `
+        SELECT COUNT(*) AS total 
+        FROM solicitudes s
+        JOIN students st ON s.user_id = st.id
+        WHERE s.periodo_id = ? 
+          AND LOWER(TRIM(s.tipo_beca)) IN (${placeholders})
+          AND s.estatus IN ('Aprobada', 'Renovacion', 'Renovación')
+          AND s.id != ?
+      `;
+
+      const params: Array<string | number> = [
+        Number(periodoId),
+        ...variantes,
+        Number(solicitudId),
+      ];
+
+      if (tipoBecaOficial === 'BECA A LA EXCELENCIA ACADÉMICA') {
+        countQuery += ` AND UPPER(TRIM(st.carrera)) = ?`;
+        params.push(carreraDB);
+      }
+
+      const [rows] = await db.execute<CupoTotalRow[]>(countQuery, params);
+      const cupoOcupado = Number(rows[0]?.total || 0);
+
+      if (cupoOcupado >= cupoMaximo) {
+        return {
+          apto: false,
+          codigo: 'CUPO_EXCEDIDO',
+          mensaje: `Cupos llenos en el periodo actual: Ya existen ${cupoOcupado} de ${cupoMaximo} beneficio(s) aprobado(s) para ${tipoBecaOficial}${
+            tipoBecaOficial === 'BECA A LA EXCELENCIA ACADÉMICA' ? ' en esta carrera' : ''
+          }. No se permiten nuevas aprobaciones.`,
+          detalles: {
+            actual: cupoOcupado,
+            maximo: cupoMaximo,
+            indiceRequerido: indiceMinimo,
+            indiceActual: indiceEvaluado,
+          },
+        };
+      }
+    }
+
+    // 3. VALIDACIÓN DE TRIMESTRE MÍNIMO (ej. Art. 8: desde 4° trimestre)
     if (trimestreReal < trimestreMinimo) {
       return {
         apto: false,
@@ -124,7 +234,7 @@ export async function validarCuposYRequisitos(
       };
     }
 
-    // 3. VALIDACIÓN DE ÍNDICE MÍNIMO (1er trimestre sin notas previas no se bloquea por 0.00)
+    // 4. VALIDACIÓN DE ÍNDICE MÍNIMO (1er trimestre sin notas previas no se bloquea por 0.00)
     const esNuevoIngresoSinNotas = trimestreReal <= 1 && indiceEvaluado === 0;
     if (!esNuevoIngresoSinNotas && indiceEvaluado < indiceMinimo) {
       return {
@@ -144,125 +254,13 @@ export async function validarCuposYRequisitos(
       };
     }
 
-    if (cupoMaximo === null) {
-      return {
-        apto: true,
-        codigo: 'OK',
-        mensaje: `Cumple el promedio trimestral mínimo reglamentario (${indiceMinimo.toFixed(2)}) para ${tipoBecaOficial}.`,
-      };
-    }
-
-    const variantes = obtenerVariantesTipoBeca(tipoBecaOficial);
-    const placeholders = variantes.map(() => '?').join(', ');
-
-    // 4. TOPE ANUAL DE 10 NUEVOS INGRESOS EN BECA SOCIAL APRENDIZAJE (Art. 6, Par. 2°)
-    if (tipoBecaOficial === 'BECA SOCIAL APRENDIZAJE' && regla?.cupoAnualNuevos) {
-      const [anioRows] = await db.execute<PeriodoAnioRow[]>(
-        `SELECT YEAR(fecha_inicio) AS anio FROM periodos_academicos WHERE id = ? LIMIT 1`,
-        [Number(periodoId)]
-      );
-      const anioPeriodo = Number(anioRows[0]?.anio || new Date().getFullYear());
-
-      const [yaTuvoSocialAntes] = await db.execute<CupoTotalRow[]>(
-        `
-        SELECT COUNT(*) AS total
-        FROM solicitudes s
-        JOIN periodos_academicos p ON s.periodo_id = p.id
-        WHERE s.user_id = ?
-          AND LOWER(TRIM(s.tipo_beca)) IN (${placeholders})
-          AND s.estatus = 'Aprobada'
-          AND YEAR(p.fecha_inicio) < ?
-        `,
-        [Number(row.user_id), ...variantes, anioPeriodo]
-      );
-
-      const esNuevoIngresoAnual = Number(yaTuvoSocialAntes[0]?.total || 0) === 0;
-
-      if (esNuevoIngresoAnual) {
-        const [nuevosAnioRows] = await db.execute<CupoTotalRow[]>(
-          `
-          SELECT COUNT(DISTINCT s.user_id) AS total
-          FROM solicitudes s
-          JOIN periodos_academicos p ON s.periodo_id = p.id
-          WHERE LOWER(TRIM(s.tipo_beca)) IN (${placeholders})
-            AND s.estatus IN ('Aprobada', 'Renovacion', 'Renovación')
-            AND YEAR(p.fecha_inicio) = ?
-            AND s.user_id != ?
-            AND NOT EXISTS (
-              SELECT 1
-              FROM solicitudes s_prev
-              JOIN periodos_academicos p_prev ON s_prev.periodo_id = p_prev.id
-              WHERE s_prev.user_id = s.user_id
-                AND LOWER(TRIM(s_prev.tipo_beca)) IN (${placeholders})
-                AND s_prev.estatus = 'Aprobada'
-                AND YEAR(p_prev.fecha_inicio) < ?
-            )
-          `,
-          [...variantes, anioPeriodo, Number(row.user_id), ...variantes, anioPeriodo]
-        );
-
-        const nuevosEsteAnio = Number(nuevosAnioRows[0]?.total || 0);
-        if (nuevosEsteAnio >= regla.cupoAnualNuevos) {
-          return {
-            apto: false,
-            codigo: 'CUPO_EXCEDIDO',
-            mensaje: `Cupo anual de concurso alcanzado (Art. 6 Par. 2°): Ya existen ${nuevosEsteAnio} de ${regla.cupoAnualNuevos} nuevas Becas Sociales Aprendizaje otorgadas en ${anioPeriodo}.`,
-            detalles: {
-              actual: nuevosEsteAnio,
-              maximo: regla.cupoAnualNuevos,
-              indiceRequerido: indiceMinimo,
-              indiceActual: indiceEvaluado,
-            },
-          };
-        }
-      }
-    }
-
-    // 5. CONTEO DE CUPOS ACTIVOS EN EL PERIODO VIGENTE
-    let countQuery = `
-      SELECT COUNT(*) AS total 
-      FROM solicitudes s
-      JOIN students st ON s.user_id = st.id
-      WHERE s.periodo_id = ? 
-        AND LOWER(TRIM(s.tipo_beca)) IN (${placeholders})
-        AND s.estatus IN ('Aprobada', 'Renovacion', 'Renovación')
-        AND s.id != ?
-    `;
-
-    const params: Array<string | number> = [
-      Number(periodoId),
-      ...variantes,
-      Number(solicitudId),
-    ];
-
-    if (tipoBecaOficial === 'BECA A LA EXCELENCIA ACADÉMICA') {
-      countQuery += ` AND UPPER(TRIM(st.carrera)) = ?`;
-      params.push(carreraDB);
-    }
-
-    const [rows] = await db.execute<CupoTotalRow[]>(countQuery, params);
-    const cupoOcupado = Number(rows[0]?.total || 0);
-
-    if (cupoOcupado >= cupoMaximo) {
-      return {
-        apto: false,
-        codigo: 'CUPO_EXCEDIDO',
-        mensaje: `Cupo agotado en el periodo actual: Ya existen ${cupoOcupado} beneficio(s) aprobado(s) de ${cupoMaximo} para ${tipoBecaOficial}${
-          tipoBecaOficial === 'BECA A LA EXCELENCIA ACADÉMICA' ? ' en esta carrera' : ''
-        }.`,
-        detalles: {
-          actual: cupoOcupado,
-          maximo: cupoMaximo,
-          indiceRequerido: indiceMinimo,
-          indiceActual: indiceEvaluado,
-        },
-      };
-    }
-
     return {
       apto: true,
       codigo: 'OK',
-      mensaje: "Cumple con los requisitos de la normativa y hay cupo disponible.",
+      mensaje:
+        cupoMaximo === null
+          ? `Cumple el promedio trimestral mínimo reglamentario (${indiceMinimo.toFixed(2)}) para ${tipoBecaOficial}.`
+          : "Cumple con los requisitos de la normativa y hay cupo disponible.",
     };
   } catch (error) {
     console.error("❌ Error en validador de becas:", error);

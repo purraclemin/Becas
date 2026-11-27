@@ -14,11 +14,12 @@ interface EstudianteRanking {
 }
 
 interface RankingProps {
-  estudiantes: EstudianteRanking[]
+  estudiantes?: EstudianteRanking[]
   onNavigate: (cedula: string) => void
 }
 
-export function RankingPrioridad({ estudiantes, onNavigate }: RankingProps) {
+export function RankingPrioridad({ estudiantes = [], onNavigate }: RankingProps) {
+  const listaEstudiantes = Array.isArray(estudiantes) ? estudiantes : []
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200/80 overflow-hidden flex flex-col w-full">
       {/* Cabecera del Ranking */}
@@ -38,7 +39,7 @@ export function RankingPrioridad({ estudiantes, onNavigate }: RankingProps) {
       
       {/* CONTENEDOR DINÁMICO: Crece hasta 10 ítems, luego hace scroll */}
       <div className="divide-y divide-slate-100 overflow-y-auto max-h-[35rem] custom-scrollbar bg-white">
-        {estudiantes.length > 0 ? estudiantes.map((est, index) => {
+        {listaEstudiantes.length > 0 ? listaEstudiantes.map((est, index) => {
           const promedioSeguro = Number(est.promedio_notas) || 0;
           const puntosSeguros = Number(est.vulnerabilidad_puntos) || 0;
 

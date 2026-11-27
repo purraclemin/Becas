@@ -3,16 +3,22 @@
 import {
   obtenerReporteAprobadas,
   type ReporteAprobadaItem,
+  type PeriodoAprobadaOption,
   type RespuestaReporteAprobadas,
 } from "@/app/admin/reportes/aprobadas/actions"
 import {
   obtenerReporteRechazadas,
+  type EstatusCierreReporte,
+  type FiltroEstatusCierre,
+  type StatsReporteRechazadas,
   type ReporteRechazadaItem,
   type RespuestaReporteRechazadas,
 } from "@/app/admin/reportes/rechazadas/actions"
 import {
   obtenerReporteRecurrencia,
+  type FiltrosReporteRecurrencia,
   type ReporteRecurrenciaItem,
+  type StatsRecurrenciaReporte,
   type RespuestaReporteRecurrencia,
 } from "@/app/admin/reportes/recurrencia/actions"
 import {
@@ -21,17 +27,25 @@ import {
 } from "@/app/admin/reportes/solicitudes-fecha/actions"
 import {
   obtenerReporteCarreras,
+  type FiltrosReporteCarreras,
+  type EstudianteCarreraReporte,
   type ReporteCarreraItem,
+  type StatsCarrerasReporte,
   type RespuestaReporteCarreras,
 } from "@/app/admin/reportes/carreras/actions"
 import {
   obtenerReporteAuditoria,
+  type FiltrosReporteAuditoria,
   type ReporteAuditoriaItem,
   type RespuestaReporteAuditoria,
 } from "@/app/admin/reportes/auditoria/actions"
 import {
   obtenerReporteTiposBeca,
+  type EstudianteTipoBecaReporte,
+  type PeriodoTipoBecaOption,
+  type FiltrosReporteTiposBeca,
   type ReporteTipoBecaItem,
+  type StatsTiposBecaReporte,
   type RespuestaReporteTiposBeca,
 } from "@/app/admin/reportes/tipos-beca/actions"
 import {
@@ -55,17 +69,31 @@ import {
 
 export type {
   ReporteAprobadaItem,
+  PeriodoAprobadaOption,
   RespuestaReporteAprobadas,
+  EstatusCierreReporte,
+  FiltroEstatusCierre,
+  StatsReporteRechazadas,
   ReporteRechazadaItem,
   RespuestaReporteRechazadas,
+  FiltrosReporteRecurrencia,
   ReporteRecurrenciaItem,
+  StatsRecurrenciaReporte,
   RespuestaReporteRecurrencia,
   ReporteSolicitudFechaItem,
+  FiltrosReporteCarreras,
+  EstudianteCarreraReporte,
   ReporteCarreraItem,
+  StatsCarrerasReporte,
   RespuestaReporteCarreras,
+  FiltrosReporteAuditoria,
   ReporteAuditoriaItem,
   RespuestaReporteAuditoria,
+  EstudianteTipoBecaReporte,
+  PeriodoTipoBecaOption,
+  FiltrosReporteTiposBeca,
   ReporteTipoBecaItem,
+  StatsTiposBecaReporte,
   RespuestaReporteTiposBeca,
   FiltrosReporteEnRevision,
   ExpedienteEnRevisionItem,
@@ -83,23 +111,25 @@ export type {
 export async function reporteAprobadasPorFecha(
   inicio?: string,
   fin?: string,
-  search?: string
+  search?: string,
+  periodoId?: number | "todos"
 ): Promise<RespuestaReporteAprobadas> {
-  return await obtenerReporteAprobadas({ inicio, fin, search })
+  return await obtenerReporteAprobadas({ inicio, fin, search, periodoId })
 }
 
 export async function reporteRechazadasPorFecha(
   inicio?: string,
   fin?: string,
-  search?: string
+  search?: string,
+  estatus?: FiltroEstatusCierre
 ): Promise<RespuestaReporteRechazadas> {
-  return await obtenerReporteRechazadas({ inicio, fin, search })
+  return await obtenerReporteRechazadas({ inicio, fin, search, estatus })
 }
 
 export async function reporteRecurrenciaAlumnos(
-  search?: string
+  entrada?: string | FiltrosReporteRecurrencia
 ): Promise<RespuestaReporteRecurrencia> {
-  return await obtenerReporteRecurrencia(search)
+  return await obtenerReporteRecurrencia(entrada)
 }
 
 export async function reporteSolicitudesPorFecha(
@@ -112,21 +142,21 @@ export async function reporteSolicitudesPorFecha(
 }
 
 export async function reporteDistribucionCarreras(
-  search?: string
+  entrada?: string | FiltrosReporteCarreras
 ): Promise<RespuestaReporteCarreras> {
-  return await obtenerReporteCarreras(search)
+  return await obtenerReporteCarreras(entrada)
 }
 
 export async function reporteAuditoriaAdministradores(
-  search?: string
+  entrada?: string | FiltrosReporteAuditoria
 ): Promise<RespuestaReporteAuditoria> {
-  return await obtenerReporteAuditoria(search)
+  return await obtenerReporteAuditoria(entrada)
 }
 
 export async function reporteTiposDeBeca(
-  search?: string
+  filtros?: FiltrosReporteTiposBeca | string
 ): Promise<RespuestaReporteTiposBeca> {
-  return await obtenerReporteTiposBeca(search)
+  return await obtenerReporteTiposBeca(filtros)
 }
 
 export async function reporteEnRevision(

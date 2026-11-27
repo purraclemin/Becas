@@ -3,18 +3,24 @@
 import type { RowDataPacket } from 'mysql2/promise'
 import { revalidatePath } from 'next/cache'
 import { cookies } from 'next/headers'
-import nodemailer from 'nodemailer'
 import { registrarDecisionEnHistorial } from './ActionsEstatusBecaSQL'
 import { validarCuposYRequisitos } from './ActionsBecaValidators'
 import { obtenerOCrearPeriodoObjetivo } from './SolicitudAcademic'
 import { ejecutarRotacionExcelenciaEnPeriodo } from './ActionsGestionEspecial'
+import { enviarCorreoCambioEstatusPorSolicitudId } from './EmailNotificacionesBeca'
 import { SISTEMA_ADMIN_ID } from './RecordAcademicoUtils'
 import { db } from './db'
 
-const ESTATUS_VALIDOS = ['Pendiente', 'Convocado a Entrevista', 'En Revisión', 'Aprobada', 'Rechazada'];
-const EMAIL_SECRETARIA_GENERAL = 'secretariageneral@unimar.edu.ve';
+const ESTATUS_VALIDOS: ReadonlyArray<string> = [
+  'Pendiente',
+  'Convocado a Entrevista',
+  'En Revisión',
+  'Aprobada',
+  'Rechazada',
+  'Finalizada',
+];
 
-type MailTransporter = ReturnType<typeof nodemailer.createTransport>;
+const EMAIL_SECRETARIA_GENERAL = 'secretariageneral@unimar.edu.ve';
 
 export interface ResultadoActualizacionEstatus {
   success?: boolean;
@@ -39,57 +45,11 @@ interface SolicitudEstadoRow extends RowDataPacket {
   beca_perdida: number;
 }
 
-interface EstudianteCorreoRow extends RowDataPacket {
-  email_destino: string | null;
-  nombre: string;
-  apellido: string;
-  tipo_beca: string | null;
-}
-
-function escaparHtml(texto: string): string {
-  return texto
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
-
-function crearTransporterSMTP(): {
-  transporter: MailTransporter | null;
-  smtpUser: string;
-  errorConfig?: string;
-} {
-  const host = (process.env.SMTP_HOST || 'smtp.gmail.com').trim();
-  const port = Number(process.env.SMTP_PORT || 587);
-  const smtpUser = (process.env.SMTP_USER || '').trim();
-  const smtpPass = (process.env.SMTP_PASS || '').trim();
-
-  if (!smtpUser || !smtpPass) {
-    return {
-      transporter: null,
-      smtpUser: '',
-      errorConfig:
-        'Credenciales SMTP no configuradas en el servidor (verifique SMTP_USER y SMTP_PASS en .env o Vercel).',
-    };
-  }
-
-  const transporter = nodemailer.createTransport({
-    host,
-    port,
-    secure: port === 465,
-    auth: {
-      user: smtpUser,
-      pass: smtpPass,
-    },
-  });
-
-  return { transporter, smtpUser };
-}
-
 /**
  * Acción del Servidor: Orquestador para la actualización de estatus de becas.
- * Al emitir un dictamen de Aprobada o Rechazada, sincroniza automáticamente la Nómina de Excelencia.
+ * - Sincroniza automáticamente la Nómina de Excelencia en dictámenes de Aprobada/Rechazada/Finalizada.
+ * - Envía notificación institucional por correo al estudiante en CADA cambio de estatus
+ *   (y en reasignaciones de departamento) sin revertir la base de datos si el servidor SMTP falla.
  */
 export async function actualizarEstatusBeca(
   id: number,
@@ -208,13 +168,19 @@ export async function actualizarEstatusBeca(
         if (diagnostico.codigo === 'BECA_PERDIDA') {
           return {
             error: diagnostico.mensaje,
+            code: diagnostico.codigo,
           };
         }
 
-        const esRenovacion = sol.estatus === 'Renovacion';
-        const saltarValidacionCupo = esRenovacion && diagnostico.codigo === 'CUPO_EXCEDIDO';
+        // Bloqueo estricto de cupos llenos en el servidor (sin bypass por confirmacionEspecial)
+        if (diagnostico.codigo === 'CUPO_EXCEDIDO') {
+          return {
+            error: diagnostico.mensaje,
+            code: diagnostico.codigo,
+          };
+        }
 
-        if (!diagnostico.apto && !confirmacionEspecial && !saltarValidacionCupo) {
+        if (!diagnostico.apto && !confirmacionEspecial) {
           return {
             error: 'REGLAMENTO_INCUMPLIDO',
             code: diagnostico.codigo,
@@ -236,8 +202,13 @@ export async function actualizarEstatusBeca(
       periodoActualId
     );
 
-    // 6. SINCRONIZACIÓN AUTOMÁTICA DE NÓMINA DE EXCELENCIA AL APROBAR O RECHAZAR
-    if (resultado.success && (nuevoEstatus === 'Aprobada' || nuevoEstatus === 'Rechazada')) {
+    // 6. SINCRONIZACIÓN AUTOMÁTICA DE NÓMINA DE EXCELENCIA AL APROBAR, RECHAZAR O FINALIZAR
+    if (
+      resultado.success &&
+      (nuevoEstatus === 'Aprobada' ||
+        nuevoEstatus === 'Rechazada' ||
+        nuevoEstatus === 'Finalizada')
+    ) {
       try {
         await ejecutarRotacionExcelenciaEnPeriodo(periodoActualId, SISTEMA_ADMIN_ID);
       } catch (rotErr) {
@@ -245,102 +216,21 @@ export async function actualizarEstatusBeca(
       }
     }
 
-    // 7. NOTIFICACIÓN OMNICANAL SI ES CONVOCATORIA A ENTREVISTA
+    // 7. NOTIFICACIÓN AUTOMÁTICA POR CORREO AL ESTUDIANTE EN CADA CAMBIO DE ESTATUS
     let emailEnviado: boolean | undefined = undefined;
     let emailError: string | undefined = undefined;
 
-    if (resultado.success && nuevoEstatus === 'Convocado a Entrevista') {
-      emailEnviado = false;
-
-      try {
-        const { transporter, smtpUser, errorConfig } = crearTransporterSMTP();
-
-        if (!transporter) {
-          emailError = errorConfig;
-          console.error('⚠️ Advertencia SMTP:', errorConfig);
-        } else {
-          const [estudianteRows] = await db.execute<EstudianteCorreoRow[]>(
-            `
-            SELECT 
-              IFNULL(NULLIF(TRIM(s.email_institucional), ''), st.email) AS email_destino,
-              st.nombre,
-              st.apellido,
-              s.tipo_beca
-            FROM solicitudes s
-            JOIN students st ON s.user_id = st.id
-            WHERE s.id = ?
-            LIMIT 1
-            `,
-            [Number(id)]
-          );
-
-          if (estudianteRows.length === 0) {
-            emailError = 'No se encontró el expediente del estudiante para enviar el correo.';
-          } else {
-            const est = estudianteRows[0];
-            const emailDestino = est.email_destino ? est.email_destino.trim() : '';
-
-            if (!emailDestino) {
-              emailError = 'El estudiante no tiene un correo electrónico registrado.';
-            } else {
-              const nombreSeguro = escaparHtml(`${est.nombre} ${est.apellido}`.trim());
-              const becaSegura = escaparHtml(est.tipo_beca || 'Beca Institucional');
-              const bloqueInstruccionesHtml = observacionesLimpias
-                ? `
-                  <div style="background-color: #fffbeb; border: 1px solid #fcd34d; border-left: 4px solid #d4a843; padding: 15px; margin: 20px 0; border-radius: 6px;">
-                    <p style="margin: 0 0 8px 0; font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; color: #1e3a5f;">
-                      Instrucciones de Citación:
-                    </p>
-                    <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #1e293b;">
-                      ${escaparHtml(observacionesLimpias).replace(/\r?\n/g, '<br />')}
-                    </p>
-                  </div>
-                `
-                : `
-                  <div style="background-color: #f8fafc; border-left: 4px solid #d4a843; padding: 15px; margin: 20px 0; border-radius: 6px;">
-                    <p style="margin: 0; font-weight: bold; color: #1e3a5f;">
-                      Debe presentarse a la brevedad posible en el Departamento de Bienestar Estudiantil para realizar su entrevista socioeconómica.
-                    </p>
-                  </div>
-                `;
-
-              await transporter.sendMail({
-                from: `"Comité de Becas UNIMAR" <${smtpUser}>`,
-                to: emailDestino,
-                subject: 'Convocatoria a Entrevista Socioeconómica - Becas UNIMAR',
-                html: `
-                  <div style="font-family: Arial, sans-serif; padding: 24px; color: #1e3a5f; max-width: 620px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 10px;">
-                    <h2 style="color: #1e3a5f; border-bottom: 3px solid #d4a843; padding-bottom: 10px; margin-top: 0;">
-                      Universidad de Margarita (UNIMAR)
-                    </h2>
-                    <p style="font-size: 14px;">Estimado/a <strong>${nombreSeguro}</strong>,</p>
-                    <p style="font-size: 14px; line-height: 1.5;">
-                      Su postulación para <strong>${becaSegura}</strong> ha sido seleccionada para la fase de evaluación presencial.
-                    </p>
-                    ${bloqueInstruccionesHtml}
-                    <p style="font-size: 13px; color: #475569; line-height: 1.5;">
-                      También puede consultar esta citación e instrucciones ingresando a su perfil estudiantil en el portal de Becas UNIMAR.
-                    </p>
-                    <p style="margin-top: 28px; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 12px;">
-                      Atentamente,<br />
-                      <strong>Dirección de Bienestar Estudiantil - UNIMAR</strong>
-                    </p>
-                  </div>
-                `,
-              });
-
-              emailEnviado = true;
-            }
-          }
-        }
-      } catch (err: unknown) {
-        const smtpErr = err as Error;
-        emailError = smtpErr.message || 'Fallo de autenticación o conexión con el servidor SMTP.';
-        console.error(
-          '⚠️ Advertencia: No se pudo despachar el correo de convocatoria, pero el estatus cambió en la BD:',
-          smtpErr
-        );
-      }
+    if (resultado.success) {
+      const envio = await enviarCorreoCambioEstatusPorSolicitudId({
+        solicitudId: Number(id),
+        nuevoEstatus,
+        estatusPrevio: sol.estatus,
+        observaciones: resultado.observacionRegistrada ?? observacionesLimpias,
+        departamentoAsignado: departamentoAsignado ?? null,
+        departamentoAnterior: resultado.departamentoAnterior ?? null,
+      });
+      emailEnviado = envio.emailEnviado;
+      emailError = envio.emailError;
     }
 
     // 8. REVALIDACIÓN DE CACHÉ
@@ -348,20 +238,29 @@ export async function actualizarEstatusBeca(
       revalidatePath('/admin/solicitudes');
       revalidatePath('/admin/dashboard');
       revalidatePath('/admin/analiticas');
+      revalidatePath('/admin/estudiantes');
       revalidatePath('/admin/reportes');
       revalidatePath('/admin/socioeconomico');
       revalidatePath('/admin/validarBeca');
       revalidatePath('/perfil');
       revalidatePath('/');
 
+      const esCambioDepto = sol.estatus === 'Aprobada' && nuevoEstatus === 'Aprobada';
+      const mensajeFinal = esCambioDepto
+        ? emailEnviado
+          ? 'Departamento reasignado y notificado por correo electrónico al estudiante.'
+          : 'Departamento reasignado en el sistema, pero no se pudo enviar el correo electrónico.'
+        : nuevoEstatus === 'Convocado a Entrevista'
+          ? emailEnviado
+            ? 'Estudiante convocado y correo de citación enviado correctamente.'
+            : 'Estudiante convocado en el sistema, pero no se pudo enviar el correo electrónico.'
+          : emailEnviado
+            ? `Estatus actualizado a ${nuevoEstatus} y notificado por correo electrónico al estudiante.`
+            : `Estatus actualizado a ${nuevoEstatus} en el sistema, pero no se pudo enviar el correo electrónico.`;
+
       return {
         success: true,
-        message:
-          nuevoEstatus === 'Convocado a Entrevista'
-            ? emailEnviado
-              ? 'Estudiante convocado y correo de citación enviado correctamente.'
-              : 'Estudiante convocado en el sistema, pero no se pudo enviar el correo electrónico.'
-            : `Estatus actualizado a ${nuevoEstatus} correctamente.`,
+        message: mensajeFinal,
         token: resultado.token,
         emailEnviado,
         emailError,
@@ -370,8 +269,7 @@ export async function actualizarEstatusBeca(
 
     return { error: 'No se pudo procesar la actualización en el servidor.' };
   } catch (error: unknown) {
-    const err = error as Error;
-    console.error('❌ Error crítico en el orquestador de estatus:', err);
+    console.error('❌ Error crítico en el orquestador de estatus:', error);
     return {
       error: 'Error de comunicación con el motor de base de datos. Intente nuevamente.',
     };

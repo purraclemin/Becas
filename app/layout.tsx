@@ -17,9 +17,9 @@ export default async function RootLayout({
   const initialUser = await getSession()
 
   return (
-    <html lang="es" className="h-full">
+    <html lang="es" className="h-full print:h-auto print:overflow-visible">
       <body
-        className={`${_inter.variable} ${_montserrat.variable} font-sans antialiased bg-slate-50 text-slate-900 min-h-screen w-full overflow-x-hidden`}
+        className={`${_inter.variable} ${_montserrat.variable} font-sans antialiased bg-slate-50 text-slate-900 min-h-screen w-full overflow-x-hidden print:min-h-0 print:h-auto print:overflow-visible print:bg-white`}
       >
         <ControladorNavbar initialUser={initialUser}>{children}</ControladorNavbar>
         <Toaster />

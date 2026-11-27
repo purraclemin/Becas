@@ -36,6 +36,8 @@ export async function guardarOActualizarEstudio(data: EstudioSocioeconomicoInput
     revalidatePath('/admin/socioeconomico');
     revalidatePath('/admin/estudio-socioeconomico');
     revalidatePath('/admin/validarBeca');
+    revalidatePath('/admin/reportes');
+    revalidatePath('/perfil');
     return result;
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Error al procesar el estudio.";

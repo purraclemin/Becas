@@ -28,17 +28,26 @@ export default function LoginPage() {
         setIsPending(false) // Reactivamos el formulario para intentar de nuevo
       } 
       else if (result?.success) {
-        // 2. REDIRECCIÓN SEGURA
-        // Usamos window.location.href para forzar la recarga de cookies en el navegador
-        if (result.role === 'admin') {
-           window.location.href = "/admin/dashboard"
-        } else {
-           // Asumimos que el estudiante va a su perfil o solicitud
-           window.location.href = "/perfil" 
-        }
+        // 2. REDIRECCIÓN SEGURA SIN FLASH DE ERROR
+        // Usamos window.location.href para garantizar la recarga inmediata de cookies HTTPOnly
+        const destino =
+          result.redirectTo ||
+          (result.role === "secretaria"
+            ? "/admin/validarBeca"
+            : result.role === "admin"
+              ? "/admin/dashboard"
+              : "/perfil")
+        window.location.href = destino
       }
-    } catch (e) {
-      console.error(e)
+    } catch (err: unknown) {
+      const digest =
+        typeof err === "object" && err !== null && "digest" in err
+          ? String((err as { digest?: unknown }).digest ?? "")
+          : ""
+      if (digest.includes("NEXT_REDIRECT")) {
+        return
+      }
+      console.error(err)
       setError("Error de conexión con el servidor. Intente nuevamente.")
       setIsPending(false)
     }
@@ -190,6 +199,7 @@ export default function LoginPage() {
                 </button>
               </form>
 
+              {/* Módulo de registro oculto temporalmente — conservar archivos en app/registro
               <div className="mt-8 text-center border-t border-[#e2e8f0] pt-6">
                 <p className="text-xs text-[#6b7280] font-medium uppercase tracking-wide">
                   {"¿No tienes una cuenta? "}
@@ -198,6 +208,7 @@ export default function LoginPage() {
                   </Link>
                 </p>
               </div>
+              */}
             </div>
           </div>
 

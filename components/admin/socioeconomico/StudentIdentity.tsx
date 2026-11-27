@@ -82,7 +82,9 @@ export function StudentIdentity({
     if (onVerExpediente) {
       onVerExpediente(student);
     } else {
-      router.push(`/admin/validarBeca?search=${encodeURIComponent(String(student.cedula || ''))}&id=${student.id}`);
+      const cedulaLimpia = String(student.cedula || '').trim();
+      if (!cedulaLimpia) return;
+      router.push(`/admin/validarBeca?abrirAuditoria=${encodeURIComponent(cedulaLimpia)}&origen=socioeconomico`);
     }
   };
 
@@ -200,7 +202,22 @@ export function StudentIdentity({
 
               {/* ACCIONES */}
               {mostrarResultado && (
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center justify-center gap-2">
+
+                  {/* 0. Botón VER EXPEDIENTE (Auditoría directa) */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMostrarConfirmacionExpediente(true);
+                      setMostrarConfirmacionEditar(false);
+                      setMostrarConfirmacionBorrar(false);
+                    }}
+                    className="flex items-center gap-1.5 px-3.5 py-2 md:py-1.5 bg-[#1e3a5f] text-white hover:bg-[#162c4a] rounded-xl transition-all active:scale-95 group cursor-pointer shadow-xs"
+                    title="Abrir panel de auditoría de beca"
+                  >
+                    <FileText className="h-3.5 w-3.5 text-[#d4a843] group-hover:scale-110 transition-transform" />
+                    <span className="text-[9px] font-black uppercase tracking-wider">Expediente</span>
+                  </button>
 
                   {/* 1. Botón EXPORTAR */}
                   <button 

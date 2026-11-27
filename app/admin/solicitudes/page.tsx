@@ -37,7 +37,7 @@ function PageContent() {
       <PageHeader 
         titulo="Gestión de Solicitudes" 
         subtitulo="Administración y Auditoría de Becas"
-        mostrarExportar={true}
+        mostrarExportar={false}
       />
 
       {/* VISTA DE SOLICITUDES (El componente interno ya debe manejar su propia reducción de escala) */}

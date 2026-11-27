@@ -34,6 +34,8 @@ interface LatestSolicitudRow extends RowDataPacket {
   estatus_reciente: string | null;
   materias_json: string | null;
   observaciones_admin: string | null;
+  departamento_asignado: string | null;
+  tipo_beca: string | null;
 }
 
 interface RechazoPrevioRow extends RowDataPacket {
@@ -111,16 +113,31 @@ export async function getSession() {
       let estatusReciente = 'ninguna';
       let materiasArray: unknown = [];
       let observacionesAdmin: string | null = null;
+      let departamentoAsignado: string | null = null;
+      let tipoBeca: string | null = null;
       let becaPerdida = Number(s.beca_perdida) === 1;
 
       try {
         const [solRows, rechazoRows] = await Promise.all([
           queryFresh<LatestSolicitudRow[]>(
             `
-              SELECT estatus AS estatus_reciente, materias_json, observaciones_admin
-              FROM solicitudes
-              WHERE user_id = ?
-              ORDER BY periodo_id DESC, fecha_registro DESC, id DESC
+              SELECT
+                sol.estatus AS estatus_reciente,
+                sol.materias_json,
+                sol.observaciones_admin,
+                NULLIF(TRIM(sol.departamento_asignado), '') AS departamento_asignado,
+                sol.tipo_beca
+              FROM solicitudes sol
+              LEFT JOIN periodos_academicos p ON sol.periodo_id = p.id
+              WHERE sol.user_id = ?
+                AND (
+                  p.fecha_inicio IS NULL
+                  OR p.fecha_inicio <= IFNULL(
+                    (SELECT p_lim.fecha_inicio FROM periodos_academicos p_lim WHERE p_lim.es_actual = 1 LIMIT 1),
+                    '9999-12-31'
+                  )
+                )
+              ORDER BY sol.periodo_id DESC, sol.fecha_registro DESC, sol.id DESC
               LIMIT 1
             `,
             [userId]
@@ -143,6 +160,12 @@ export async function getSession() {
           observacionesAdmin = solRows[0].observaciones_admin
             ? String(solRows[0].observaciones_admin).trim()
             : null;
+          departamentoAsignado = solRows[0].departamento_asignado
+            ? String(solRows[0].departamento_asignado).trim()
+            : null;
+          tipoBeca = solRows[0].tipo_beca
+            ? String(solRows[0].tipo_beca).trim()
+            : null;
           if (solRows[0].materias_json) {
             materiasArray = JSON.parse(solRows[0].materias_json);
           }
@@ -151,6 +174,7 @@ export async function getSession() {
         if (becaPerdida || rechazoRows.length > 0) {
           becaPerdida = true;
           estatusReciente = 'Rechazada';
+          departamentoAsignado = null;
           if (!observacionesAdmin && rechazoRows[0]?.observaciones_admin) {
             observacionesAdmin = String(rechazoRows[0].observaciones_admin).trim();
           }
@@ -189,6 +213,8 @@ export async function getSession() {
         estatusBeca: estatusReciente,
         becaPerdida,
         observacionesAdmin,
+        departamentoAsignado,
+        tipoBeca,
         materias: materiasArray,
       };
     }

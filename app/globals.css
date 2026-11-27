@@ -59,49 +59,82 @@ body {
   }
 }
 
-/* Regla optimizada para que el reporte suba al tope y permita paginación fluida */
+/* Regla optimizada para que los reportes paginen de forma continua sin cortar filas ni bordes */
 @media print {
-  /* Margen más reducido para ganar espacio en la parte superior */
   @page {
     size: letter;
-    margin: 4mm 8mm 8mm 8mm;
+    margin: 10mm 8mm 12mm 8mm;
   }
 
-  html, body {
+  html,
+  body {
     margin: 0 !important;
     padding: 0 !important;
     height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
     overflow: visible !important;
+    background: #ffffff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
   /* Ocultamos todo lo demás de la aplicación */
   body * {
     visibility: hidden !important;
   }
-  
+
   /* Hacemos visible únicamente la sección de impresión y sus hijos */
-  #print-section, #print-section * {
+  #print-section,
+  #print-section * {
     visibility: visible !important;
   }
 
-  /* Mantenemos el flujo estático/normal con altura automática para permitir que el navegador pagine todas las hojas */
+  /* Flujo normal en bloque con altura ilimitada para paginar listados extensos (5+ hojas) */
   #print-section {
     position: static !important;
+    display: block !important;
     width: 100% !important;
     height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
     margin: 0 !important;
     padding: 0 !important;
-    background: white !important;
-    display: block !important;
+    background: #ffffff !important;
     page-break-inside: auto !important;
+    break-inside: auto !important;
   }
 
-  /* Permitimos flujo libre de páginas para que no corte los registros del final */
-  table {
-    page-break-inside: auto;
+  /* Paginación limpia de tablas largas con repetición de cabecera y cierre inferior en cada hoja */
+  #print-section table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+    border-bottom: 1px solid #94a3b8 !important;
   }
-  tr {
-    page-break-inside: avoid;
-    break-inside: avoid;
+
+  #print-section thead {
+    display: table-header-group !important;
+  }
+
+  #print-section tbody {
+    display: table-row-group !important;
+  }
+
+  #print-section tfoot {
+    display: table-footer-group !important;
+  }
+
+  #print-section tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  #print-section td,
+  #print-section th {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 }

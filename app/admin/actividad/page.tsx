@@ -8,10 +8,7 @@ import {
   GraduationCap,
   Calendar,
   Loader2,
-  AlertTriangle,
-  FileText,
-  FileSpreadsheet,
-  X,
+  AlertTriangle
 } from "lucide-react"
 
 import { obtenerSolicitudesRecientes } from "@/lib/ActionsRecientes"
@@ -45,6 +42,10 @@ const StatusBadge = ({ estatus }: { estatus: string }) => {
     'Aprobada': 'bg-emerald-50 text-emerald-700 border-emerald-200',
     'En Revisión': 'bg-blue-50 text-blue-700 border-blue-200',
     'Rechazada': 'bg-rose-50 text-rose-700 border-rose-200',
+    'Finalizada': 'bg-teal-100 text-teal-800 border-teal-300',
+    'Convocado a Entrevista': 'bg-orange-100 text-orange-800 border-orange-300',
+    'Renovacion': 'bg-indigo-50 text-indigo-700 border-indigo-200',
+    'Renovación': 'bg-indigo-50 text-indigo-700 border-indigo-200',
     'Pendiente': 'bg-amber-50 text-amber-700 border-amber-200',
   } as const;
 
@@ -80,8 +81,7 @@ export default function ActividadPage() {
   const [error, setError] = useState<string | null>(null)
   const [isAIModalOpen, setIsAIModalOpen] = useState<boolean>(false)
 
-  // Estados y referencia para exportación dual (PDF / XLSX)
-  const [mostrarOpcionesExportar, setMostrarOpcionesExportar] = useState<boolean>(false)
+  // Referencia y estado para exportación dual estandarizada (PDF / XLSX)
   const [exportandoXlsx, setExportandoXlsx] = useState<boolean>(false)
   const xlsxRef = useRef<ExportReportXLSXHandle | null>(null)
 
@@ -98,7 +98,7 @@ export default function ActividadPage() {
         setLoading(false)
       }
     }
-    cargar()
+    void cargar()
   }, [])
 
   const formatearFecha = useCallback((fecha: string): string => {
@@ -115,16 +115,14 @@ export default function ActividadPage() {
   }, [])
 
   const handleImprimirPDF = () => {
-    setMostrarOpcionesExportar(false)
     setTimeout(() => {
       window.print()
-    }, 100)
+    }, 80)
   }
 
   const handleExportarXLSX = async () => {
     if (!xlsxRef.current || exportandoXlsx) return
     await xlsxRef.current.exportar()
-    setMostrarOpcionesExportar(false)
   }
 
   const mapearFilaXLSX = useCallback(
@@ -148,15 +146,17 @@ export default function ActividadPage() {
   )
 
   return (
-    <div className="space-y-4 md:space-y-6 print:space-y-0 print:overflow-visible print:h-auto print:min-h-0">
+    <div className="space-y-4 md:space-y-6 print:block print:space-y-0 print:overflow-visible print:h-auto print:min-h-0">
 
-      {/* CABECERA (Se oculta al imprimir) */}
+      {/* CABECERA CON EXPORTACIÓN DUAL ESTANDARIZADA (PDF / EXCEL) */}
       <div className="print:hidden">
         <PageHeader
           titulo="Registro de Actividad"
           subtitulo="Auditoría de Movimientos en Tiempo Real"
           mostrarExportar={true}
-          onExport={() => setMostrarOpcionesExportar(true)}
+          onExportPDF={handleImprimirPDF}
+          onExportXLSX={handleExportarXLSX}
+          exportandoXlsx={exportandoXlsx}
         />
       </div>
 
@@ -204,7 +204,14 @@ export default function ActividadPage() {
                 recientes.map((s) => (
                   <tr
                     key={s.id}
-                    onClick={() => router.push(`/admin/validarBeca?search=${s.cedula}`)}
+                    onClick={() => {
+                      const cedulaLimpia = String(s.cedula || "").trim()
+                      if (!cedulaLimpia) return
+                      router.push(
+                        `/admin/validarBeca?abrirAuditoria=${encodeURIComponent(cedulaLimpia)}&origen=actividad`
+                      )
+                    }}
+                    title="Abrir panel de auditoría del estudiante"
                     className="group flex flex-col md:table-row bg-white border border-slate-200 rounded-xl shadow-sm md:shadow-none md:border-none md:rounded-none md:hover:bg-blue-50/50 transition-all cursor-pointer overflow-hidden"
                   >
                     <td className="order-6 md:order-none flex justify-between items-center md:table-cell px-4 py-2.5 md:px-6 md:py-3.5 border-t border-slate-100 md:border-none bg-slate-50/30 md:bg-transparent">
@@ -267,137 +274,46 @@ export default function ActividadPage() {
         Unimar &bull; Sistema de Auditoría Interna &bull; 2026
       </p>
 
-      {/* MODAL SELECTOR DE FORMATO DE EXPORTACIÓN (PDF / XLSX) */}
-      {mostrarOpcionesExportar && (
-        <div
-          className="fixed inset-0 z-50 bg-slate-900/45 backdrop-blur-xs flex items-center justify-center p-4 print:hidden"
-          onClick={() => !exportandoXlsx && setMostrarOpcionesExportar(false)}
-        >
-          <div
-            className="w-full max-w-sm bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="bg-[#1e3a5f] px-5 py-3.5 flex items-center justify-between border-b-2 border-[#d4a843]">
-              <div>
-                <h4 className="text-xs font-black text-white uppercase tracking-widest">
-                  Exportar Reporte
-                </h4>
-                <p className="text-[10px] text-slate-200 font-medium mt-0.5">
-                  Seleccione el formato de salida
-                </p>
-              </div>
-              <button
-                type="button"
-                disabled={exportandoXlsx}
-                onClick={() => setMostrarOpcionesExportar(false)}
-                className="p-1.5 rounded-lg text-slate-200 hover:bg-white/10 transition-colors cursor-pointer disabled:opacity-50"
-                aria-label="Cerrar selector de exportación"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <div className="p-4 space-y-2.5 bg-[#f8fafc]">
-              <button
-                type="button"
-                onClick={handleImprimirPDF}
-                disabled={exportandoXlsx}
-                className="w-full flex items-center gap-3 p-3.5 md:p-3 bg-white hover:bg-slate-50 border border-slate-200 hover:border-[#1e3a5f] rounded-xl text-left transition-all shadow-xs cursor-pointer disabled:opacity-50"
-              >
-                <div className="h-10 w-10 md:h-9 md:w-9 rounded-lg bg-[#1e3a5f] text-[#d4a843] flex items-center justify-center shrink-0">
-                  <FileText className="h-4 w-4" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm md:text-xs font-black text-[#1e3a5f] uppercase tracking-wide">
-                    Imprimir en PDF
-                  </p>
-                  <p className="text-xs md:text-[10px] text-slate-500 font-medium">
-                    Impresión o guardado PDF
-                  </p>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleExportarXLSX}
-                disabled={exportandoXlsx}
-                className="w-full flex items-center gap-3 p-3.5 md:p-3 bg-white hover:bg-slate-50 border border-slate-200 hover:border-[#d4a843] rounded-xl text-left transition-all shadow-xs cursor-pointer disabled:opacity-60"
-              >
-                <div className="h-10 w-10 md:h-9 md:w-9 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center shrink-0">
-                  {exportandoXlsx ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <FileSpreadsheet className="h-4 w-4" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm md:text-xs font-black text-[#1e3a5f] uppercase tracking-wide">
-                    {exportandoXlsx ? "Generando archivo..." : "Hoja de Cálculo (.xlsx)"}
-                  </p>
-                  <p className="text-xs md:text-[10px] text-slate-500 font-medium">
-                    Libro Excel
-                  </p>
-                </div>
-              </button>
-            </div>
-
-            <div className="px-4 py-3 bg-white border-t border-slate-200 flex justify-end">
-              <button
-                type="button"
-                disabled={exportandoXlsx}
-                onClick={() => setMostrarOpcionesExportar(false)}
-                className="h-12 md:h-9 px-4 rounded-lg border border-slate-200 text-sm md:text-xs font-bold text-slate-600 hover:bg-slate-50 uppercase tracking-wider transition-colors cursor-pointer disabled:opacity-50"
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* PLANTILLA DE IMPRESIÓN PDF LIMPIA E INSTITUCIONAL */}
-      <PrintReportLayout
+      <PrintReportLayout<ISolicitudReciente>
         titulo="Registro de Actividad"
         subtitulo={`Auditoría de Movimientos en Tiempo Real — Total: ${recientes.length}`}
         columnas={["Fecha / Hora", "Estudiante / Cédula", "Carrera", "Beca", "Índice", "Estatus"]}
         datos={recientes}
-        renderFila={(row: Record<string, unknown>, idx: number) => {
-          const s = row as ISolicitudReciente
-          return (
-            <tr key={String(s.id ?? idx)} className="border-b border-slate-200 break-inside-avoid">
-              <td className="p-1.5 border border-slate-400 text-[8px] font-mono font-semibold text-slate-700">
-                {formatearFecha(s.fecha_registro)}
-              </td>
-              <td className="p-1.5 border border-slate-400">
-                <span className="font-bold text-[#1e3a5f] uppercase block">
-                  {String(s.nombre || "")} {String(s.apellido || "")}
-                </span>
-                <span className="text-[8px] text-slate-500 font-mono font-semibold">
-                  V-{String(s.cedula || "---")}
-                </span>
-              </td>
-              <td className="p-1.5 border border-slate-400 uppercase font-semibold">
-                {String(s.carrera || "---")}
-              </td>
-              <td className="p-1.5 border border-slate-400 uppercase font-semibold text-slate-700">
-                {String(s.tipo_beca || "---")}
-              </td>
-              <td className="p-1.5 border border-slate-400 text-center font-bold text-slate-800">
-                {String(s.promedio_notas || "---")}
-              </td>
-              <td className="p-1.5 border border-slate-400 text-right uppercase font-bold text-[#1e3a5f]">
-                {String(s.estatus || "Pendiente")}
-              </td>
-            </tr>
-          )
-        }}
+        renderFila={(s, idx) => (
+          <tr key={String(s.id ?? idx)} className="border-b border-slate-200 break-inside-avoid">
+            <td className="p-1.5 border border-slate-400 text-[8px] font-mono font-semibold text-slate-700">
+              {formatearFecha(s.fecha_registro)}
+            </td>
+            <td className="p-1.5 border border-slate-400">
+              <span className="font-bold text-[#1e3a5f] uppercase block">
+                {String(s.nombre || "")} {String(s.apellido || "")}
+              </span>
+              <span className="text-[8px] text-slate-500 font-mono font-semibold">
+                V-{String(s.cedula || "---")}
+              </span>
+            </td>
+            <td className="p-1.5 border border-slate-400 uppercase font-semibold">
+              {String(s.carrera || "---")}
+            </td>
+            <td className="p-1.5 border border-slate-400 uppercase font-semibold text-slate-700">
+              {String(s.tipo_beca || "---")}
+            </td>
+            <td className="p-1.5 border border-slate-400 text-center font-bold text-slate-800">
+              {String(s.promedio_notas || "---")}
+            </td>
+            <td className="p-1.5 border border-slate-400 text-right uppercase font-bold text-[#1e3a5f]">
+              {String(s.estatus || "Pendiente")}
+            </td>
+          </tr>
+        )}
       />
 
       {/* EXPORTADOR INSTITUCIONAL A HOJA DE CÁLCULO (.XLSX) */}
       <ExportReportXLSX<ISolicitudReciente>
         ref={xlsxRef}
         titulo="Registro de Actividad"
-        subtitulo={`Auditoría de Movimientos en Tiempo Real — Periodo Académico 2026`}
+        subtitulo="Auditoría de Movimientos en Tiempo Real — Periodo Académico 2026"
         nombreHoja="Registro_Actividad"
         nombreArchivo="registro_actividad_unimar"
         columnas={["Fecha / Hora", "Estudiante", "Cédula", "Carrera", "Beca", "Índice", "Estatus"]}

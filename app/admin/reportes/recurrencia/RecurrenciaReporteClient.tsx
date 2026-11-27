@@ -1,9 +1,11 @@
 "use client"
 
 import React, { useState, useEffect, useRef, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import {
   UserCheck,
   UserX,
+  Archive,
   GraduationCap,
   FileSpreadsheet,
   RefreshCw,
@@ -12,7 +14,10 @@ import {
   X,
   CheckCircle2,
   XCircle,
-  Award
+  Award,
+  Calendar,
+  RotateCcw,
+  AlertCircle
 } from "lucide-react"
 import { PageHeader } from "@/components/admin/PageHeader"
 import { PrintReportLayout } from "@/components/imprimirReporte"
@@ -35,9 +40,13 @@ interface RecurrenciaReporteClientProps {
 export function RecurrenciaReporteClient({
   initialData
 }: RecurrenciaReporteClientProps) {
+  const router = useRouter()
   const [data, setData] = useState<ReporteRecurrenciaItem[]>(initialData.data)
   const [stats, setStats] = useState<StatsRecurrenciaReporte>(initialData.stats)
   const [search, setSearch] = useState<string>("")
+  const [fechaDesde, setFechaDesde] = useState<string>("")
+  const [fechaHasta, setFechaHasta] = useState<string>("")
+  const [avisoFecha, setAvisoFecha] = useState<string | null>(null)
   const [actualizando, setActualizando] = useState<boolean>(false)
   const [exportandoXlsx, setExportandoXlsx] = useState<boolean>(false)
 
@@ -45,25 +54,32 @@ export function RecurrenciaReporteClient({
   const isFirstMountRef = useRef<boolean>(true)
   const requestIdRef = useRef<number>(0)
 
-  const cargarDatos = useCallback(async (termino: string) => {
-    const reqId = ++requestIdRef.current
-    setActualizando(true)
+  const cargarDatos = useCallback(
+    async (termino: string, desde: string, hasta: string) => {
+      const reqId = ++requestIdRef.current
+      setActualizando(true)
 
-    try {
-      const res = await obtenerReporteRecurrencia(termino || undefined)
-      if (reqId !== requestIdRef.current) return
-      if (res.success) {
-        setData(res.data)
-        setStats(res.stats)
+      try {
+        const res = await obtenerReporteRecurrencia({
+          search: termino || undefined,
+          fechaDesde: desde || undefined,
+          fechaHasta: hasta || undefined,
+        })
+        if (reqId !== requestIdRef.current) return
+        if (res.success) {
+          setData(res.data)
+          setStats(res.stats)
+        }
+      } catch (error) {
+        console.error("Error al actualizar recurrencia:", error)
+      } finally {
+        if (reqId === requestIdRef.current) {
+          setActualizando(false)
+        }
       }
-    } catch (error) {
-      console.error("Error al actualizar recurrencia:", error)
-    } finally {
-      if (reqId === requestIdRef.current) {
-        setActualizando(false)
-      }
-    }
-  }, [])
+    },
+    []
+  )
 
   useEffect(() => {
     if (isFirstMountRef.current) {
@@ -71,13 +87,19 @@ export function RecurrenciaReporteClient({
       return
     }
 
+    if (fechaDesde && fechaHasta && fechaDesde > fechaHasta) {
+      setAvisoFecha("La fecha 'Desde' no puede ser posterior a la fecha 'Hasta'.")
+      return
+    }
+
+    setAvisoFecha(null)
     const delay = search.trim() !== "" ? 300 : 0
     const timer = setTimeout(() => {
-      void cargarDatos(search)
+      void cargarDatos(search, fechaDesde, fechaHasta)
     }, delay)
 
     return () => clearTimeout(timer)
-  }, [search, cargarDatos])
+  }, [search, fechaDesde, fechaHasta, cargarDatos])
 
   const handleImprimirPDF = () => {
     setTimeout(() => {
@@ -90,6 +112,17 @@ export function RecurrenciaReporteClient({
     await xlsxRef.current.exportar()
   }
 
+  const abrirAuditoria = useCallback(
+    (cedula: string) => {
+      const cedulaLimpia = String(cedula || "").trim()
+      if (!cedulaLimpia) return
+      router.push(
+        `/admin/validarBeca?abrirAuditoria=${encodeURIComponent(cedulaLimpia)}&origen=reportes-recurrencia`
+      )
+    },
+    [router]
+  )
+
   const mapearFilaXLSX = useCallback((row: ReporteRecurrenciaItem): CeldaXLSX[] => {
     return [
       `${row.nombre} ${row.apellido}`.trim().toUpperCase(),
@@ -99,17 +132,40 @@ export function RecurrenciaReporteClient({
       row.total_beneficios,
       row.periodos_beneficiados.length > 0 ? row.periodos_beneficiados.join(", ") : "---",
       row.periodos_rechazados.length > 0 ? row.periodos_rechazados.join(", ") : "---",
-      row.fue_rechazado ? "RECHAZADO (BAJA)" : row.estatus_final.toUpperCase(),
+      row.fue_rechazado
+        ? "RECHAZADO (BAJA)"
+        : row.es_finalizado
+          ? "FINALIZADA"
+          : row.estatus_final.toUpperCase(),
       row.motivo_rechazo || "---",
     ]
   }, [])
 
-  const subtituloReporte = `Total: ${stats.totalEvaluados} | Activos: ${stats.totalActivos} | Rechazados: ${stats.totalRechazados}${
+  const hayFiltrosActivos =
+    search.trim() !== "" || fechaDesde !== "" || fechaHasta !== ""
+
+  const handleLimpiarFiltros = () => {
+    setSearch("")
+    setFechaDesde("")
+    setFechaHasta("")
+    setAvisoFecha(null)
+  }
+
+  const etiquetaRango =
+    fechaDesde && fechaHasta
+      ? ` | Rango: ${fechaDesde} al ${fechaHasta}`
+      : fechaDesde
+        ? ` | Desde: ${fechaDesde}`
+        : fechaHasta
+          ? ` | Hasta: ${fechaHasta}`
+          : ""
+
+  const subtituloReporte = `Total: ${stats.totalEvaluados} | Activos: ${stats.totalActivos} | Finalizadas: ${stats.totalFinalizados} | Rechazados: ${stats.totalRechazados}${etiquetaRango}${
     search.trim() ? ` | Filtro: "${search.trim()}"` : ""
   }`
 
   return (
-    <div className="space-y-4 print:space-y-0 print:overflow-visible print:h-auto print:min-h-0">
+    <div className="space-y-4 print:block print:space-y-0 print:overflow-visible print:h-auto print:min-h-0">
       {/* CABECERA CON EXPORTACIÓN DUAL (PDF / EXCEL) */}
       <div className="print:hidden">
         <PageHeader
@@ -123,7 +179,7 @@ export function RecurrenciaReporteClient({
       </div>
 
       {/* RESUMEN KPI (UF-Scale) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 print:hidden">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 print:hidden">
         <div className="bg-white p-4 md:p-3.5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3.5">
           <div className="h-11 w-11 md:h-9 md:w-9 rounded-xl bg-amber-50 border border-amber-100 text-amber-600 flex items-center justify-center shrink-0">
             <Trophy className="h-5 w-5 md:h-4 md:w-4" />
@@ -153,12 +209,26 @@ export function RecurrenciaReporteClient({
         </div>
 
         <div className="bg-white p-4 md:p-3.5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3.5">
+          <div className="h-11 w-11 md:h-9 md:w-9 rounded-xl bg-teal-50 border border-teal-200 text-teal-700 flex items-center justify-center shrink-0">
+            <Archive className="h-5 w-5 md:h-4 md:w-4" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest truncate">
+              Finalizadas (Sin Sanción)
+            </p>
+            <p className="text-lg md:text-base font-mono font-black text-teal-700 leading-tight mt-0.5">
+              {stats.totalFinalizados}
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-white p-4 md:p-3.5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3.5">
           <div className="h-11 w-11 md:h-9 md:w-9 rounded-xl bg-rose-50 border border-rose-100 text-rose-600 flex items-center justify-center shrink-0">
             <XCircle className="h-5 w-5 md:h-4 md:w-4" />
           </div>
           <div className="min-w-0">
             <p className="text-[10px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest truncate">
-              Rechazados / Baja Definitiva
+              Rechazados / Baja
             </p>
             <p className="text-lg md:text-base font-mono font-black text-rose-700 leading-tight mt-0.5">
               {stats.totalRechazados}
@@ -167,16 +237,16 @@ export function RecurrenciaReporteClient({
         </div>
       </div>
 
-      {/* BARRA DE BÚSQUEDA ALINEADA (UF-Scale) */}
-      <div className="bg-white p-3.5 md:p-3 rounded-xl border border-slate-200 shadow-sm print:hidden">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
-          <div className="md:col-span-9 flex flex-col gap-1.5">
+      {/* BARRA DE BÚSQUEDA Y FECHAS ALINEADA (UF-Scale) */}
+      <div className="bg-white p-3.5 md:p-3 rounded-xl border border-slate-200 shadow-sm space-y-2.5 print:hidden">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
+          <div className="lg:col-span-5 flex flex-col gap-1.5">
             <label
               htmlFor="buscar-recurrencia"
               className="h-4 flex items-center gap-1.5 text-[10px] md:text-[9px] font-black uppercase text-slate-500 tracking-widest"
             >
               <Search className="h-3 w-3 text-[#d4a843] shrink-0" />
-              <span>Buscar por Nombre, Cédula o Carrera</span>
+              <span>Buscar por Nombre, Apellido, Cédula o Carrera</span>
             </label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 md:h-3.5 md:w-3.5 text-slate-400 pointer-events-none" />
@@ -185,7 +255,7 @@ export function RecurrenciaReporteClient({
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar estudiante..."
+                placeholder="Nombre, apellido, cédula o carrera..."
                 className="w-full h-12 md:h-9 pl-9 pr-9 rounded-lg border border-slate-200 bg-[#f8fafc] text-sm md:text-xs font-bold text-[#1e3a5f] placeholder:text-slate-400 placeholder:font-medium outline-none focus:border-[#1e3a5f] focus:bg-white transition-all"
               />
               {search && (
@@ -201,12 +271,58 @@ export function RecurrenciaReporteClient({
             </div>
           </div>
 
-          <div className="md:col-span-3 flex items-center">
+          <div className="lg:col-span-2 flex flex-col gap-1.5">
+            <label
+              htmlFor="recurrencia-desde"
+              className="h-4 flex items-center gap-1.5 text-[10px] md:text-[9px] font-black uppercase text-slate-500 tracking-widest"
+            >
+              <Calendar className="h-3 w-3 text-[#d4a843] shrink-0" />
+              <span>Desde</span>
+            </label>
+            <input
+              id="recurrencia-desde"
+              type="date"
+              value={fechaDesde}
+              onChange={(e) => setFechaDesde(e.target.value)}
+              className="w-full h-12 md:h-9 px-3 rounded-lg border border-slate-200 bg-[#f8fafc] text-sm md:text-xs font-bold text-[#1e3a5f] outline-none focus:border-[#1e3a5f] focus:bg-white transition-all"
+            />
+          </div>
+
+          <div className="lg:col-span-2 flex flex-col gap-1.5">
+            <label
+              htmlFor="recurrencia-hasta"
+              className="h-4 flex items-center gap-1.5 text-[10px] md:text-[9px] font-black uppercase text-slate-500 tracking-widest"
+            >
+              <Calendar className="h-3 w-3 text-[#d4a843] shrink-0" />
+              <span>Hasta</span>
+            </label>
+            <input
+              id="recurrencia-hasta"
+              type="date"
+              value={fechaHasta}
+              onChange={(e) => setFechaHasta(e.target.value)}
+              className="w-full h-12 md:h-9 px-3 rounded-lg border border-slate-200 bg-[#f8fafc] text-sm md:text-xs font-bold text-[#1e3a5f] outline-none focus:border-[#1e3a5f] focus:bg-white transition-all"
+            />
+          </div>
+
+          <div className="md:col-span-2 lg:col-span-3 flex items-center gap-2">
+            {hayFiltrosActivos && (
+              <button
+                type="button"
+                onClick={handleLimpiarFiltros}
+                className="h-12 md:h-9 px-3 rounded-lg bg-[#f8fafc] hover:bg-slate-100 border border-slate-200 text-slate-600 text-sm md:text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition-colors shrink-0"
+                title="Restablecer filtros"
+              >
+                <RotateCcw className="h-4 w-4 md:h-3.5 md:w-3.5" />
+                <span className="hidden sm:inline">Limpiar</span>
+              </button>
+            )}
+
             <button
               type="button"
               disabled={actualizando}
-              onClick={() => void cargarDatos(search)}
-              className="w-full h-12 md:h-9 px-4 rounded-lg bg-[#1e3a5f] hover:bg-[#162c4a] text-white text-sm md:text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer disabled:opacity-50 transition-colors"
+              onClick={() => void cargarDatos(search, fechaDesde, fechaHasta)}
+              className="flex-1 h-12 md:h-9 px-3.5 rounded-lg bg-[#1e3a5f] hover:bg-[#162c4a] text-white text-sm md:text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer disabled:opacity-50 transition-colors"
             >
               <RefreshCw
                 className={`h-4 w-4 md:h-3.5 md:w-3.5 text-[#d4a843] shrink-0 ${
@@ -217,6 +333,13 @@ export function RecurrenciaReporteClient({
             </button>
           </div>
         </div>
+
+        {avisoFecha && (
+          <div className="px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>{avisoFecha}</span>
+          </div>
+        )}
       </div>
 
       {/* CONTENEDOR DE DATOS (TABLA PC / TARJETAS MÓVIL) */}
@@ -254,10 +377,14 @@ export function RecurrenciaReporteClient({
                   {data.map((row) => (
                     <tr
                       key={row.student_id}
-                      className={`transition-colors ${
+                      onClick={() => abrirAuditoria(row.cedula)}
+                      title="Abrir panel de auditoría del estudiante"
+                      className={`transition-colors cursor-pointer ${
                         row.fue_rechazado
-                          ? "hover:bg-rose-50/20"
-                          : "hover:bg-[#f8fafc]"
+                          ? "hover:bg-rose-50/30"
+                          : row.es_finalizado
+                            ? "hover:bg-teal-50/40"
+                            : "hover:bg-blue-50/40"
                       }`}
                     >
                       <td className="px-3.5 py-2.5">
@@ -266,11 +393,15 @@ export function RecurrenciaReporteClient({
                             className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${
                               row.fue_rechazado
                                 ? "bg-rose-50 text-rose-600"
-                                : "bg-emerald-50 text-emerald-700"
+                                : row.es_finalizado
+                                  ? "bg-teal-50 text-teal-700"
+                                  : "bg-emerald-50 text-emerald-700"
                             }`}
                           >
                             {row.fue_rechazado ? (
                               <UserX className="h-4 w-4" />
+                            ) : row.es_finalizado ? (
+                              <Archive className="h-4 w-4" />
                             ) : (
                               <UserCheck className="h-4 w-4" />
                             )}
@@ -330,9 +461,11 @@ export function RecurrenciaReporteClient({
                               </span>
                             )}
                         </div>
-                        {row.fue_rechazado && row.motivo_rechazo && (
+                        {(row.fue_rechazado || row.es_finalizado) && row.motivo_rechazo && (
                           <p
-                            className="text-[10px] text-rose-600/85 italic mt-1 line-clamp-1 max-w-xs"
+                            className={`text-[10px] italic mt-1 line-clamp-1 max-w-xs ${
+                              row.es_finalizado ? "text-teal-700/90" : "text-rose-600/85"
+                            }`}
                             title={row.motivo_rechazo}
                           >
                             {row.motivo_rechazo}
@@ -345,6 +478,11 @@ export function RecurrenciaReporteClient({
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-100 text-rose-700 border border-rose-200 text-[9px] font-black uppercase tracking-wider">
                             <XCircle className="h-3 w-3" />
                             Rechazado (Baja)
+                          </span>
+                        ) : row.es_finalizado ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-teal-100 text-teal-800 border border-teal-300 text-[9px] font-black uppercase tracking-wider">
+                            <Archive className="h-3 w-3" />
+                            Finalizada
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200 text-[9px] font-black uppercase tracking-wider">
@@ -364,7 +502,8 @@ export function RecurrenciaReporteClient({
               {data.map((row) => (
                 <div
                   key={`mob-${row.student_id}`}
-                  className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm space-y-2.5"
+                  onClick={() => abrirAuditoria(row.cedula)}
+                  className="bg-white rounded-xl border border-slate-200 hover:border-[#1e3a5f]/50 p-4 shadow-sm space-y-2.5 cursor-pointer transition-colors"
                 >
                   <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-2">
                     <div className="min-w-0">
@@ -415,6 +554,11 @@ export function RecurrenciaReporteClient({
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-700 border border-rose-200 text-[10px] font-black uppercase">
                         <XCircle className="h-3 w-3" />
                         Rechazado (Baja)
+                      </span>
+                    ) : row.es_finalizado ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-teal-100 text-teal-800 border border-teal-300 text-[10px] font-black uppercase">
+                        <Archive className="h-3 w-3" />
+                        Finalizada
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200 text-[10px] font-black uppercase">
@@ -477,7 +621,11 @@ export function RecurrenciaReporteClient({
                 "---"}
             </td>
             <td className="p-1.5 border border-slate-400 text-right uppercase font-bold">
-              {item.fue_rechazado ? "RECHAZADO (BAJA)" : item.estatus_final}
+              {item.fue_rechazado
+                ? "RECHAZADO (BAJA)"
+                : item.es_finalizado
+                  ? "FINALIZADA"
+                  : item.estatus_final}
             </td>
           </tr>
         )}
@@ -499,7 +647,7 @@ export function RecurrenciaReporteClient({
           "Periodos Aprobados",
           "Periodos Rechazados",
           "Estatus Final",
-          "Motivo de Baja"
+          "Motivo de Cierre"
         ]}
         datos={data}
         mapearFila={mapearFilaXLSX}
